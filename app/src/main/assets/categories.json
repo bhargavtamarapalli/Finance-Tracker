@@ -1,0 +1,186 @@
+[
+  {
+    "id": 1,
+    "name": "Food",
+    "type": "EXPENSE",
+    "iconName": "restaurant",
+    "isDefault": true,
+    "isArchived": false
+  },
+  {
+    "id": 2,
+    "name": "Groceries",
+    "type": "EXPENSE",
+    "iconName": "shopping_cart",
+    "isDefault": true,
+    "isArchived": false
+  },
+  {
+    "id": 3,
+    "name": "Rent",
+    "type": "EXPENSE",
+    "iconName": "home",
+    "isDefault": true,
+    "isArchived": false
+  },
+  {
+    "id": 4,
+    "name": "Utilities",
+    "type": "EXPENSE",
+    "iconName": "bolt",
+    "isDefault": true,
+    "isArchived": false
+  },
+  {
+    "id": 5,
+    "name": "Transport",
+    "type": "EXPENSE",
+    "iconName": "directions_bus",
+    "isDefault": true,
+    "isArchived": false
+  },
+  {
+    "id": 6,
+    "name": "Fuel",
+    "type": "EXPENSE",
+    "iconName": "local_gas_station",
+    "isDefault": true,
+    "isArchived": false
+  },
+  {
+    "id": 7,
+    "name": "Shopping",
+    "type": "EXPENSE",
+    "iconName": "shopping_bag",
+    "isDefault": true,
+    "isArchived": false
+  },
+  {
+    "id": 8,
+    "name": "Entertainment",
+    "type": "EXPENSE",
+    "iconName": "movie",
+    "isDefault": true,
+    "isArchived": false
+  },
+  {
+    "id": 9,
+    "name": "Travel",
+    "type": "EXPENSE",
+    "iconName": "flight",
+    "isDefault": true,
+    "isArchived": false
+  },
+  {
+    "id": 10,
+    "name": "Healthcare",
+    "type": "EXPENSE",
+    "iconName": "medical_services",
+    "isDefault": true,
+    "isArchived": false
+  },
+  {
+    "id": 11,
+    "name": "Insurance",
+    "type": "EXPENSE",
+    "iconName": "shield",
+    "isDefault": true,
+    "isArchived": false
+  },
+  {
+    "id": 12,
+    "name": "Education",
+    "type": "EXPENSE",
+    "iconName": "school",
+    "isDefault": true,
+    "isArchived": false
+  },
+  {
+    "id": 13,
+    "name": "EMI",
+    "type": "EXPENSE",
+    "iconName": "credit_card",
+    "isDefault": true,
+    "isArchived": false
+  },
+  {
+    "id": 14,
+    "name": "Investment",
+    "type": "EXPENSE",
+    "iconName": "show_chart",
+    "isDefault": true,
+    "isArchived": false
+  },
+  {
+    "id": 15,
+    "name": "Miscellaneous",
+    "type": "EXPENSE",
+    "iconName": "more_horiz",
+    "isDefault": true,
+    "isArchived": false
+  },
+  {
+    "id": 16,
+    "name": "Salary",
+    "type": "INCOME",
+    "iconName": "attach_money",
+    "isDefault": true,
+    "isArchived": false
+  },
+  {
+    "id": 17,
+    "name": "Freelance",
+    "type": "INCOME",
+    "iconName": "work",
+    "isDefault": true,
+    "isArchived": false
+  },
+  {
+    "id": 18,
+    "name": "Business",
+    "type": "INCOME",
+    "iconName": "store",
+    "isDefault": true,
+    "isArchived": false
+  },
+  {
+    "id": 19,
+    "name": "Interest",
+    "type": "INCOME",
+    "iconName": "percent",
+    "isDefault": true,
+    "isArchived": false
+  },
+  {
+    "id": 20,
+    "name": "Dividend",
+    "type": "INCOME",
+    "iconName": "trending_up",
+    "isDefault": true,
+    "isArchived": false
+  },
+  {
+    "id": 21,
+    "name": "Gift",
+    "type": "INCOME",
+    "iconName": "card_giftcard",
+    "isDefault": true,
+    "isArchived": false
+  },
+  {
+    "id": 22,
+    "name": "Refund",
+    "type": "INCOME",
+    "iconName": "keyboard_return",
+    "isDefault": true,
+    "isArchived": false
+  },
+  {
+    "id": 23,
+    "name": "Other",
+    "type": "INCOME",
+    "iconName": "more_horiz",
+    "isDefault": true,
+    "isArchived": false
+  }
+]

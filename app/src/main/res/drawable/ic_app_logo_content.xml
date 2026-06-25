@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- Stylized Coin Circle inside -->
+    <path
+        android:pathData="M60,60 m-28,0 a28,28 0 1,1 56,0 a28,28 0 1,1 -56,0"
+        android:strokeWidth="4"
+        android:strokeColor="#FFFFFF"
+        android:fillColor="#1AFFFFFF" />
+
+    <path
+        android:pathData="M60,60 m-20,0 a20,20 0 1,1 40,0 a20,20 0 1,1 -40,0"
+        android:strokeWidth="1.5"
+        android:strokeColor="#66FFFFFF"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+
+    <!-- Dollar Sign or Coin Accent in center -->
+    <path
+        android:pathData="M60,48 L60,72 M55,53 C55,53 58,50 60,50 C63,50 65,52 65,55 C65,58 62,59 60,60 C57,61 55,62 55,65 C55,68 58,70 61,70 C63,70 65,68 65,68 M60,48"
+        android:strokeWidth="3.5"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000" />
+
+    <!-- Stylized Upward Glow Trend Chart Arrow weaving through the coin -->
+    <path
+        android:pathData="M25,85 L45,70 L65,75 L95,35"
+        android:strokeWidth="6"
+        android:strokeColor="#03DAC6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000" />
+
+    <path
+        android:pathData="M83,35 L95,35 L95,47"
+        android:strokeWidth="6"
+        android:strokeColor="#03DAC6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000" />
+
+    <!-- A brighter overlay stroke for premium neon contrast -->
+    <path
+        android:pathData="M25,85 L45,70 L65,75 L95,35"
+        android:strokeWidth="3"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000" />
+
+    <path
+        android:pathData="M83,35 L95,35 L95,47"
+        android:strokeWidth="3"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000" />
+</vector>

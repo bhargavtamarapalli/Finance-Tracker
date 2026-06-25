@@ -1,0 +1,65 @@
+[
+  {
+    "id": 1,
+    "amount": 75000.0,
+    "source": "Tech Corp Inc.",
+    "date": 1781860020000,
+    "categoryId": 7,
+    "type": "INCOME",
+    "notes": "Monthly payroll payout"
+  },
+  {
+    "id": 2,
+    "amount": 18500.0,
+    "source": "UI Design Client",
+    "date": 1782119220000,
+    "categoryId": 8,
+    "type": "INCOME",
+    "notes": "Website redesign milestone payment"
+  },
+  {
+    "id": 3,
+    "amount": 15000.0,
+    "source": "Apartment 4B Owner",
+    "date": 1781946420000,
+    "categoryId": 5,
+    "type": "EXPENSE",
+    "notes": "Monthly apartment rental"
+  },
+  {
+    "id": 4,
+    "amount": 4200.0,
+    "source": "Reliance Smart Supermarket",
+    "date": 1782032820000,
+    "categoryId": 2,
+    "type": "EXPENSE",
+    "notes": "Weekly grocery refill"
+  },
+  {
+    "id": 5,
+    "amount": 2450.0,
+    "source": "Nourish Kitchen & Diner",
+    "date": 1782205620000,
+    "categoryId": 1,
+    "type": "EXPENSE",
+    "notes": "Dinner outing with teammates"
+  },
+  {
+    "id": 6,
+    "amount": 3500.0,
+    "source": "Indian Oil Petrol Station",
+    "date": 1782032820000,
+    "categoryId": 4,
+    "type": "EXPENSE",
+    "notes": "Full car tank fuel refill"
+  },
+  {
+    "id": 7,
+    "amount": 1800.0,
+    "source": "Electricity Power Grid",
+    "date": 1782205620000,
+    "categoryId": 6,
+    "type": "EXPENSE",
+    "notes": "Electricity bill payment"
+  }
+]

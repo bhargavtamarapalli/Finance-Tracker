@@ -1,0 +1,6 @@
+{
+  "name": "Finance Tracker",
+  "description": "Production-ready Personal Finance Tracker for individuals",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
