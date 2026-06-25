@@ -23,6 +23,7 @@ import com.example.data.model.TransactionType
 import com.example.ui.theme.*
 import com.example.ui.utils.getIconByName
 import com.example.ui.viewmodel.FinanceViewModel
+import com.example.ui.components.*
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -89,9 +90,11 @@ fun AddTransactionScreen(
                     Text(titleText, fontWeight = FontWeight.Bold)
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
+                    FinanceIconButton(
+                        icon = Icons.AutoMirrored.Filled.ArrowBack,
+                        onClick = { navController.popBackStack() },
+                        contentDescription = "Back"
+                    )
                 }
             )
         }
@@ -106,16 +109,18 @@ fun AddTransactionScreen(
         ) {
             // Type toggle
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                SegmentedButton(
+                FinanceSegmentedButton(
+                    text = "Expense",
                     selected = type == TransactionType.EXPENSE,
                     onClick = { type = TransactionType.EXPENSE; selectedCategoryId = null },
-                    text = "Expense"
+                    modifier = Modifier.weight(1f)
                 )
                 Spacer(modifier = Modifier.width(AppDimens.paddingSmall))
-                SegmentedButton(
+                FinanceSegmentedButton(
+                    text = "Income",
                     selected = type == TransactionType.INCOME,
                     onClick = { type = TransactionType.INCOME; selectedCategoryId = null },
-                    text = "Income"
+                    modifier = Modifier.weight(1f)
                 )
             }
 
@@ -123,23 +128,19 @@ fun AddTransactionScreen(
                 value = amount,
                 onValueChange = { 
                     amount = it
-                    amountError = null
+                    if (amountError != null) amountError = null
                 },
                 label = { Text("Amount") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth(),
                 isError = amountError != null,
-                supportingText = {
-                    amountError?.let {
-                        Text(it, color = MaterialTheme.colorScheme.error)
-                    }
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.fillMaxWidth()
+                supportingText = amountError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } }
             )
 
             OutlinedTextField(
                 value = source,
                 onValueChange = { source = it },
-                label = { Text("Source / Merchant") },
+                label = { Text(if (type == TransactionType.EXPENSE) "Payee / Store" else "Source / Employer") },
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -151,12 +152,11 @@ fun AddTransactionScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("Date", style = MaterialTheme.typography.titleMedium)
-                    OutlinedButton(
+                    FinanceOutlinedButton(
+                        text = dateFormat.format(Date(date)),
                         onClick = { showDatePicker = true },
                         shape = AppShapes.roundedCardMedium
-                    ) {
-                        Text(dateFormat.format(Date(date)), fontWeight = FontWeight.Bold)
-                    }
+                    )
                 }
                 dateError?.let {
                     Text(
@@ -168,47 +168,30 @@ fun AddTransactionScreen(
                 }
             }
 
-            // Payment Method Section
-            Text("Payment Method", style = MaterialTheme.typography.titleMedium)
-            val paymentMethods = listOf("Cash", "UPI", "Credit Card", "Debit Card", "Bank Transfer", "Other")
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                items(paymentMethods) { method ->
-                    val isSelected = paymentMethod == method
-                    FilterChip(
-                        selected = isSelected,
-                        onClick = { paymentMethod = method },
-                        label = { Text(method) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+            // Category Selection Row
+            Column {
+                Text("Category", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = AppDimens.paddingSmall))
+                if (filteredCategories.isEmpty()) {
+                    Text(
+                        "No active categories. Create one in Settings.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                }
-            }
-
-            Text("Category", style = MaterialTheme.typography.titleMedium)
-            
-            // Simple grid for categories
-            Column(verticalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)) {
-                val chunked = filteredCategories.chunked(4)
-                chunked.forEach { rowCategories ->
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)) {
-                        rowCategories.forEach { category ->
+                } else {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(filteredCategories) { category ->
                             CategoryItem(
                                 category = category,
-                                isSelected = selectedCategoryId == category.id,
+                                isSelected = category.id == selectedCategoryId,
                                 onClick = { 
                                     selectedCategoryId = category.id
                                     categoryError = null
-                                },
-                                modifier = Modifier.weight(1f)
+                                }
                             )
                         }
-                        // Pad empty slots
-                        repeat(4 - rowCategories.size) { Spacer(modifier = Modifier.weight(1f)) }
                     }
                 }
                 categoryError?.let {
@@ -218,6 +201,36 @@ fun AddTransactionScreen(
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 4.dp)
                     )
+                }
+            }
+
+            // Payment Method Selection Row
+            Column {
+                Text("Payment Method", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = AppDimens.paddingSmall))
+                val paymentMethods = listOf("Cash", "Card", "Bank Transfer", "UPI", "Other")
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(paymentMethods) { method ->
+                        val isSelected = method == paymentMethod
+                        Card(
+                            modifier = Modifier
+                                .clickable { paymentMethod = method },
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            shape = AppShapes.roundedCardMedium
+                        ) {
+                            Text(
+                                text = method,
+                                modifier = Modifier.padding(horizontal = AppDimens.paddingNormal, vertical = AppDimens.paddingSmall),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
             }
 
@@ -231,7 +244,8 @@ fun AddTransactionScreen(
 
             Spacer(modifier = Modifier.height(AppDimens.paddingNormal))
 
-            Button(
+            FinanceButton(
+                text = if (editTransaction != null && !isDuplicate) "Update" else "Save",
                 onClick = {
                     var isValid = true
 
@@ -296,11 +310,9 @@ fun AddTransactionScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = AppDimens.paddingLarge)
-                    .height(AppDimens.heightButton)
-            ) {
-                Text(if (editTransaction != null && !isDuplicate) "Update" else "Save")
-            }
+                    .padding(bottom = AppDimens.paddingLarge),
+                height = AppDimens.heightButton
+            )
         }
     }
 
@@ -309,7 +321,8 @@ fun AddTransactionScreen(
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
-                TextButton(
+                FinanceTextButton(
+                    text = "OK",
                     onClick = {
                         datePickerState.selectedDateMillis?.let {
                             date = it
@@ -317,34 +330,17 @@ fun AddTransactionScreen(
                         }
                         showDatePicker = false
                     }
-                ) {
-                    Text("OK", fontWeight = FontWeight.Bold)
-                }
+                )
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancel")
-                }
+                FinanceTextButton(
+                    text = "Cancel",
+                    onClick = { showDatePicker = false }
+                )
             }
         ) {
             DatePicker(state = datePickerState)
         }
-    }
-}
-
-@Composable
-fun SegmentedButton(selected: Boolean, onClick: () -> Unit, text: String) {
-    Surface(
-        shape = AppShapes.roundedCardLarge,
-        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-        onClick = onClick
-    ) {
-        Text(
-            text = text,
-            color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = AppDimens.paddingLarge, vertical = AppDimens.paddingMedium),
-            fontWeight = FontWeight.Bold
-        )
     }
 }
 
@@ -363,14 +359,15 @@ fun CategoryItem(category: com.example.data.model.Category, isSelected: Boolean,
         Icon(
             imageVector = getIconByName(category.iconName),
             contentDescription = category.name,
-            tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+            tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(24.dp)
         )
-        Spacer(modifier = Modifier.height(AppDimens.paddingExtraSmall))
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = category.name,
-            style = MaterialTheme.typography.labelSmall,
-            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.SemiBold,
+            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

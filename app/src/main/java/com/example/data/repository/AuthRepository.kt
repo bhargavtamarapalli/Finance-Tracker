@@ -10,6 +10,7 @@ import com.google.firebase.auth.UserProfileChangeRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
+import com.example.data.local.PasswordHasher
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -56,6 +57,7 @@ class AuthRepository(private val context: Context) {
 
     private fun initializeFirebase() {
         try {
+            var isPlaceholder = false
             if (FirebaseApp.getApps(context).isEmpty()) {
                 val options = FirebaseOptions.Builder()
                     .setApiKey("AIzaSyPlaceholderKey-1234567890")
@@ -63,8 +65,18 @@ class AuthRepository(private val context: Context) {
                     .setProjectId("finance-tracker-placeholder")
                     .build()
                 FirebaseApp.initializeApp(context, options)
+                isPlaceholder = true
+            } else {
+                val app = FirebaseApp.getInstance()
+                if (app.options.apiKey == "AIzaSyPlaceholderKey-1234567890" || app.options.apiKey.isEmpty()) {
+                    isPlaceholder = true
+                }
             }
             auth = FirebaseAuth.getInstance()
+            if (isPlaceholder) {
+                Log.w("AuthRepository", "Using placeholder Firebase configuration. Enabling Demo Fallback.")
+                useDemoFallback = true
+            }
         } catch (e: Exception) {
             Log.e("AuthRepository", "Failed to initialize Firebase Auth, using Demo Fallback", e)
             useDemoFallback = true
@@ -111,10 +123,14 @@ class AuthRepository(private val context: Context) {
         if (useDemoFallback || auth == null) {
             // Simulated local Firebase fallback
             val prefs = com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+            val salt = PasswordHasher.generateSalt()
+            val passwordHash = PasswordHasher.hashPassword(password, salt)
+            
             prefs.edit()
                 .putString("demo_user_email", email)
                 .putString("demo_user_name", name)
-                .putString("demo_user_password", password)
+                .putString("demo_user_salt", salt)
+                .putString("demo_user_password_hash", passwordHash)
                 .putBoolean("is_guest", false)
                 .apply()
             
@@ -156,10 +172,18 @@ class AuthRepository(private val context: Context) {
             // Simulated local Firebase fallback
             val prefs = com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
             val savedEmail = prefs.getString("demo_user_email", "demo@example.com")
-            val savedPassword = prefs.getString("demo_user_password", "password123")
+            val savedSalt = prefs.getString("demo_user_salt", null)
+            val savedHash = prefs.getString("demo_user_password_hash", null)
             val savedName = prefs.getString("demo_user_name", "Alex Mitchell")
             
-            if (email == savedEmail && password == savedPassword) {
+            val isPasswordValid = if (savedSalt != null && savedHash != null) {
+                PasswordHasher.verifyPassword(password, savedSalt, savedHash)
+            } else {
+                // Backward compatible fallback for the initial pre-configured user
+                password == "password123"
+            }
+            
+            if (email == savedEmail && isPasswordValid) {
                 prefs.edit()
                     .putString("demo_user_email", email)
                     .putBoolean("is_guest", false)
@@ -173,7 +197,7 @@ class AuthRepository(private val context: Context) {
                 _currentUserSession.value = session
                 return session
             } else {
-                throw Exception("Invalid email or password. (Demo values are email: '$savedEmail', password: '$savedPassword')")
+                throw Exception("Invalid email or password.")
             }
         }
 
@@ -209,6 +233,25 @@ class AuthRepository(private val context: Context) {
         }
     }
 
+    suspend fun signInWithBiometrics(): UserSession {
+        val prefs = com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+        val savedEmail = prefs.getString("demo_user_email", "demo@example.com")
+        val savedName = prefs.getString("demo_user_name", "Alex Mitchell")
+        
+        prefs.edit()
+            .putBoolean("is_guest", false)
+            .apply()
+            
+        val session = UserSession(
+            userId = "demo_user",
+            name = savedName ?: "Alex Mitchell",
+            email = savedEmail ?: "demo@example.com",
+            isGuest = false
+        )
+        _currentUserSession.value = session
+        return session
+    }
+
     fun loginAsGuest() {
         val session = UserSession(
             userId = "guest_user",
@@ -221,6 +264,43 @@ class AuthRepository(private val context: Context) {
             .putBoolean("is_guest", true)
             .apply()
         _currentUserSession.value = session
+    }
+
+    suspend fun updateProfileName(newName: String) {
+        if (useDemoFallback || auth == null) {
+            val prefs = com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+            prefs.edit().putString("demo_user_name", newName).apply()
+            _currentUserSession.value = _currentUserSession.value?.copy(name = newName)
+            return
+        }
+        try {
+            val user = auth?.currentUser ?: throw Exception("No authenticated user found")
+            val profileUpdates = UserProfileChangeRequest.Builder()
+                .setDisplayName(newName)
+                .build()
+            user.updateProfile(profileUpdates).await()
+            _currentUserSession.value = _currentUserSession.value?.copy(name = newName)
+        } catch (e: Exception) {
+            Log.e("AuthRepository", "Failed to update profile name", e)
+            throw e
+        }
+    }
+
+    suspend fun updateProfileEmail(newEmail: String) {
+        if (useDemoFallback || auth == null) {
+            val prefs = com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+            prefs.edit().putString("demo_user_email", newEmail).apply()
+            _currentUserSession.value = _currentUserSession.value?.copy(email = newEmail)
+            return
+        }
+        try {
+            val user = auth?.currentUser ?: throw Exception("No authenticated user found")
+            user.updateEmail(newEmail).await()
+            _currentUserSession.value = _currentUserSession.value?.copy(email = newEmail)
+        } catch (e: Exception) {
+            Log.e("AuthRepository", "Failed to update profile email", e)
+            throw e
+        }
     }
 
     fun logout() {

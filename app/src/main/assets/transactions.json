@@ -3,8 +3,8 @@
     "id": 1,
     "amount": 75000.0,
     "source": "Tech Corp Inc.",
-    "date": 1781860020000,
-    "categoryId": 7,
+    "date": 1780320000000,
+    "categoryId": 16,
     "type": "INCOME",
     "notes": "Monthly payroll payout"
   },
@@ -12,8 +12,8 @@
     "id": 2,
     "amount": 18500.0,
     "source": "UI Design Client",
-    "date": 1782119220000,
-    "categoryId": 8,
+    "date": 1780579200000,
+    "categoryId": 17,
     "type": "INCOME",
     "notes": "Website redesign milestone payment"
   },
@@ -21,8 +21,8 @@
     "id": 3,
     "amount": 15000.0,
     "source": "Apartment 4B Owner",
-    "date": 1781946420000,
-    "categoryId": 5,
+    "date": 1780406400000,
+    "categoryId": 3,
     "type": "EXPENSE",
     "notes": "Monthly apartment rental"
   },
@@ -30,7 +30,7 @@
     "id": 4,
     "amount": 4200.0,
     "source": "Reliance Smart Supermarket",
-    "date": 1782032820000,
+    "date": 1780492800000,
     "categoryId": 2,
     "type": "EXPENSE",
     "notes": "Weekly grocery refill"
@@ -39,7 +39,7 @@
     "id": 5,
     "amount": 2450.0,
     "source": "Nourish Kitchen & Diner",
-    "date": 1782205620000,
+    "date": 1780665600000,
     "categoryId": 1,
     "type": "EXPENSE",
     "notes": "Dinner outing with teammates"
@@ -48,8 +48,8 @@
     "id": 6,
     "amount": 3500.0,
     "source": "Indian Oil Petrol Station",
-    "date": 1782032820000,
-    "categoryId": 4,
+    "date": 1780492800000,
+    "categoryId": 6,
     "type": "EXPENSE",
     "notes": "Full car tank fuel refill"
   },
@@ -57,9 +57,90 @@
     "id": 7,
     "amount": 1800.0,
     "source": "Electricity Power Grid",
-    "date": 1782205620000,
-    "categoryId": 6,
+    "date": 1780665600000,
+    "categoryId": 4,
     "type": "EXPENSE",
     "notes": "Electricity bill payment"
+  },
+  {
+    "id": 8,
+    "amount": 80000.0,
+    "source": "Tech Corp Inc.",
+    "date": 1783000000000,
+    "categoryId": 16,
+    "type": "INCOME",
+    "notes": "June Month Salary"
+  },
+  {
+    "id": 9,
+    "amount": 12000.0,
+    "source": "Freelance App Dev",
+    "date": 1783200000000,
+    "categoryId": 17,
+    "type": "INCOME",
+    "notes": "Android App Consultancy Milestone"
+  },
+  {
+    "id": 10,
+    "amount": 15000.0,
+    "source": "Apartment rental 4B",
+    "date": 1783100000000,
+    "categoryId": 3,
+    "type": "EXPENSE",
+    "notes": "June rent payment"
+  },
+  {
+    "id": 11,
+    "amount": 5500.0,
+    "source": "Organic Wholefoods",
+    "date": 1783400000000,
+    "categoryId": 2,
+    "type": "EXPENSE",
+    "notes": "Organic groceries & fruits"
+  },
+  {
+    "id": 12,
+    "amount": 3200.0,
+    "source": "PVR Cinemas",
+    "date": 1783500000000,
+    "categoryId": 8,
+    "type": "EXPENSE",
+    "notes": "Movie tickets & snacks with friends"
+  },
+  {
+    "id": 13,
+    "amount": 1250.0,
+    "source": "Starbucks Coffee",
+    "date": 1783600000000,
+    "categoryId": 1,
+    "type": "EXPENSE",
+    "notes": "Premium coffee and pastries"
+  },
+  {
+    "id": 14,
+    "amount": 6400.0,
+    "source": "Nike Flagship Store",
+    "date": 1783700000000,
+    "categoryId": 7,
+    "type": "EXPENSE",
+    "notes": "New running shoes"
+  },
+  {
+    "id": 15,
+    "amount": 1200.0,
+    "source": "Uber Ride",
+    "date": 1783300000000,
+    "categoryId": 5,
+    "type": "EXPENSE",
+    "notes": "Commute to office"
+  },
+  {
+    "id": 16,
+    "amount": 850.0,
+    "source": "MedPlus Pharmacy",
+    "date": 1783800000000,
+    "categoryId": 10,
+    "type": "EXPENSE",
+    "notes": "Prescription multivitamins"
   }
 ]

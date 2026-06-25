@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.theme.*
+import com.example.ui.components.*
 import com.example.ui.viewmodel.FinanceViewModel
 import com.example.ui.viewmodel.AuthViewModel
 import com.example.ui.viewmodel.AppTheme
@@ -33,6 +34,7 @@ fun SettingsScreen(
     viewModel: FinanceViewModel,
     authViewModel: AuthViewModel,
     onManageCategoriesClick: () -> Unit,
+    onAdminConsoleClick: () -> Unit,
     onMenuClick: () -> Unit
 ) {
     val userSession by authViewModel.currentUserSession.collectAsStateWithLifecycle()
@@ -44,6 +46,10 @@ fun SettingsScreen(
     var isSyncing by remember { mutableStateOf(false) }
     var showRestoreWarning by remember { mutableStateOf(false) }
     var restoreActionType by remember { mutableStateOf<RestoreType?>(null) }
+    
+    var showEditProfileDialog by remember { mutableStateOf(false) }
+    var editName by remember { mutableStateOf("") }
+    var editEmail by remember { mutableStateOf("") }
 
     val reminderEnabled by viewModel.reminderEnabled.collectAsStateWithLifecycle()
 
@@ -86,11 +92,10 @@ fun SettingsScreen(
             title = { Text("Confirm Data Restore", fontWeight = FontWeight.Bold) },
             text = { Text("Are you sure you want to restore data? This will add or update categories and transactions. This action cannot be undone.") },
             confirmButton = {
-                Button(
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                        contentColor = MaterialTheme.colorScheme.onError
-                    ),
+                FinanceButton(
+                    text = "Restore",
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError,
                     onClick = {
                         showRestoreWarning = false
                         val type = restoreActionType
@@ -117,14 +122,13 @@ fun SettingsScreen(
                             }
                         }
                     }
-                ) {
-                    Text("Restore")
-                }
+                )
             },
             dismissButton = {
-                TextButton(onClick = { showRestoreWarning = false }) {
-                    Text("Cancel")
-                }
+                FinanceTextButton(
+                    text = "Cancel",
+                    onClick = { showRestoreWarning = false }
+                )
             }
         )
     }
@@ -134,9 +138,11 @@ fun SettingsScreen(
             TopAppBar(
                 title = { Text("Settings", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = onMenuClick) {
-                        Icon(Icons.Default.Menu, contentDescription = "Menu")
-                    }
+                    FinanceIconButton(
+                        icon = Icons.Default.Menu,
+                        onClick = onMenuClick,
+                        contentDescription = "Menu"
+                    )
                 }
             )
         }
@@ -272,23 +278,114 @@ fun SettingsScreen(
             )
 
             userSession?.let { session ->
-                ListItem(
-                    headlineContent = { Text("Name") },
-                    supportingContent = { Text(session.name, fontWeight = FontWeight.SemiBold) },
-                    leadingContent = {
-                        Icon(Icons.Default.Person, contentDescription = "Name", tint = MaterialTheme.colorScheme.secondary)
-                    }
-                )
-                HorizontalDivider()
+                if (session.isGuest) {
+                    ListItem(
+                        headlineContent = { Text("Name") },
+                        supportingContent = { Text(session.name, fontWeight = FontWeight.SemiBold) },
+                        leadingContent = {
+                            Icon(Icons.Default.Person, contentDescription = "Name", tint = MaterialTheme.colorScheme.secondary)
+                        }
+                    )
+                    HorizontalDivider()
 
-                ListItem(
-                    headlineContent = { Text("Email") },
-                    supportingContent = { Text(if (session.isGuest) "Guest Account" else session.email) },
-                    leadingContent = {
-                        Icon(Icons.Default.Email, contentDescription = "Email", tint = MaterialTheme.colorScheme.secondary)
+                    ListItem(
+                        headlineContent = { Text("Email") },
+                        supportingContent = { Text("Guest Account") },
+                        leadingContent = {
+                            Icon(Icons.Default.Email, contentDescription = "Email", tint = MaterialTheme.colorScheme.secondary)
+                        }
+                    )
+                    HorizontalDivider()
+
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                        ),
+                        shape = AppShapes.roundedCardMedium,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = AppDimens.paddingLarge, vertical = AppDimens.paddingSmall)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(AppDimens.paddingNormal),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "Using Guest Session",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "Sign in or register to customize your profile, enable secure cloud sync, and protect your wealth details.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            FinanceButton(
+                                text = "Sign In / Register",
+                                onClick = { authViewModel.logout() },
+                                icon = Icons.Default.Login,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
-                )
-                HorizontalDivider()
+                    HorizontalDivider()
+                } else {
+                    ListItem(
+                        headlineContent = { Text("Name") },
+                        supportingContent = { Text(session.name, fontWeight = FontWeight.SemiBold) },
+                        leadingContent = {
+                            Icon(Icons.Default.Person, contentDescription = "Name", tint = MaterialTheme.colorScheme.secondary)
+                        },
+                        trailingContent = {
+                            IconButton(onClick = {
+                                editName = session.name
+                                editEmail = session.email
+                                showEditProfileDialog = true
+                            }) {
+                                Icon(Icons.Default.Edit, contentDescription = "Edit Name", tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    )
+                    HorizontalDivider()
+
+                    ListItem(
+                        headlineContent = { Text("Email") },
+                        supportingContent = { Text(session.email) },
+                        leadingContent = {
+                            Icon(Icons.Default.Email, contentDescription = "Email", tint = MaterialTheme.colorScheme.secondary)
+                        },
+                        trailingContent = {
+                            IconButton(onClick = {
+                                editName = session.name
+                                editEmail = session.email
+                                showEditProfileDialog = true
+                            }) {
+                                Icon(Icons.Default.Edit, contentDescription = "Edit Email", tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    )
+                    HorizontalDivider()
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = AppDimens.paddingLarge, vertical = AppDimens.paddingSmall),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        FinanceTextButton(
+                            text = "Edit Profile Details",
+                            onClick = {
+                                editName = session.name
+                                editEmail = session.email
+                                showEditProfileDialog = true
+                            },
+                            icon = Icons.Default.Edit
+                        )
+                    }
+                    HorizontalDivider()
+                }
             }
 
             // -------------------------------------------------------------
@@ -358,6 +455,51 @@ fun SettingsScreen(
                         } else {
                             viewModel.setReminderEnabled(false, context)
                         }
+                    }
+                    .padding(vertical = AppDimens.paddingExtraSmall)
+            )
+            HorizontalDivider()
+
+            // -------------------------------------------------------------
+            // Section: Security Settings
+            // -------------------------------------------------------------
+            Text(
+                text = "Security",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = AppDimens.paddingLarge, vertical = AppDimens.paddingSmall)
+            )
+
+            val biometricLockEnabled by viewModel.biometricLockEnabled.collectAsStateWithLifecycle()
+            val isBiometricAvailable = remember(context) { com.example.ui.utils.BiometricHelper.isBiometricAvailable(context) }
+
+            ListItem(
+                headlineContent = { Text("Biometric App Lock") },
+                supportingContent = { Text(if (isBiometricAvailable) "Require fingerprint or face unlock to open the app." else "Biometrics not available or not set up on this device.") },
+                leadingContent = {
+                    Icon(
+                        imageVector = Icons.Default.Fingerprint,
+                        contentDescription = "Biometric Lock Icon",
+                        tint = if (isBiometricAvailable) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline
+                    )
+                },
+                trailingContent = {
+                    Switch(
+                        checked = biometricLockEnabled,
+                        onCheckedChange = { checked ->
+                            if (checked && !isBiometricAvailable) {
+                                showToast(context, "Biometric authentication is not set up on this device.", Toast.LENGTH_LONG)
+                            } else {
+                                viewModel.setBiometricLockEnabled(checked)
+                            }
+                        },
+                        enabled = isBiometricAvailable
+                    )
+                },
+                modifier = Modifier
+                    .clickable(enabled = isBiometricAvailable) {
+                        viewModel.setBiometricLockEnabled(!biometricLockEnabled)
                     }
                     .padding(vertical = AppDimens.paddingExtraSmall)
             )
@@ -538,26 +680,117 @@ fun SettingsScreen(
                 },
                 modifier = Modifier.padding(vertical = AppDimens.paddingExtraSmall)
             )
+            HorizontalDivider()
+
+            // Admin Access Section
+            Text(
+                text = "Administrative Access",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = AppDimens.paddingLarge, vertical = AppDimens.paddingSmall)
+            )
+
+            ListItem(
+                headlineContent = { Text("Admin Console") },
+                supportingContent = { Text("Configure app focus modes, publish updates feed, and view diagnostics.") },
+                leadingContent = {
+                    Icon(Icons.Default.SupervisorAccount, contentDescription = "Admin Console", tint = MaterialTheme.colorScheme.primary)
+                },
+                trailingContent = {
+                    Icon(Icons.Default.ChevronRight, contentDescription = "Navigate to Admin")
+                },
+                modifier = Modifier
+                    .clickable { onAdminConsoleClick() }
+                    .padding(vertical = AppDimens.paddingExtraSmall)
+            )
+            HorizontalDivider()
             
             Spacer(modifier = Modifier.height(AppDimens.paddingLarge))
             
             // Logout Button
-            Button(
+            FinanceButton(
+                text = "Log Out",
                 onClick = { authViewModel.logout() },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer
-                ),
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                icon = Icons.Default.Logout,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(AppDimens.paddingLarge),
                 shape = AppShapes.roundedCardMedium
-            ) {
-                Icon(Icons.Default.Logout, contentDescription = null)
-                Spacer(modifier = Modifier.width(AppDimens.paddingSmall))
-                Text("Log Out", fontWeight = FontWeight.Bold)
-            }
+            )
         }
+    }
+
+    if (showEditProfileDialog) {
+        AlertDialog(
+            onDismissRequest = { showEditProfileDialog = false },
+            title = {
+                Text(
+                    text = "Edit Profile",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = editName,
+                        onValueChange = { editName = it },
+                        label = { Text("Full Name") },
+                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = editEmail,
+                        onValueChange = { editEmail = it },
+                        label = { Text("Email Address") },
+                        leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+                        singleLine = true,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Email
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                FinanceButton(
+                    text = "Save Changes",
+                    onClick = {
+                        if (editName.isBlank()) {
+                            showToast(context, "Name cannot be blank", Toast.LENGTH_SHORT)
+                            return@FinanceButton
+                        }
+                        showEditProfileDialog = false
+                        authViewModel.updateProfile(
+                            name = editName,
+                            email = editEmail,
+                            onSuccess = {
+                                showToast(context, "Profile updated successfully!", Toast.LENGTH_SHORT)
+                            },
+                            onError = { error ->
+                                showToast(context, "Failed to update: $error", Toast.LENGTH_LONG)
+                            }
+                        )
+                    }
+                )
+            },
+            dismissButton = {
+                FinanceTextButton(
+                    text = "Cancel",
+                    onClick = { showEditProfileDialog = false }
+                )
+            }
+        )
     }
 }
 

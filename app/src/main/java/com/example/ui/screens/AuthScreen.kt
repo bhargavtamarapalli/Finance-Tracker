@@ -29,11 +29,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
+import androidx.fragment.app.FragmentActivity
+import androidx.compose.foundation.BorderStroke
+import com.example.ui.utils.BiometricHelper
 import com.example.R
 import com.example.ui.theme.AppDimens
 import com.example.ui.theme.AppShapes
 import com.example.ui.viewmodel.AuthState
 import com.example.ui.viewmodel.AuthViewModel
+import com.example.ui.components.*
 
 enum class AuthMode {
     LOGIN,
@@ -49,6 +54,10 @@ fun AuthScreen(
 ) {
     val authState by viewModel.authState.collectAsStateWithLifecycle()
     var currentMode by remember { mutableStateOf(AuthMode.LOGIN) }
+    
+    val context = LocalContext.current
+    val activity = context as? FragmentActivity
+    val isBiometricAvailable = remember(context) { BiometricHelper.isBiometricAvailable(context) }
     
     // Form States
     var email by remember { mutableStateOf("") }
@@ -229,12 +238,11 @@ fun AuthScreen(
                                     label = { Text("Password") },
                                     leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
                                     trailingIcon = {
-                                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                                            Icon(
-                                                imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                                contentDescription = if (passwordVisible) "Hide Password" else "Show Password"
-                                            )
-                                        }
+                                        FinanceIconButton(
+                                            icon = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                            onClick = { passwordVisible = !passwordVisible },
+                                            contentDescription = if (passwordVisible) "Hide Password" else "Show Password"
+                                        )
                                     },
                                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -258,23 +266,54 @@ fun AuthScreen(
 
                                 Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
 
-                                Button(
-                                    onClick = { viewModel.signIn(email, password) },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(52.dp)
-                                        .testTag("login_submit_button"),
-                                    enabled = authState != AuthState.Loading,
-                                    shape = AppShapes.roundedCardMedium
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    if (authState == AuthState.Loading) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(24.dp),
-                                            color = MaterialTheme.colorScheme.onPrimary,
-                                            strokeWidth = 2.5.dp
-                                        )
-                                    } else {
-                                        Text("Log In", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                                    FinanceButton(
+                                        text = "Log In",
+                                        onClick = { viewModel.signIn(email, password) },
+                                        modifier = Modifier.weight(1f),
+                                        enabled = authState != AuthState.Loading,
+                                        loading = authState == AuthState.Loading,
+                                        height = 52.dp,
+                                        testTag = "login_submit_button"
+                                    )
+
+                                    if (isBiometricAvailable) {
+                                        OutlinedIconButton(
+                                            onClick = {
+                                                if (activity != null) {
+                                                    BiometricHelper.showBiometricPrompt(
+                                                        activity = activity,
+                                                        onSuccess = {
+                                                            viewModel.signInWithBiometrics()
+                                                        },
+                                                        onError = { error ->
+                                                            if (error != "Cancelled") {
+                                                                viewModel.setError(error)
+                                                            }
+                                                        }
+                                                    )
+                                                }
+                                            },
+                                            modifier = Modifier.size(52.dp).testTag("biometric_login_button"),
+                                            border = BorderStroke(
+                                                width = 1.dp,
+                                                color = MaterialTheme.colorScheme.outline
+                                            ),
+                                            colors = IconButtonDefaults.outlinedIconButtonColors(
+                                                containerColor = Color.Transparent,
+                                                contentColor = MaterialTheme.colorScheme.primary
+                                            )
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Fingerprint,
+                                                contentDescription = "Biometric Login",
+                                                modifier = Modifier.size(28.dp)
+                                            )
+                                        }
                                     }
                                 }
 
@@ -326,12 +365,11 @@ fun AuthScreen(
                                     label = { Text("Password (min 6 characters)") },
                                     leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
                                     trailingIcon = {
-                                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                                            Icon(
-                                                imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                                contentDescription = if (passwordVisible) "Hide Password" else "Show Password"
-                                            )
-                                        }
+                                        FinanceIconButton(
+                                            icon = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                            onClick = { passwordVisible = !passwordVisible },
+                                            contentDescription = if (passwordVisible) "Hide Password" else "Show Password"
+                                        )
                                     },
                                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -344,12 +382,11 @@ fun AuthScreen(
                                     label = { Text("Confirm Password") },
                                     leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
                                     trailingIcon = {
-                                        IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
-                                            Icon(
-                                                imageVector = if (confirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                                contentDescription = if (confirmPasswordVisible) "Hide Password" else "Show Password"
-                                            )
-                                        }
+                                        FinanceIconButton(
+                                            icon = if (confirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                            onClick = { confirmPasswordVisible = !confirmPasswordVisible },
+                                            contentDescription = if (confirmPasswordVisible) "Hide Password" else "Show Password"
+                                        )
                                     },
                                     visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -358,7 +395,8 @@ fun AuthScreen(
 
                                 Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
 
-                                Button(
+                                FinanceButton(
+                                    text = "Register",
                                     onClick = {
                                         if (password != confirmPassword) {
                                             statusMessage = null
@@ -367,23 +405,12 @@ fun AuthScreen(
                                             viewModel.signUp(email, password, name)
                                         }
                                     },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(52.dp)
-                                        .testTag("register_submit_button"),
+                                    modifier = Modifier.fillMaxWidth(),
                                     enabled = authState != AuthState.Loading,
-                                    shape = AppShapes.roundedCardMedium
-                                ) {
-                                    if (authState == AuthState.Loading) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(24.dp),
-                                            color = MaterialTheme.colorScheme.onPrimary,
-                                            strokeWidth = 2.5.dp
-                                        )
-                                    } else {
-                                        Text("Register", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                                    }
-                                }
+                                    loading = authState == AuthState.Loading,
+                                    height = 52.dp,
+                                    testTag = "register_submit_button"
+                                )
 
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -450,30 +477,20 @@ fun AuthScreen(
 
                                 Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
 
-                                Button(
+                                FinanceButton(
+                                    text = "Send Reset Link",
                                     onClick = {
                                         viewModel.sendPasswordReset(email) {
                                             statusMessage = "A password reset link has been sent to $email."
                                             email = ""
                                         }
                                     },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(52.dp)
-                                        .testTag("reset_submit_button"),
+                                    modifier = Modifier.fillMaxWidth(),
                                     enabled = authState != AuthState.Loading,
-                                    shape = AppShapes.roundedCardMedium
-                                ) {
-                                    if (authState == AuthState.Loading) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(24.dp),
-                                            color = MaterialTheme.colorScheme.onPrimary,
-                                            strokeWidth = 2.5.dp
-                                        )
-                                    } else {
-                                        Text("Send Reset Link", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                                    }
-                                }
+                                    loading = authState == AuthState.Loading,
+                                    height = 52.dp,
+                                    testTag = "reset_submit_button"
+                                )
                             }
                         }
                     }
@@ -499,64 +516,36 @@ fun AuthScreen(
 
             Spacer(modifier = Modifier.height(AppDimens.paddingLarge))
 
-            // Google Sign In (Realistic Integration wrapper)
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp)
-                    .clip(AppShapes.roundedCardMedium)
-                    .clickable(enabled = authState != AuthState.Loading) {
-                        // Triggers mock google auth logic using standard flow
-                        viewModel.signUp("bhargav1999.t@gmail.com", "googlePassword123", "Bhargav T")
-                    }
-                    .testTag("google_login_button"),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                shape = AppShapes.roundedCardMedium
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_google_logo),
-                        contentDescription = "Google Icon",
-                        tint = Color.Unspecified,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "Continue with Google",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            // Google Sign In (Centralized FinanceButton)
+            FinanceButton(
+                text = "Continue with Google",
+                onClick = {
+                    // Triggers mock google auth logic using standard flow
+                    viewModel.signUp("bhargav1999.t@gmail.com", "googlePassword123", "Bhargav T")
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = authState != AuthState.Loading,
+                icon = painterResource(id = R.drawable.ic_google_logo),
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                height = 50.dp,
+                testTag = "google_login_button"
+            )
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Continue as Guest (Guest Mode)
-            OutlinedButton(
+            // Continue as Guest (Centralized FinanceOutlinedButton)
+            FinanceOutlinedButton(
+                text = "Continue as Guest",
                 onClick = { viewModel.loginAsGuest() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp)
-                    .testTag("guest_login_button"),
+                modifier = Modifier.fillMaxWidth(),
                 enabled = authState != AuthState.Loading,
-                shape = AppShapes.roundedCardMedium
-            ) {
-                Icon(
-                    imageVector = Icons.Default.DirectionsWalk,
-                    contentDescription = null
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Continue as Guest",
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleMedium
-                )
-            }
+                icon = Icons.Default.DirectionsWalk,
+                contentColor = MaterialTheme.colorScheme.primary,
+                borderColor = MaterialTheme.colorScheme.outline,
+                height = 50.dp,
+                testTag = "guest_login_button"
+            )
 
             Spacer(modifier = Modifier.height(32.dp))
         }

@@ -8,10 +8,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,7 +33,13 @@ import com.example.data.model.TransactionType
 import com.example.data.model.TransactionWithCategory
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.FinanceViewModel
+import com.example.ui.components.*
+import com.example.ui.utils.CurrencyUtils
+import com.example.ui.utils.getIconByName
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 enum class SortOption(val displayName: String) {
     DATE_DESC("Newest First"),
@@ -55,120 +68,116 @@ enum class DateFilter(val displayName: String) {
 fun TransactionHistoryScreen(
     viewModel: FinanceViewModel,
     navController: NavController,
-    onMenuClick: () -> Unit
+    onMenuClick: () -> Unit = {}
 ) {
     val transactions by viewModel.allTransactions.collectAsStateWithLifecycle()
     val categories by viewModel.allCategories.collectAsStateWithLifecycle()
-    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
     var searchQuery by remember { mutableStateOf("") }
+    
+    // Bottom Sheet Filters
     var showFilterSheet by remember { mutableStateOf(false) }
-
     var selectedSort by remember { mutableStateOf(SortOption.DATE_DESC) }
     var selectedFilterType by remember { mutableStateOf(FilterType.ALL) }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     var selectedDateFilter by remember { mutableStateOf(DateFilter.ALL) }
-    var selectedTransactionForDetails by remember { mutableStateOf<TransactionWithCategory?>(null) }
 
-    // Combined Filter and Sort Logic
-    val filteredAndSortedTransactions = remember(
+    // Computed / Filtered Transactions list
+    val processedTransactions = remember(
         transactions, searchQuery, selectedSort, selectedFilterType, selectedCategory, selectedDateFilter
     ) {
-        var result = transactions
+        var list = transactions
 
-        // 1. Search Query
+        // 1. Search Query (Notes, category or source)
         if (searchQuery.isNotBlank()) {
-            result = result.filter {
+            list = list.filter {
                 it.transaction.source.contains(searchQuery, ignoreCase = true) ||
-                        (it.category?.name?.contains(searchQuery, ignoreCase = true) == true) ||
-                        it.transaction.notes.contains(searchQuery, ignoreCase = true)
+                it.transaction.notes.contains(searchQuery, ignoreCase = true) ||
+                (it.category?.name?.contains(searchQuery, ignoreCase = true) == true)
             }
         }
 
-        // 2. Filter by Type
-        if (selectedFilterType != FilterType.ALL) {
-            val isExpense = selectedFilterType == FilterType.EXPENSE
-            result = result.filter {
-                val typeIsExpense = it.transaction.type == TransactionType.EXPENSE
-                typeIsExpense == isExpense
-            }
+        // 2. Filter Type
+        when (selectedFilterType) {
+            FilterType.INCOME -> list = list.filter { it.transaction.type == TransactionType.INCOME }
+            FilterType.EXPENSE -> list = list.filter { it.transaction.type == TransactionType.EXPENSE }
+            FilterType.ALL -> { /* no-op */ }
         }
 
-        // 3. Filter by Category
+        // 3. Filter Category
         if (selectedCategory != null) {
-            result = result.filter { it.category?.name == selectedCategory }
+            list = list.filter { it.category?.name?.equals(selectedCategory, ignoreCase = true) == true }
         }
 
-        // 4. Filter by Date
+        // 4. Date Filter
         if (selectedDateFilter != DateFilter.ALL) {
+            val cal = Calendar.getInstance()
             val now = System.currentTimeMillis()
-            val calendar = Calendar.getInstance()
-            val cutoff = when (selectedDateFilter) {
+            cal.timeInMillis = now
+
+            when (selectedDateFilter) {
                 DateFilter.THIS_WEEK -> {
-                    calendar.timeInMillis = now
-                    calendar.set(Calendar.DAY_OF_WEEK, calendar.firstDayOfWeek)
-                    calendar.set(Calendar.HOUR_OF_DAY, 0)
-                    calendar.set(Calendar.MINUTE, 0)
-                    calendar.set(Calendar.SECOND, 0)
-                    calendar.timeInMillis
+                    cal.set(Calendar.DAY_OF_WEEK, cal.firstDayOfWeek)
+                    cal.set(Calendar.HOUR_OF_DAY, 0)
+                    cal.set(Calendar.MINUTE, 0)
+                    cal.set(Calendar.SECOND, 0)
+                    val startOfWeek = cal.timeInMillis
+                    list = list.filter { it.transaction.date >= startOfWeek }
                 }
                 DateFilter.THIS_MONTH -> {
-                    calendar.timeInMillis = now
-                    calendar.set(Calendar.DAY_OF_MONTH, 1)
-                    calendar.set(Calendar.HOUR_OF_DAY, 0)
-                    calendar.set(Calendar.MINUTE, 0)
-                    calendar.set(Calendar.SECOND, 0)
-                    calendar.timeInMillis
+                    cal.set(Calendar.DAY_OF_MONTH, 1)
+                    cal.set(Calendar.HOUR_OF_DAY, 0)
+                    cal.set(Calendar.MINUTE, 0)
+                    cal.set(Calendar.SECOND, 0)
+                    val startOfMonth = cal.timeInMillis
+                    list = list.filter { it.transaction.date >= startOfMonth }
                 }
                 DateFilter.THIS_YEAR -> {
-                    calendar.timeInMillis = now
-                    calendar.set(Calendar.DAY_OF_YEAR, 1)
-                    calendar.set(Calendar.HOUR_OF_DAY, 0)
-                    calendar.set(Calendar.MINUTE, 0)
-                    calendar.set(Calendar.SECOND, 0)
-                    calendar.timeInMillis
+                    cal.set(Calendar.DAY_OF_YEAR, 1)
+                    cal.set(Calendar.HOUR_OF_DAY, 0)
+                    cal.set(Calendar.MINUTE, 0)
+                    cal.set(Calendar.SECOND, 0)
+                    val startOfYear = cal.timeInMillis
+                    list = list.filter { it.transaction.date >= startOfYear }
                 }
-                else -> 0L
+                DateFilter.ALL -> { /* no-op */ }
             }
-            result = result.filter { it.transaction.date >= cutoff }
         }
 
-        // 5. Sort
-        result = when (selectedSort) {
-            SortOption.DATE_DESC -> result.sortedByDescending { it.transaction.date }
-            SortOption.DATE_ASC -> result.sortedBy { it.transaction.date }
-            SortOption.AMOUNT_DESC -> result.sortedByDescending { it.transaction.amount }
-            SortOption.AMOUNT_ASC -> result.sortedBy { it.transaction.amount }
-            SortOption.CATEGORY_ASC -> result.sortedBy { it.category?.name ?: "" }
-            SortOption.CATEGORY_DESC -> result.sortedByDescending { it.category?.name ?: "" }
+        // 5. Sorting
+        list = when (selectedSort) {
+            SortOption.DATE_DESC -> list.sortedByDescending { it.transaction.date }
+            SortOption.DATE_ASC -> list.sortedBy { it.transaction.date }
+            SortOption.AMOUNT_DESC -> list.sortedByDescending { it.transaction.amount }
+            SortOption.AMOUNT_ASC -> list.sortedBy { it.transaction.amount }
+            SortOption.CATEGORY_ASC -> list.sortedBy { it.category?.name?.lowercase() ?: "" }
+            SortOption.CATEGORY_DESC -> list.sortedByDescending { it.category?.name?.lowercase() ?: "" }
         }
 
-        result
+        list
     }
 
-    val hasActiveFilters = selectedSort != SortOption.DATE_DESC ||
-            selectedFilterType != FilterType.ALL ||
-            selectedCategory != null ||
-            selectedDateFilter != DateFilter.ALL
+    val hasActiveFilters = remember(selectedFilterType, selectedCategory, selectedDateFilter) {
+        selectedFilterType != FilterType.ALL || selectedCategory != null || selectedDateFilter != DateFilter.ALL
+    }
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = { 
                     Text(
-                        text = "Transaction History", 
+                        "Transaction History", 
                         fontWeight = FontWeight.Bold,
-                        color = NeutralDark
+                        color = MaterialTheme.colorScheme.onSurface
                     ) 
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack, 
-                            contentDescription = "Back",
-                            tint = BrandPrimary
-                        )
-                    }
+                    FinanceIconButton(
+                        icon = Icons.Default.Menu,
+                        onClick = onMenuClick,
+                        contentDescription = "Open Navigation Drawer",
+                        tint = BrandPrimary
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
@@ -186,7 +195,7 @@ fun TransactionHistoryScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = AppDimens.paddingNormal, vertical = AppDimens.paddingSmall),
-                placeholder = { Text("Search transactions...", color = NeutralMedium) },
+                placeholder = { Text("Search transactions...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                 leadingIcon = { 
                     Icon(
                         imageVector = Icons.Default.Search, 
@@ -195,43 +204,35 @@ fun TransactionHistoryScreen(
                     ) 
                 },
                 trailingIcon = {
-                    IconButton(onClick = { showFilterSheet = true }) {
-                        Icon(
-                            imageVector = Icons.Default.FilterList, 
-                            contentDescription = "Filter",
-                            tint = if (hasActiveFilters) BrandPrimary else NeutralMedium
-                        )
-                    }
+                    FinanceIconButton(
+                        icon = Icons.Default.FilterList,
+                        onClick = { showFilterSheet = true },
+                        contentDescription = "Filter",
+                        tint = if (hasActiveFilters) BrandPrimary else NeutralMedium
+                    )
                 },
                 singleLine = true,
                 shape = AppShapes.roundedCardMedium,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = BrandPrimary,
-                    unfocusedBorderColor = CardBorderColor,
-                    focusedTextColor = NeutralDark,
-                    unfocusedTextColor = NeutralDark
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                 )
             )
 
-            // Dynamic Active Filters Horizontal Track
-            if (hasActiveFilters) {
+            // Active Filter Chips Row
+            if (hasActiveFilters || selectedSort != SortOption.DATE_DESC) {
                 LazyRow(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = AppDimens.paddingNormal, vertical = AppDimens.paddingExtraSmall),
+                        .padding(bottom = AppDimens.paddingSmall),
+                    contentPadding = PaddingValues(horizontal = AppDimens.paddingNormal),
                     horizontalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    item {
-                        Text(
-                            text = "Filters:",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = NeutralMedium,
-                            modifier = Modifier.padding(end = AppDimens.paddingExtraSmall)
-                        )
-                    }
-
                     if (selectedSort != SortOption.DATE_DESC) {
                         item {
                             FilterActiveChip(
@@ -253,7 +254,7 @@ fun TransactionHistoryScreen(
                     if (selectedCategory != null) {
                         item {
                             FilterActiveChip(
-                                label = selectedCategory ?: "",
+                                label = selectedCategory!!,
                                 onClear = { selectedCategory = null }
                             )
                         }
@@ -269,84 +270,79 @@ fun TransactionHistoryScreen(
                     }
 
                     item {
-                        TextButton(
+                        FinanceTextButton(
+                            text = "Reset All",
                             onClick = {
                                 selectedSort = SortOption.DATE_DESC
                                 selectedFilterType = FilterType.ALL
                                 selectedCategory = null
                                 selectedDateFilter = DateFilter.ALL
-                            },
-                            contentPadding = PaddingValues(horizontal = AppDimens.paddingSmall)
-                        ) {
-                            Text("Clear All", color = BrandPrimary, style = MaterialTheme.typography.labelMedium)
-                        }
+                            }
+                        )
                     }
                 }
             }
 
-            // Results List
-            if (isLoading) {
-                LazyColumn(
-                    contentPadding = PaddingValues(AppDimens.paddingNormal),
-                    verticalArrangement = Arrangement.spacedBy(AppDimens.paddingNormal),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    items(5) {
-                        TransactionItemSkeleton()
-                    }
-                }
-            } else if (filteredAndSortedTransactions.isEmpty()) {
+            // Transaction Count Banner
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = AppDimens.paddingNormal, vertical = AppDimens.paddingExtraSmall),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "${processedTransactions.size} transactions found",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = NeutralMedium,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            // Main Transactions List
+            if (processedTransactions.isEmpty()) {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
                         .weight(1f),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .background(NeutralBorder, androidx.compose.foundation.shape.CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = null,
-                                tint = NeutralMedium,
-                                modifier = Modifier.size(32.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
                         Text(
-                            text = if (transactions.isEmpty()) "No transactions found." else "No transactions found",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = NeutralDark
-                        )
-                        Text(
-                            text = if (transactions.isEmpty()) "Add your first one!" else "Try adjusting your filters or search terms.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = NeutralMedium
+                            text = "No transactions matches the criteria.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = NeutralMedium,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
             } else {
                 LazyColumn(
-                    contentPadding = PaddingValues(AppDimens.paddingNormal),
-                    verticalArrangement = Arrangement.spacedBy(AppDimens.paddingNormal),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentPadding = PaddingValues(
+                        start = AppDimens.paddingNormal,
+                        end = AppDimens.paddingNormal,
+                        bottom = AppDimens.paddingLarge
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)
                 ) {
-                    items(
-                        items = filteredAndSortedTransactions,
-                        key = { it.transaction.id }
-                    ) { tx ->
-                        TransactionItem(
-                            transaction = tx,
-                            modifier = Modifier.animateItem(),
-                            onClick = { selectedTransactionForDetails = tx }
+                    items(processedTransactions, key = { it.transaction.id }) { item ->
+                        TransactionHistoryRow(
+                            item = item,
+                            onEditClick = {
+                                navController.navigate("add_transaction/${item.transaction.type.name}?transactionId=${item.transaction.id}")
+                            },
+                            onDeleteClick = {
+                                viewModel.deleteTransaction(item.transaction)
+                            },
+                            onDuplicateClick = {
+                                navController.navigate("add_transaction/${item.transaction.type.name}?transactionId=${item.transaction.id}&duplicate=true")
+                            }
                         )
                     }
                 }
@@ -354,112 +350,228 @@ fun TransactionHistoryScreen(
         }
     }
 
-    if (selectedTransactionForDetails != null) {
-        TransactionDetailsBottomSheet(
-            transactionWithCat = selectedTransactionForDetails!!,
-            onDismiss = { selectedTransactionForDetails = null },
-            onEdit = {
-                val tx = selectedTransactionForDetails!!
-                selectedTransactionForDetails = null
-                navController.navigate("add_transaction/${tx.transaction.type}?transactionId=${tx.transaction.id}")
-            },
-            onDuplicate = {
-                val tx = selectedTransactionForDetails!!
-                selectedTransactionForDetails = null
-                navController.navigate("add_transaction/${tx.transaction.type}?transactionId=${tx.transaction.id}&duplicate=true")
-            },
-            onDelete = {
-                val tx = selectedTransactionForDetails!!
-                selectedTransactionForDetails = null
-                viewModel.deleteTransaction(tx.transaction)
-            }
-        )
-    }
-
-    // Material 3 Modal Bottom Sheet
+    // Filter Sheet Modal
     if (showFilterSheet) {
         ModalBottomSheet(
             onDismissRequest = { showFilterSheet = false },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         ) {
-            FilterSortSheetContent(
+            FilterBottomSheetContent(
                 categories = categories,
                 selectedSort = selectedSort,
-                onSortSelected = { selectedSort = it },
                 selectedFilterType = selectedFilterType,
-                onFilterTypeSelected = { selectedFilterType = it },
                 selectedCategory = selectedCategory,
-                onCategorySelected = { selectedCategory = it },
                 selectedDateFilter = selectedDateFilter,
+                onSortSelected = { selectedSort = it },
+                onFilterTypeSelected = { selectedFilterType = it },
+                onCategorySelected = { selectedCategory = it },
                 onDateFilterSelected = { selectedDateFilter = it },
-                onDismiss = { showFilterSheet = false },
                 onReset = {
                     selectedSort = SortOption.DATE_DESC
                     selectedFilterType = FilterType.ALL
                     selectedCategory = null
                     selectedDateFilter = DateFilter.ALL
-                    showFilterSheet = false
-                }
+                },
+                onDismiss = { showFilterSheet = false }
             )
         }
     }
 }
 
 @Composable
-fun FilterActiveChip(label: String, onClear: () -> Unit) {
-    Surface(
-        shape = AppShapes.roundedCardMedium,
-        color = SurfaceVariantColor,
-        modifier = Modifier.border(AppDimens.borderWidthThin, NeutralBorder, AppShapes.roundedCardMedium)
+fun FilterActiveChip(
+    label: String,
+    onClear: () -> Unit
+) {
+    Card(
+        shape = AppShapes.roundedCardLarge,
+        colors = CardDefaults.cardColors(containerColor = BrandPrimary.copy(alpha = 0.15f)),
+        border = null
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = AppDimens.paddingSmall, vertical = AppDimens.paddingExtraSmall)
+            modifier = Modifier.padding(start = AppDimens.paddingSmall, end = 2.dp, top = 2.dp, bottom = 2.dp)
         ) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = NeutralDark,
-                fontWeight = FontWeight.Medium
+                style = MaterialTheme.typography.bodySmall,
+                color = BrandPrimary,
+                fontWeight = FontWeight.Bold
             )
-            Spacer(modifier = Modifier.width(AppDimens.paddingExtraSmall))
-            Icon(
-                imageVector = Icons.Default.Clear,
-                contentDescription = "Clear filter",
-                tint = NeutralMedium,
-                modifier = Modifier
-                    .size(AppDimens.sizeIconSmall - AppDimens.paddingExtraSmall)
-                    .clickable { onClear() }
+            Spacer(modifier = Modifier.width(2.dp))
+            FinanceIconButton(
+                icon = Icons.Default.Clear,
+                onClick = onClear,
+                contentDescription = "Clear Filter",
+                tint = BrandPrimary,
+                size = 16.dp
             )
         }
     }
 }
 
 @Composable
-fun FilterSortSheetContent(
+fun TransactionHistoryRow(
+    item: TransactionWithCategory,
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+    onDuplicateClick: () -> Unit
+) {
+    val formatter = object {
+        fun format(amount: Double): String = CurrencyUtils.formatRupees(amount)
+    }
+    val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+    val isExpense = item.transaction.type == TransactionType.EXPENSE
+    var expanded by remember { mutableStateOf(false) }
+    val isDark = isSystemInDarkTheme()
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { expanded = true }
+            .border(
+                width = 1.dp,
+                color = Color.White.copy(alpha = if (isDark) 0.08f else 0.4f),
+                shape = AppShapes.roundedCardMedium
+            ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)),
+        shape = AppShapes.roundedCardMedium,
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = AppDimens.paddingNormal, vertical = AppDimens.paddingMedium),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = if (isExpense) ExpenseRed.copy(alpha = 0.15f) 
+                        else IncomeGreen.copy(alpha = 0.15f),
+                modifier = Modifier.size(44.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = getIconByName(item.category?.iconName ?: "category"),
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = if (isExpense) ExpenseRed else IncomeGreen
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.width(AppDimens.paddingNormal))
+            
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.transaction.source.ifBlank { item.category?.name ?: "Unknown" },
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "${item.category?.name ?: "Unknown"} • ${dateFormat.format(Date(item.transaction.date))}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+                if (item.transaction.notes.isNotBlank()) {
+                    Text(
+                        text = item.transaction.notes,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
+                }
+            }
+            
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = "${if (isExpense) "-" else "+"}${formatter.format(item.transaction.amount)}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = if (isExpense) ExpenseRed else IncomeGreen,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                Box {
+                    IconButton(
+                        onClick = { expanded = true },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Options",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Edit") },
+                            onClick = { expanded = false; onEditClick() },
+                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(20.dp)) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Duplicate") },
+                            onClick = { expanded = false; onDuplicateClick() },
+                            leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(20.dp)) }
+                        )
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                            onClick = { expanded = false; onDeleteClick() },
+                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp)) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+enum class FilterTab(val displayName: String) {
+    SORT("Sort By"),
+    TYPE("Transaction Type"),
+    DATE("Time Period"),
+    CATEGORY("Category")
+}
+
+@Composable
+fun FilterBottomSheetContent(
     categories: List<Category>,
     selectedSort: SortOption,
-    onSortSelected: (SortOption) -> Unit,
     selectedFilterType: FilterType,
-    onFilterTypeSelected: (FilterType) -> Unit,
     selectedCategory: String?,
-    onCategorySelected: (String?) -> Unit,
     selectedDateFilter: DateFilter,
+    onSortSelected: (SortOption) -> Unit,
+    onFilterTypeSelected: (FilterType) -> Unit,
+    onCategorySelected: (String?) -> Unit,
     onDateFilterSelected: (DateFilter) -> Unit,
-    onDismiss: () -> Unit,
-    onReset: () -> Unit
+    onReset: () -> Unit,
+    onDismiss: () -> Unit
 ) {
+    var activeTab by remember { mutableStateOf(FilterTab.SORT) }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = AppDimens.paddingNormal)
-            .padding(bottom = AppDimens.paddingLarge),
-        verticalArrangement = Arrangement.spacedBy(AppDimens.paddingNormal)
+            .padding(bottom = 32.dp)
     ) {
         // Sheet Header
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = AppDimens.paddingNormal, vertical = AppDimens.paddingSmall),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -467,144 +579,219 @@ fun FilterSortSheetContent(
                 text = "Filter & Sort",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = NeutralDark
+                color = MaterialTheme.colorScheme.onSurface
             )
-            TextButton(onClick = onReset) {
-                Text("Reset All", color = BrandPrimary, fontWeight = FontWeight.Bold)
-            }
+            FinanceTextButton(
+                text = "Reset All",
+                onClick = onReset,
+                contentColor = MaterialTheme.colorScheme.primary
+            )
         }
 
-        HorizontalDivider(color = NeutralBorder)
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 
-        // 1. Sort Section
-        Column(verticalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)) {
-            Text(
-                text = "SORT BY",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = NeutralMedium
-            )
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                items(SortOption.values()) { option ->
-                    val isSelected = selectedSort == option
-                    FilterChip(
-                        selected = isSelected,
-                        onClick = { onSortSelected(option) },
-                        label = { Text(option.displayName) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = BrandPrimary,
-                            selectedLabelColor = Color.White
-                        )
-                    )
-                }
-            }
-        }
-
-        // 2. Type Filter Section
-        Column(verticalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)) {
-            Text(
-                text = "TRANSACTION TYPE",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = NeutralMedium
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)) {
-                FilterType.values().forEach { type ->
-                    val isSelected = selectedFilterType == type
-                    FilterChip(
-                        selected = isSelected,
-                        onClick = { onFilterTypeSelected(type) },
-                        label = { Text(type.displayName) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = BrandPrimary,
-                            selectedLabelColor = Color.White
-                        )
-                    )
-                }
-            }
-        }
-
-        // 3. Date Filter Section
-        Column(verticalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)) {
-            Text(
-                text = "DATE RANGE",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = NeutralMedium
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)) {
-                DateFilter.values().forEach { filter ->
-                    val isSelected = selectedDateFilter == filter
-                    FilterChip(
-                        selected = isSelected,
-                        onClick = { onDateFilterSelected(filter) },
-                        label = { Text(filter.displayName) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = BrandPrimary,
-                            selectedLabelColor = Color.White
-                        )
-                    )
-                }
-            }
-        }
-
-        // 4. Category Filter Section
-        Column(verticalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)) {
-            Text(
-                text = "FILTER BY CATEGORY",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = NeutralMedium
-            )
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                item {
-                    val isSelected = selectedCategory == null
-                    FilterChip(
-                        selected = isSelected,
-                        onClick = { onCategorySelected(null) },
-                        label = { Text("All Categories") },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = BrandPrimary,
-                            selectedLabelColor = Color.White
-                        )
-                    )
-                }
-                
-                // Get unique list of category names based on actual database contents
-                val distinctNames = categories.map { it.name }.distinct()
-                items(distinctNames) { catName ->
-                    val isSelected = selectedCategory == catName
-                    FilterChip(
-                        selected = isSelected,
-                        onClick = { onCategorySelected(catName) },
-                        label = { Text(catName) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = BrandPrimary,
-                            selectedLabelColor = Color.White
-                        )
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(AppDimens.paddingExtraSmall))
-
-        // Save Button
-        Button(
-            onClick = onDismiss,
+        // Split Tab Layout
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(AppDimens.heightButton),
-            colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
-            shape = AppShapes.roundedButton
+                .height(320.dp)
         ) {
-            Text("Apply Filters", fontWeight = FontWeight.Bold, color = Color.White)
+            // Left Column: Vertical Tabs
+            Column(
+                modifier = Modifier
+                    .width(135.dp)
+                    .fillMaxHeight()
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f))
+            ) {
+                FilterTab.values().forEach { tab ->
+                    val isSelected = activeTab == tab
+                    val hasFilter = when (tab) {
+                        FilterTab.SORT -> selectedSort != SortOption.DATE_DESC
+                        FilterTab.TYPE -> selectedFilterType != FilterType.ALL
+                        FilterTab.DATE -> selectedDateFilter != DateFilter.ALL
+                        FilterTab.CATEGORY -> selectedCategory != null
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { activeTab = tab }
+                            .background(
+                                if (isSelected) MaterialTheme.colorScheme.surface 
+                                else Color.Transparent
+                            )
+                            .padding(horizontal = AppDimens.paddingNormal, vertical = AppDimens.paddingMedium),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = tab.displayName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (hasFilter) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .background(MaterialTheme.colorScheme.primary, CircleShape)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Vertical Divider
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(1.dp)
+                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+            )
+
+            // Right Column: Vertical List of Options
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .padding(AppDimens.paddingNormal)
+            ) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)
+                ) {
+                    when (activeTab) {
+                        FilterTab.SORT -> {
+                            items(SortOption.values()) { option ->
+                                val isSelected = selectedSort == option
+                                FilterOptionRow(
+                                    label = option.displayName,
+                                    isSelected = isSelected,
+                                    onClick = { onSortSelected(option) }
+                                )
+                            }
+                        }
+                        FilterTab.TYPE -> {
+                            items(FilterType.values()) { type ->
+                                val isSelected = selectedFilterType == type
+                                FilterOptionRow(
+                                    label = type.displayName,
+                                    isSelected = isSelected,
+                                    onClick = { onFilterTypeSelected(type) }
+                                )
+                            }
+                        }
+                        FilterTab.DATE -> {
+                            items(DateFilter.values()) { filter ->
+                                val isSelected = selectedDateFilter == filter
+                                FilterOptionRow(
+                                    label = filter.displayName,
+                                    isSelected = isSelected,
+                                    onClick = { onDateFilterSelected(filter) }
+                                )
+                            }
+                        }
+                        FilterTab.CATEGORY -> {
+                            item {
+                                val isAllSelected = selectedCategory == null
+                                FilterOptionRow(
+                                    label = "All Categories",
+                                    isSelected = isAllSelected,
+                                    onClick = { onCategorySelected(null) }
+                                )
+                            }
+                            val distinctNames = categories.map { it.name }.distinct()
+                            items(distinctNames) { catName ->
+                                val isSelected = selectedCategory == catName
+                                val categoryIcon = categories.firstOrNull { it.name == catName }?.iconName
+                                FilterOptionRow(
+                                    label = catName,
+                                    isSelected = isSelected,
+                                    iconName = categoryIcon,
+                                    onClick = { onCategorySelected(catName) }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+        Spacer(modifier = Modifier.height(AppDimens.paddingNormal))
+
+        // Save Button
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = AppDimens.paddingNormal),
+            horizontalArrangement = Arrangement.spacedBy(AppDimens.paddingNormal)
+        ) {
+            FinanceButton(
+                text = "Apply Filters",
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth(),
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = Color.White,
+                height = AppDimens.heightButton
+            )
+        }
+    }
+}
+
+@Composable
+fun FilterOptionRow(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    iconName: String? = null
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = AppShapes.roundedCardMedium,
+        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) else Color.Transparent
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = AppDimens.paddingMedium, vertical = AppDimens.paddingSmall),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)
+            ) {
+                if (iconName != null) {
+                    Icon(
+                        imageVector = getIconByName(iconName),
+                        contentDescription = null,
+                        tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
+            }
+            RadioButton(
+                selected = isSelected,
+                onClick = onClick,
+                colors = RadioButtonDefaults.colors(
+                    selectedColor = MaterialTheme.colorScheme.primary
+                )
+            )
         }
     }
 }

@@ -35,6 +35,7 @@ import com.example.ui.theme.AppDimens
 import com.example.ui.theme.AppShapes
 import com.example.ui.utils.getIconByName
 import com.example.ui.viewmodel.FinanceViewModel
+import com.example.ui.components.*
 
 val AVAILABLE_ICONS = listOf(
     "restaurant" to "Food",
@@ -83,9 +84,11 @@ fun CategoryManagementScreen(
             TopAppBar(
                 title = { Text("Manage Categories", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
+                    FinanceIconButton(
+                        icon = Icons.AutoMirrored.Filled.ArrowBack,
+                        onClick = { navController.popBackStack() },
+                        contentDescription = "Back"
+                    )
                 }
             )
         },
@@ -108,74 +111,38 @@ fun CategoryManagementScreen(
                 Tab(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    text = { Text("Expense Categories", fontWeight = FontWeight.Bold) }
+                    text = { Text("Expenses", fontWeight = FontWeight.Bold) }
                 )
                 Tab(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    text = { Text("Income Categories", fontWeight = FontWeight.Bold) }
+                    text = { Text("Income", fontWeight = FontWeight.Bold) }
                 )
             }
 
             if (isLoading) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
             } else if (filteredCategories.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(32.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            "No categories yet",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            "Click the + button to add one.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "No categories found for this type.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .weight(1f)
-                        .padding(AppDimens.paddingNormal),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(AppDimens.paddingNormal),
                     verticalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)
                 ) {
                     items(filteredCategories, key = { it.id }) { category ->
                         CategoryRowItem(
                             category = category,
                             onEditClick = { showEditDialog = category },
-                            onArchiveToggle = {
-                                viewModel.updateCategory(category.copy(isArchived = !category.isArchived))
-                            }
+                            onArchiveToggle = { viewModel.updateCategory(category.copy(isArchived = !category.isArchived)) }
                         )
                     }
                 }
@@ -208,45 +175,40 @@ fun CategoryManagementScreen(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CategoryRowItem(
     category: Category,
     onEditClick: () -> Unit,
     onArchiveToggle: () -> Unit
 ) {
-    val alpha = if (category.isArchived) 0.5f else 1.0f
-
     Card(
-        modifier = Modifier
-            .fillMaxWidth(),
-        shape = AppShapes.roundedCardMedium,
+        modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = if (category.isArchived) {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             } else {
                 MaterialTheme.colorScheme.surface
             }
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        border = if (category.isArchived) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(AppDimens.paddingNormal),
+                .padding(horizontal = AppDimens.paddingNormal, vertical = AppDimens.paddingSmall),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icon
+            // Icon container
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
+                    .size(44.dp)
                     .background(
-                        if (category.isArchived) {
-                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = alpha)
+                        color = if (category.isArchived) {
+                            MaterialTheme.colorScheme.surfaceVariant
                         } else {
-                            MaterialTheme.colorScheme.primaryContainer
-                        }
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f)
+                        },
+                        shape = AppShapes.roundedIconContainer
                     ),
                 contentAlignment = Alignment.Center
             ) {
@@ -254,48 +216,50 @@ fun CategoryRowItem(
                     imageVector = getIconByName(category.iconName),
                     contentDescription = category.name,
                     tint = if (category.isArchived) {
-                        MaterialTheme.colorScheme.outline
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     } else {
                         MaterialTheme.colorScheme.onPrimaryContainer
-                    }
+                    },
+                    modifier = Modifier.size(22.dp)
                 )
             }
 
             Spacer(modifier = Modifier.width(AppDimens.paddingNormal))
 
-            // Info
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = category.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = if (category.isArchived) {
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    }
+                )
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall),
-                    modifier = Modifier.fillMaxWidth()
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text(
-                        text = category.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = if (category.isArchived) {
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha)
-                        } else {
-                            MaterialTheme.colorScheme.onSurface
-                        }
-                    )
-                    
                     if (category.isArchived) {
                         SuggestionChip(
                             onClick = {},
                             label = { Text("Archived") },
                             colors = SuggestionChipDefaults.suggestionChipColors(
-                                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f),
+                                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f),
                                 labelColor = MaterialTheme.colorScheme.onErrorContainer
                             )
                         )
-                    } else if (category.isDefault) {
+                    }
+
+                    if (category.isDefault) {
                         SuggestionChip(
                             onClick = {},
-                            label = { Text("System") }
+                            label = { Text("System Default") },
+                            colors = SuggestionChipDefaults.suggestionChipColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                labelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
                         )
                     } else {
                         SuggestionChip(
@@ -311,21 +275,19 @@ fun CategoryRowItem(
             }
 
             // Actions
-            IconButton(onClick = onEditClick) {
-                Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = "Rename Category",
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
+            FinanceIconButton(
+                icon = Icons.Default.Edit,
+                onClick = onEditClick,
+                contentDescription = "Rename Category",
+                tint = MaterialTheme.colorScheme.primary
+            )
 
-            IconButton(onClick = onArchiveToggle) {
-                Icon(
-                    imageVector = if (category.isArchived) Icons.Default.Unarchive else Icons.Default.Archive,
-                    contentDescription = if (category.isArchived) "Unarchive Category" else "Archive Category",
-                    tint = if (category.isArchived) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline
-                )
-            }
+            FinanceIconButton(
+                icon = if (category.isArchived) Icons.Default.Unarchive else Icons.Default.Archive,
+                onClick = onArchiveToggle,
+                contentDescription = if (category.isArchived) "Unarchive Category" else "Archive Category",
+                tint = if (category.isArchived) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline
+            )
         }
     }
 }
@@ -350,8 +312,9 @@ fun AddCategoryDialog(
         title = { Text("Create Custom Category", fontWeight = FontWeight.Bold) },
         text = {
             Column(
-                verticalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(AppDimens.paddingNormal)
             ) {
                 OutlinedTextField(
                     value = name,
@@ -369,48 +332,38 @@ fun AddCategoryDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Text(
-                    "Choose an Icon",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = AppDimens.paddingSmall)
-                )
+                Text("Select Icon", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 
-                // Render grid of icons
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                ) {
+                Box(modifier = Modifier.height(180.dp)) {
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(4),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxSize()
+                        horizontalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall),
+                        verticalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)
                     ) {
-                        items(AVAILABLE_ICONS) { (iconKey, label) ->
-                            val isSelected = selectedIconName == iconKey
-                            Box(
+                        items(AVAILABLE_ICONS) { (iconName, label) ->
+                            val isSelected = iconName == selectedIconName
+                            Card(
                                 modifier = Modifier
-                                    .aspectRatio(1f)
-                                    .clip(AppShapes.roundedCardMedium)
-                                    .background(
-                                        if (isSelected) {
-                                            MaterialTheme.colorScheme.primaryContainer
-                                        } else {
-                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                                        }
-                                    )
-                                    .clickable { selectedIconName = iconKey }
-                                    .padding(4.dp),
-                                contentAlignment = Alignment.Center
+                                    .fillMaxWidth()
+                                    .clickable { selectedIconName = iconName },
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isSelected) {
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceVariant
+                                    }
+                                ),
+                                shape = AppShapes.roundedCardMedium
                             ) {
                                 Column(
+                                    modifier = Modifier
+                                        .padding(4.dp)
+                                        .fillMaxWidth(),
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.Center
                                 ) {
                                     Icon(
-                                        imageVector = getIconByName(iconKey),
+                                        imageVector = getIconByName(iconName),
                                         contentDescription = label,
                                         tint = if (isSelected) {
                                             MaterialTheme.colorScheme.onPrimaryContainer
@@ -437,17 +390,17 @@ fun AddCategoryDialog(
             }
         },
         confirmButton = {
-            Button(
+            FinanceButton(
+                text = "Create",
                 onClick = { if (name.isNotBlank() && !isDuplicate) onSave(name, selectedIconName) },
                 enabled = name.isNotBlank() && !isDuplicate
-            ) {
-                Text("Create")
-            }
+            )
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
+            FinanceTextButton(
+                text = "Cancel",
+                onClick = onDismiss
+            )
         }
     )
 }
@@ -487,17 +440,17 @@ fun EditCategoryDialog(
             )
         },
         confirmButton = {
-            Button(
+            FinanceButton(
+                text = "Save",
                 onClick = { if (name.isNotBlank() && !isDuplicate) onSave(name) },
                 enabled = name.isNotBlank() && !isDuplicate
-            ) {
-                Text("Save")
-            }
+            )
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
+            FinanceTextButton(
+                text = "Cancel",
+                onClick = onDismiss
+            )
         }
     )
 }

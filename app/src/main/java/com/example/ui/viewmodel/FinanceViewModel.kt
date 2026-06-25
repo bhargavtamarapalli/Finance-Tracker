@@ -8,6 +8,7 @@ import com.example.data.model.Category
 import com.example.data.model.TransactionEntity
 import com.example.data.model.TransactionType
 import com.example.data.model.TransactionWithCategory
+import com.example.data.model.Announcement
 import com.example.data.repository.FinanceRepository
 import com.example.ui.utils.CurrencyOption
 import com.example.ui.utils.CurrencyUtils
@@ -20,6 +21,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import java.util.UUID
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 
 enum class AppTheme {
     LIGHT, DARK, SYSTEM
@@ -37,6 +42,9 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     private val _reminderEnabled = MutableStateFlow(getSavedReminderEnabled())
     val reminderEnabled: StateFlow<Boolean> = _reminderEnabled.asStateFlow()
 
+    private val _biometricLockEnabled = MutableStateFlow(getSavedBiometricLockEnabled())
+    val biometricLockEnabled: StateFlow<Boolean> = _biometricLockEnabled.asStateFlow()
+
     private val networkMonitor = com.example.ui.utils.NetworkMonitor(repository.getContext())
     val isOnline: StateFlow<Boolean> = networkMonitor.isOnline
 
@@ -48,6 +56,20 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
 
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    // --- Admin state management ---
+    private val moshi = Moshi.Builder()
+        .add(KotlinJsonAdapterFactory())
+        .build()
+    private val announcementListType = Types.newParameterizedType(List::class.java, Announcement::class.java)
+    private val announcementAdapter = moshi.adapter<List<Announcement>>(announcementListType)
+
+    private val _appMode = MutableStateFlow(getSavedAppMode())
+    val appMode: StateFlow<String> = _appMode.asStateFlow()
+
+    private val _announcements = MutableStateFlow<List<Announcement>>(getSavedAnnouncements())
+    val announcements: StateFlow<List<Announcement>> = _announcements.asStateFlow()
+    // ------------------------------
 
     private var currentUserId: String? = null
 
@@ -144,6 +166,10 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
         return prefs?.getBoolean("reminder_preference", false) ?: false
     }
 
+    private fun getSavedBiometricLockEnabled(): Boolean {
+        return prefs?.getBoolean("biometric_lock_preference", false) ?: false
+    }
+
     fun setTheme(theme: AppTheme) {
         _appTheme.value = theme
         prefs?.edit()?.putString("theme_preference", theme.name)?.apply()
@@ -163,6 +189,11 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
         } else {
             com.example.receiver.ReminderScheduler.cancelDailyReminder(context)
         }
+    }
+
+    fun setBiometricLockEnabled(enabled: Boolean) {
+        _biometricLockEnabled.value = enabled
+        prefs?.edit()?.putBoolean("biometric_lock_preference", enabled)?.apply()
     }
 
     fun addTransaction(amount: Double, source: String, date: Long, categoryId: Int, type: TransactionType, notes: String, paymentMethod: String = "Cash") {
@@ -231,6 +262,74 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
 
     suspend fun restoreLocally(): Result<Unit> {
         return repository.restoreLocally()
+    }
+
+    // --- Admin helper actions ---
+    fun getSavedAppMode(): String {
+        return prefs?.getString("admin_app_mode", "Personal Finance Ledger") ?: "Personal Finance Ledger"
+    }
+
+    fun setAppMode(mode: String) {
+        _appMode.value = mode
+        prefs?.edit()?.putString("admin_app_mode", mode)?.apply()
+    }
+
+    fun getSavedAnnouncements(): List<Announcement> {
+        val json = prefs?.getString("admin_announcements", null)
+        if (json.isNullOrEmpty()) {
+            val defaultAnnouncements = listOf(
+                Announcement(
+                    id = "1",
+                    title = "System Privacy Guard: Enabled",
+                    content = "This platform utilizes client-side AES-256 local database encryption. Administration has zero viewing visibility or logical access to your private transaction details.",
+                    category = "Privacy",
+                    timestamp = System.currentTimeMillis() - 172800000 // 2 days ago
+                ),
+                Announcement(
+                    id = "2",
+                    title = "Upcoming Multi-Ledger Expansion Preview",
+                    content = "The Admin Console is preparing support for specialized financial structures: Chit Fund (Chitti) tools, Group associations, and Small Business ledgers.",
+                    category = "System Update",
+                    timestamp = System.currentTimeMillis() - 86400000 // 1 day ago
+                )
+            )
+            saveAnnouncementsLocally(defaultAnnouncements)
+            return defaultAnnouncements
+        }
+        return try {
+            announcementAdapter.fromJson(json) ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    fun publishAnnouncement(title: String, content: String, category: String) {
+        val newAnn = Announcement(
+            id = UUID.randomUUID().toString(),
+            title = title,
+            content = content,
+            category = category,
+            timestamp = System.currentTimeMillis()
+        )
+        val currentList = _announcements.value.toMutableList()
+        currentList.add(0, newAnn)
+        _announcements.value = currentList
+        saveAnnouncementsLocally(currentList)
+    }
+
+    fun deleteAnnouncement(id: String) {
+        val currentList = _announcements.value.filter { it.id != id }
+        _announcements.value = currentList
+        saveAnnouncementsLocally(currentList)
+    }
+
+    private fun saveAnnouncementsLocally(list: List<Announcement>) {
+        try {
+            val json = announcementAdapter.toJson(list)
+            prefs?.edit()?.putString("admin_announcements", json)?.apply()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 }
 

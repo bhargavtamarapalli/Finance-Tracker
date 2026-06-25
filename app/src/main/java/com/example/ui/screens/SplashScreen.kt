@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
+import com.example.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -95,9 +96,9 @@ fun SplashScreen(
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        Color(0xFF141218), // Rich Dark Slate
-                        Color(0xFF1C1B22),
-                        Color(0xFF2E1A47)  // Subtle Cosmic Indigo glow
+                        SplashBgStart,
+                        SplashBgMid,
+                        SplashBgEnd
                     )
                 )
             )
@@ -144,7 +145,7 @@ fun SplashScreen(
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 fontFamily = FontFamily.SansSerif,
-                color = Color(0xFFD0BCFF),
+                color = Purple80,
                 textAlign = TextAlign.Center,
                 letterSpacing = 0.5.sp,
                 modifier = Modifier

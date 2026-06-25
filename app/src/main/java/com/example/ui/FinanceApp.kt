@@ -24,6 +24,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.NavType
 import com.example.ui.screens.*
+import com.example.ui.theme.*
 import com.example.ui.viewmodel.FinanceViewModel
 import com.example.ui.viewmodel.AuthViewModel
 import androidx.compose.runtime.LaunchedEffect
@@ -33,6 +34,13 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.Login
+import androidx.compose.material.icons.filled.Logout
+import androidx.compose.ui.platform.LocalContext
+import com.example.ui.components.FinanceButton
+import com.example.ui.components.FinanceTextButton
 import kotlinx.coroutines.launch
 
 data class NavigationDrawerItemData(
@@ -77,6 +85,111 @@ fun FinanceApp(
         return
     }
 
+    val biometricLockEnabled by viewModel.biometricLockEnabled.collectAsStateWithLifecycle()
+    var isAppUnlocked by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val activity = context as? androidx.fragment.app.FragmentActivity
+
+    // Trigger biometric unlock prompt on launch or theme change if enabled
+    LaunchedEffect(biometricLockEnabled, userSession) {
+        if (biometricLockEnabled && userSession != null && !isAppUnlocked) {
+            if (activity != null) {
+                com.example.ui.utils.BiometricHelper.showBiometricPrompt(
+                    activity = activity,
+                    onSuccess = {
+                        isAppUnlocked = true
+                    },
+                    onError = {
+                        // User canceled or failed; they can retry manually using the unlock button
+                    }
+                )
+            } else {
+                isAppUnlocked = true
+            }
+        }
+    }
+
+    // Reset unlock state when user logs out
+    LaunchedEffect(userSession) {
+        if (userSession == null) {
+            isAppUnlocked = false
+        }
+    }
+
+    // High security lock overlay blocking access to financial data
+    if (biometricLockEnabled && !isAppUnlocked && userSession != null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = "App Locked",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(72.dp)
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Text(
+                    text = "Finance App Locked",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = "Confirm biometrics to unlock and view your secure session",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+                
+                Spacer(modifier = Modifier.height(48.dp))
+                
+                FinanceButton(
+                    text = "Unlock with Biometrics",
+                    onClick = {
+                        if (activity != null) {
+                            com.example.ui.utils.BiometricHelper.showBiometricPrompt(
+                                activity = activity,
+                                onSuccess = {
+                                    isAppUnlocked = true
+                                },
+                                onError = {
+                                    // Handle retry
+                                }
+                            )
+                        }
+                    },
+                    icon = Icons.Default.Fingerprint,
+                    modifier = Modifier.fillMaxWidth(0.8f)
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                FinanceTextButton(
+                    text = "Log Out",
+                    onClick = {
+                        authViewModel.logout()
+                    },
+                    contentColor = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+        return
+    }
+
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -112,14 +225,14 @@ fun FinanceApp(
                     Box(
                         modifier = Modifier
                             .size(60.dp)
-                            .background(Color(0xFFEADDFF), CircleShape)
-                            .border(2.dp, Color(0xFFD0BCFF), CircleShape),
+                            .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+                            .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = initials,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF21005D),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
                             style = MaterialTheme.typography.titleMedium
                         )
                     }
@@ -128,13 +241,30 @@ fun FinanceApp(
                         text = userSession?.name ?: "Guest User",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1D1B20)
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = if (userSession?.isGuest == true) "Guest Session" else (userSession?.email ?: "guest@example.com"),
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF49454F)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    if (userSession?.isGuest == true) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        SuggestionChip(
+                            onClick = {
+                                scope.launch { drawerState.close() }
+                                authViewModel.logout()
+                            },
+                            label = { Text("Sign In / Register") },
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Default.Login,
+                                    contentDescription = "Sign In icon",
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        )
+                    }
                 }
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 28.dp))
                 Spacer(modifier = Modifier.height(16.dp))
@@ -152,12 +282,12 @@ fun FinanceApp(
                         },
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                         colors = NavigationDrawerItemDefaults.colors(
-                            selectedContainerColor = Color(0xFFE8DEF8),
-                            selectedIconColor = Color(0xFF21005D),
-                            selectedTextColor = Color(0xFF21005D),
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
                             unselectedContainerColor = Color.Transparent,
-                            unselectedIconColor = Color(0xFF49454F),
-                            unselectedTextColor = Color(0xFF49454F)
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     )
                 }
@@ -215,8 +345,15 @@ fun FinanceApp(
                         viewModel = viewModel,
                         authViewModel = authViewModel,
                         onManageCategoriesClick = { navController.navigate("categories_management") },
+                        onAdminConsoleClick = { navController.navigate("admin_console") },
                         onMenuClick = { scope.launch { drawerState.open() } }
                     ) 
+                }
+                composable("admin_console") {
+                    AdminConsoleScreen(
+                        viewModel = viewModel,
+                        onBackClick = { navController.popBackStack() }
+                    )
                 }
                 composable("categories_management") {
                     CategoryManagementScreen(viewModel, navController)

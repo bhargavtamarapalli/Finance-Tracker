@@ -85,6 +85,7 @@ dependencies {
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.datastore.preferences)
   implementation(libs.androidx.security.crypto)
+  implementation(libs.androidx.biometric)
   implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.lifecycle.viewmodel.compose)

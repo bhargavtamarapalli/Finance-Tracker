@@ -96,7 +96,9 @@ class FinanceRepository(
             dao.insertCategories(seededCategories)
         }
         val transactions = dao.getAllTransactionsOnce()
-        if (transactions.isEmpty()) {
+        if (transactions.size <= 7) {
+            // Delete existing skeleton transactions
+            transactions.forEach { dao.deleteTransaction(it) }
             val seededTransactions = jsonDataManager.loadTransactions()
             seededTransactions.forEach { dao.insertTransaction(it) }
         }

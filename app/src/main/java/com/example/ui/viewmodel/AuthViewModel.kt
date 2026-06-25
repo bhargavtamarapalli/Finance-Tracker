@@ -25,7 +25,8 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
     private fun isValidEmail(email: String): Boolean {
-        return email.isNotBlank() && "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,6}$".toRegex().matches(email)
+        val trimmed = email.trim()
+        return trimmed.isNotBlank() && "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,6}$".toRegex().matches(trimmed)
     }
 
     fun setError(message: String) {
@@ -33,18 +34,19 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
     }
 
     fun signIn(email: String, password: String) {
-        if (email.isBlank() || password.isBlank()) {
+        val trimmedEmail = email.trim()
+        if (trimmedEmail.isBlank() || password.isBlank()) {
             _authState.value = AuthState.Error("Please fill in all fields")
             return
         }
-        if (!isValidEmail(email)) {
+        if (!isValidEmail(trimmedEmail)) {
             _authState.value = AuthState.Error("Invalid email format")
             return
         }
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             try {
-                val session = repository.signInWithEmail(email, password)
+                val session = repository.signInWithEmail(trimmedEmail, password)
                 _authState.value = AuthState.Success(session)
             } catch (e: Exception) {
                 _authState.value = AuthState.Error(e.message ?: "Sign in failed. Check your connection or email/password.")
@@ -53,11 +55,13 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
     }
 
     fun signUp(email: String, password: String, name: String) {
-        if (email.isBlank() || password.isBlank() || name.isBlank()) {
+        val trimmedEmail = email.trim()
+        val trimmedName = name.trim()
+        if (trimmedEmail.isBlank() || password.isBlank() || trimmedName.isBlank()) {
             _authState.value = AuthState.Error("Please fill in all fields")
             return
         }
-        if (!isValidEmail(email)) {
+        if (!isValidEmail(trimmedEmail)) {
             _authState.value = AuthState.Error("Invalid email format")
             return
         }
@@ -68,7 +72,7 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             try {
-                val session = repository.signUpWithEmail(email, password, name)
+                val session = repository.signUpWithEmail(trimmedEmail, password, trimmedName)
                 _authState.value = AuthState.Success(session)
             } catch (e: Exception) {
                 _authState.value = AuthState.Error(e.message ?: "Sign up failed. Please try again.")
@@ -77,18 +81,19 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
     }
 
     fun sendPasswordReset(email: String, onSuccess: () -> Unit) {
-        if (email.isBlank()) {
+        val trimmedEmail = email.trim()
+        if (trimmedEmail.isBlank()) {
             _authState.value = AuthState.Error("Please enter your email address")
             return
         }
-        if (!isValidEmail(email)) {
+        if (!isValidEmail(trimmedEmail)) {
             _authState.value = AuthState.Error("Invalid email format")
             return
         }
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             try {
-                repository.sendPasswordResetEmail(email)
+                repository.sendPasswordResetEmail(trimmedEmail)
                 _authState.value = AuthState.Idle
                 onSuccess()
             } catch (e: Exception) {
@@ -101,9 +106,54 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
         repository.loginAsGuest()
     }
 
+    fun signInWithBiometrics() {
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            try {
+                val session = repository.signInWithBiometrics()
+                _authState.value = AuthState.Success(session)
+            } catch (e: Exception) {
+                _authState.value = AuthState.Error(e.message ?: "Biometric login failed.")
+            }
+        }
+    }
+
     fun logout() {
         repository.logout()
         _authState.value = AuthState.Idle
+    }
+
+    fun updateProfile(name: String, email: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        val trimmedName = name.trim()
+        val trimmedEmail = email.trim()
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            try {
+                if (trimmedName.isBlank()) {
+                    throw Exception("Name cannot be blank")
+                }
+                repository.updateProfileName(trimmedName)
+                
+                val currentSession = currentUserSession.value
+                if (currentSession != null && !currentSession.isGuest && trimmedEmail.isNotBlank() && trimmedEmail != currentSession.email) {
+                    if (!isValidEmail(trimmedEmail)) {
+                        throw Exception("Invalid email format")
+                    }
+                    repository.updateProfileEmail(trimmedEmail)
+                }
+                
+                val finalSession = repository.currentUserSession.value
+                if (finalSession != null) {
+                    _authState.value = AuthState.Success(finalSession)
+                } else {
+                    _authState.value = AuthState.Idle
+                }
+                onSuccess()
+            } catch (e: Exception) {
+                _authState.value = AuthState.Error(e.message ?: "Failed to update profile")
+                onError(e.message ?: "Failed to update profile")
+            }
+        }
     }
     
     fun clearError() {

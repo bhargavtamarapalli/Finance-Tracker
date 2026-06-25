@@ -35,3 +35,17 @@ val GradientEnd = Color(0xFF9581CE)
 val AvatarBg = Color(0xFFEADDFF)
 val AvatarBorder = Color(0xFFD0BCFF)
 val AvatarText = Color(0xFF21005D)
+
+// Soft high-contrast bright colors on dark backgrounds
+val BrightIncomeGreen = Color(0xFF69F0AE)
+val BrightExpenseRed = Color(0xFFFF8A80)
+
+// Splash screen vertical gradient colors
+val SplashBgStart = Color(0xFF141218)
+val SplashBgMid = Color(0xFF1C1B22)
+val SplashBgEnd = Color(0xFF2E1A47)
+
+// Navigation drawer selection colors
+val DrawerSelectedContainer = Color(0xFFE8DEF8)
+val DrawerSelectedContent = Color(0xFF21005D)
+val DrawerUnselectedContent = Color(0xFF49454F)
