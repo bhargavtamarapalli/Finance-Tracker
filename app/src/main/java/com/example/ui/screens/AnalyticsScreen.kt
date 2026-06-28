@@ -56,6 +56,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.nativeCanvas
 import java.util.Locale
+import java.util.Date
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,8 +64,13 @@ fun AnalyticsScreen(
     viewModel: FinanceViewModel,
     onMenuClick: () -> Unit
 ) {
-    val currentMonthTransactions by viewModel.currentMonthTransactions.collectAsStateWithLifecycle()
+    val periodTransactions by viewModel.periodTransactions.collectAsStateWithLifecycle()
+    val selectedTimePeriod by viewModel.selectedTimePeriod.collectAsStateWithLifecycle()
+    val periodLabel by viewModel.periodLabel.collectAsStateWithLifecycle()
+    val activeDate by viewModel.activeDate.collectAsStateWithLifecycle()
+    val isNextPeriodEnabled by viewModel.isNextPeriodEnabled.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    var showDatePicker by remember { mutableStateOf(false) }
     
     // Switch between Expense and Income analytics
     var selectedType by remember { mutableStateOf(TransactionType.EXPENSE) }
@@ -81,44 +87,80 @@ fun AnalyticsScreen(
         listVisible = true
     }
 
-    val totalIncome = remember(currentMonthTransactions) {
-        currentMonthTransactions
+    val totalIncome = remember(periodTransactions) {
+        periodTransactions
             .filter { it.transaction.type == TransactionType.INCOME }
             .sumOf { it.transaction.amount }
     }
     
-    val totalExpense = remember(currentMonthTransactions) {
-        currentMonthTransactions
+    val totalExpense = remember(periodTransactions) {
+        periodTransactions
             .filter { it.transaction.type == TransactionType.EXPENSE }
             .sumOf { it.transaction.amount }
     }
     
     val netSavings = totalIncome - totalExpense
 
-    // Group expenses by day of month for trend
-    val dailyExpenses = remember(currentMonthTransactions) {
+    // Group expenses by period trends
+    val dailyExpenses = remember(periodTransactions, selectedTimePeriod) {
         val calInstance = java.util.Calendar.getInstance()
-        val daysInMonth = calInstance.getActualMaximum(java.util.Calendar.DAY_OF_MONTH)
-        val currentMonth = calInstance.get(java.util.Calendar.MONTH)
-        val currentYear = calInstance.get(java.util.Calendar.YEAR)
-
         val map = mutableMapOf<Int, Double>()
-        for (day in 1..daysInMonth) {
-            map[day] = 0.0
-        }
-        currentMonthTransactions
-            .filter { it.transaction.type == TransactionType.EXPENSE }
-            .forEach { tx ->
-                val cal = java.util.Calendar.getInstance().apply { timeInMillis = tx.transaction.date }
-                if (cal.get(java.util.Calendar.MONTH) == currentMonth && cal.get(java.util.Calendar.YEAR) == currentYear) {
-                    val day = cal.get(java.util.Calendar.DAY_OF_MONTH)
-                    map[day] = (map[day] ?: 0.0) + tx.transaction.amount
+        
+        when (selectedTimePeriod) {
+            com.example.ui.viewmodel.TimePeriod.DAY -> {
+                for (hour in 0..23) {
+                    map[hour] = 0.0
                 }
+                periodTransactions
+                    .filter { it.transaction.type == TransactionType.EXPENSE }
+                    .forEach { tx ->
+                        val cal = java.util.Calendar.getInstance().apply { timeInMillis = tx.transaction.date }
+                        val hour = cal.get(java.util.Calendar.HOUR_OF_DAY)
+                        map[hour] = (map[hour] ?: 0.0) + tx.transaction.amount
+                    }
             }
+            com.example.ui.viewmodel.TimePeriod.WEEK -> {
+                for (day in 1..7) {
+                    map[day] = 0.0
+                }
+                periodTransactions
+                    .filter { it.transaction.type == TransactionType.EXPENSE }
+                    .forEach { tx ->
+                        val cal = java.util.Calendar.getInstance().apply { timeInMillis = tx.transaction.date }
+                        val day = cal.get(java.util.Calendar.DAY_OF_WEEK)
+                        map[day] = (map[day] ?: 0.0) + tx.transaction.amount
+                    }
+            }
+            com.example.ui.viewmodel.TimePeriod.MONTH -> {
+                val daysInMonth = calInstance.getActualMaximum(java.util.Calendar.DAY_OF_MONTH)
+                for (day in 1..daysInMonth) {
+                    map[day] = 0.0
+                }
+                periodTransactions
+                    .filter { it.transaction.type == TransactionType.EXPENSE }
+                    .forEach { tx ->
+                        val cal = java.util.Calendar.getInstance().apply { timeInMillis = tx.transaction.date }
+                        val day = cal.get(java.util.Calendar.DAY_OF_MONTH)
+                        map[day] = (map[day] ?: 0.0) + tx.transaction.amount
+                    }
+            }
+            com.example.ui.viewmodel.TimePeriod.YEAR -> {
+                for (month in 0..11) {
+                    map[month] = 0.0
+                }
+                periodTransactions
+                    .filter { it.transaction.type == TransactionType.EXPENSE }
+                    .forEach { tx ->
+                        val cal = java.util.Calendar.getInstance().apply { timeInMillis = tx.transaction.date }
+                        val month = cal.get(java.util.Calendar.MONTH)
+                        map[month] = (map[month] ?: 0.0) + tx.transaction.amount
+                    }
+            }
+        }
         map.toList().sortedBy { it.first }
     }
 
-    val filteredTransactions = currentMonthTransactions.filter { it.transaction.type == selectedType }
+    val filteredTransactions = periodTransactions.filter { it.transaction.type == selectedType }
     val totalAmount = filteredTransactions.sumOf { it.transaction.amount }
     
     // Group by category name
@@ -255,6 +297,38 @@ fun AnalyticsScreen(
                 }
             }
 
+            // Time Horizon Selector
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = AppDimens.paddingSmall)
+                ) {
+                    TimePeriodSelector(
+                        selectedPeriod = selectedTimePeriod,
+                        onPeriodSelected = { viewModel.setTimePeriod(it) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
+                    PeriodNavigator(
+                        periodLabel = periodLabel,
+                        onPreviousClick = { viewModel.moveToPreviousPeriod() },
+                        onNextClick = { viewModel.moveToNextPeriod() },
+                        modifier = Modifier.fillMaxWidth(),
+                        onLabelClick = { showDatePicker = true },
+                        isNextEnabled = isNextPeriodEnabled
+                    )
+                    if (showDatePicker) {
+                        CustomPeriodPickerDialog(
+                            timePeriod = selectedTimePeriod,
+                            activeDate = activeDate,
+                            onDateSelected = { viewModel.setDateDirectly(it) },
+                            onDismiss = { showDatePicker = false }
+                        )
+                    }
+                }
+            }
+
             if (isLoading) {
                 item {
                     Box(
@@ -367,6 +441,7 @@ fun AnalyticsScreen(
             item {
                 SpendingTrendChart(
                     dailyExpenses = dailyExpenses,
+                    timePeriod = selectedTimePeriod,
                     modifier = Modifier.testTag("spending_trend_chart")
                 )
             }
@@ -524,6 +599,48 @@ fun AnalyticsScreen(
                                     },
                                     modifier = Modifier.testTag("category_row_$categoryName")
                                 )
+
+                                AnimatedVisibility(
+                                    visible = isSelected,
+                                    enter = expandVertically() + fadeIn(),
+                                    exit = shrinkVertically() + fadeOut()
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = AppDimens.paddingSmall, vertical = AppDimens.paddingSmall),
+                                        verticalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)
+                                    ) {
+                                        val categoryTransactions = remember(periodTransactions, categoryName, selectedType) {
+                                            periodTransactions.filter { 
+                                                it.category?.name == categoryName && it.transaction.type == selectedType 
+                                            }.sortedByDescending { it.transaction.date }
+                                        }
+
+                                        if (categoryTransactions.isEmpty()) {
+                                            Text(
+                                                text = "No individual transactions found",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.padding(vertical = AppDimens.paddingSmall)
+                                            )
+                                        } else {
+                                            Text(
+                                                text = "Transactions under $categoryName:",
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(bottom = 4.dp, start = 4.dp)
+                                            )
+                                            categoryTransactions.forEach { transaction ->
+                                                TransactionItem(
+                                                    transaction = transaction,
+                                                    modifier = Modifier.fillMaxWidth()
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -1267,7 +1384,8 @@ fun IncomeExpenseComparisonChart(
 @Composable
 fun SpendingTrendChart(
     dailyExpenses: List<Pair<Int, Double>>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    timePeriod: com.example.ui.viewmodel.TimePeriod = com.example.ui.viewmodel.TimePeriod.MONTH
 ) {
     val maxAmount = dailyExpenses.maxOfOrNull { it.second } ?: 0.0
     val displayMax = if (maxAmount > 0) maxAmount else 1000.0
@@ -1297,8 +1415,14 @@ fun SpendingTrendChart(
                 .fillMaxWidth()
                 .padding(AppDimens.paddingNormal)
         ) {
+            val titleText = when (timePeriod) {
+                com.example.ui.viewmodel.TimePeriod.DAY -> "Spending Trend (Today)"
+                com.example.ui.viewmodel.TimePeriod.WEEK -> "Spending Trend (This Week)"
+                com.example.ui.viewmodel.TimePeriod.MONTH -> "Spending Trend (This Month)"
+                com.example.ui.viewmodel.TimePeriod.YEAR -> "Spending Trend (This Year)"
+            }
             Text(
-                text = "Spending Trend (This Month)",
+                text = titleText,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -1307,9 +1431,27 @@ fun SpendingTrendChart(
             // Dynamic subtitle showing values on hover/drag or average spend
             val subtitleText = if (activeIndex != null && activeIndex!! in dailyExpenses.indices) {
                 val point = dailyExpenses[activeIndex!!]
-                "Day ${point.first} • ${CurrencyUtils.formatRupees(point.second)}"
+                val label = when (timePeriod) {
+                    com.example.ui.viewmodel.TimePeriod.DAY -> "Hour ${point.first}:00"
+                    com.example.ui.viewmodel.TimePeriod.WEEK -> {
+                        val dayNames = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+                        if (point.first in 1..7) dayNames[point.first - 1] else "Day ${point.first}"
+                    }
+                    com.example.ui.viewmodel.TimePeriod.MONTH -> "Day ${point.first}"
+                    com.example.ui.viewmodel.TimePeriod.YEAR -> {
+                        val monthNames = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+                        if (point.first in 0..11) monthNames[point.first] else "Month ${point.first + 1}"
+                    }
+                }
+                "$label • ${CurrencyUtils.formatRupees(point.second)}"
             } else {
-                "Monthly Avg: ${CurrencyUtils.formatRupees(averageSpend)}/day • Hold & drag to inspect"
+                val periodName = when (timePeriod) {
+                    com.example.ui.viewmodel.TimePeriod.DAY -> "hourly"
+                    com.example.ui.viewmodel.TimePeriod.WEEK -> "daily"
+                    com.example.ui.viewmodel.TimePeriod.MONTH -> "daily"
+                    com.example.ui.viewmodel.TimePeriod.YEAR -> "monthly"
+                }
+                "Avg spend: ${CurrencyUtils.formatRupees(averageSpend)}/$periodName • Hold & drag to inspect"
             }
             
             Text(
@@ -1538,10 +1680,32 @@ fun SpendingTrendChart(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("Day 1", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Day 10", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Day 20", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Day ${dailyExpenses.size.coerceAtLeast(30)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                when (timePeriod) {
+                    com.example.ui.viewmodel.TimePeriod.DAY -> {
+                        Text("0:00", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("8:00", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("16:00", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("23:00", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    com.example.ui.viewmodel.TimePeriod.WEEK -> {
+                        Text("Mon", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Wed", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Fri", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Sun", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    com.example.ui.viewmodel.TimePeriod.MONTH -> {
+                        Text("Day 1", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Day 10", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Day 20", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Day ${dailyExpenses.size.coerceAtLeast(30)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    com.example.ui.viewmodel.TimePeriod.YEAR -> {
+                        Text("Jan", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Apr", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Jul", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Dec", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
             }
         }
     }

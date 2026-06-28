@@ -70,20 +70,34 @@ fun DashboardScreen(
     userSession: UserSession? = null,
     onMenuClick: () -> Unit
 ) {
-    val currentMonthTransactions by viewModel.currentMonthTransactions.collectAsStateWithLifecycle()
+    val periodTransactions by viewModel.periodTransactions.collectAsStateWithLifecycle()
+    val selectedTimePeriod by viewModel.selectedTimePeriod.collectAsStateWithLifecycle()
+    val periodLabel by viewModel.periodLabel.collectAsStateWithLifecycle()
+    val activeDate by viewModel.activeDate.collectAsStateWithLifecycle()
+    val isNextPeriodEnabled by viewModel.isNextPeriodEnabled.collectAsStateWithLifecycle()
+    val allTransactions by viewModel.allTransactions.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     var selectedTransactionForDetails by remember { mutableStateOf<TransactionWithCategory?>(null) }
+    var showDatePicker by remember { mutableStateOf(false) }
 
-    val totalIncome = currentMonthTransactions.filter { it.transaction.type == TransactionType.INCOME }.sumOf { it.transaction.amount }
-    val totalExpense = currentMonthTransactions.filter { it.transaction.type == TransactionType.EXPENSE }.sumOf { it.transaction.amount }
+    val totalIncome = periodTransactions.filter { it.transaction.type == TransactionType.INCOME }.sumOf { it.transaction.amount }
+    val totalExpense = periodTransactions.filter { it.transaction.type == TransactionType.EXPENSE }.sumOf { it.transaction.amount }
     val totalSavings = totalIncome - totalExpense
 
     val currencyFormatter = object {
         fun format(amount: Double): String = CurrencyUtils.formatRupees(amount)
     }
 
-    val dailyAvg = if (currentMonthTransactions.isNotEmpty()) totalExpense / 30 else 0.0
-    val highestExpenseCategoryInfo = currentMonthTransactions
+    val dailyAvg = if (periodTransactions.isNotEmpty()) {
+        val days = when (selectedTimePeriod) {
+            com.example.ui.viewmodel.TimePeriod.DAY -> 1
+            com.example.ui.viewmodel.TimePeriod.WEEK -> 7
+            com.example.ui.viewmodel.TimePeriod.MONTH -> 30
+            com.example.ui.viewmodel.TimePeriod.YEAR -> 365
+        }
+        totalExpense / days
+    } else 0.0
+    val highestExpenseCategoryInfo = periodTransactions
         .filter { it.transaction.type == TransactionType.EXPENSE }
         .groupBy { it.category?.name ?: "Other" }
         .maxByOrNull { it.value.sumOf { tx -> tx.transaction.amount } }
@@ -104,11 +118,11 @@ fun DashboardScreen(
     val startOfYesterday = calendar.timeInMillis
     val endOfYesterday = startOfToday - 1
 
-    val todayExpense = currentMonthTransactions
+    val todayExpense = allTransactions
         .filter { it.transaction.type == TransactionType.EXPENSE && it.transaction.date >= startOfToday }
         .sumOf { it.transaction.amount }
 
-    val yesterdayExpense = currentMonthTransactions
+    val yesterdayExpense = allTransactions
         .filter { it.transaction.type == TransactionType.EXPENSE && it.transaction.date in startOfYesterday..endOfYesterday }
         .sumOf { it.transaction.amount }
 
@@ -239,6 +253,38 @@ fun DashboardScreen(
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                             style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+
+            // Time Horizon Selector
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = AppDimens.paddingSmall)
+                ) {
+                    TimePeriodSelector(
+                        selectedPeriod = selectedTimePeriod,
+                        onPeriodSelected = { viewModel.setTimePeriod(it) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
+                    PeriodNavigator(
+                        periodLabel = periodLabel,
+                        onPreviousClick = { viewModel.moveToPreviousPeriod() },
+                        onNextClick = { viewModel.moveToNextPeriod() },
+                        modifier = Modifier.fillMaxWidth(),
+                        onLabelClick = { showDatePicker = true },
+                        isNextEnabled = isNextPeriodEnabled
+                    )
+                    if (showDatePicker) {
+                        CustomPeriodPickerDialog(
+                            timePeriod = selectedTimePeriod,
+                            activeDate = activeDate,
+                            onDateSelected = { viewModel.setDateDirectly(it) },
+                            onDismiss = { showDatePicker = false }
                         )
                     }
                 }
@@ -432,7 +478,7 @@ fun DashboardScreen(
                 items(3) {
                     TransactionItemSkeleton()
                 }
-            } else if (currentMonthTransactions.isEmpty()) {
+            } else if (periodTransactions.isEmpty()) {
                 item {
                     Column(
                         modifier = Modifier
@@ -479,7 +525,7 @@ fun DashboardScreen(
                     Column(
                         verticalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)
                     ) {
-                        currentMonthTransactions.take(5).forEach { tx ->
+                        periodTransactions.take(5).forEach { tx ->
                             TransactionItem(
                                 transaction = tx,
                                 onClick = { selectedTransactionForDetails = tx }

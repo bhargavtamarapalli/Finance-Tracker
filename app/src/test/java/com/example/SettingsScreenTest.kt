@@ -111,6 +111,7 @@ class SettingsScreenTest {
                         viewModel = viewModel,
                         authViewModel = authViewModel,
                         onManageCategoriesClick = {},
+                        onAdminConsoleClick = {},
                         onMenuClick = {}
                     )
                 }
@@ -174,6 +175,7 @@ class SettingsScreenTest {
                         viewModel = viewModel,
                         authViewModel = authViewModel,
                         onManageCategoriesClick = {},
+                        onAdminConsoleClick = {},
                         onMenuClick = {}
                     )
                 }
@@ -232,6 +234,7 @@ class SettingsScreenTest {
                         viewModel = viewModel,
                         authViewModel = authViewModel,
                         onManageCategoriesClick = {},
+                        onAdminConsoleClick = {},
                         onMenuClick = {}
                     )
                 }

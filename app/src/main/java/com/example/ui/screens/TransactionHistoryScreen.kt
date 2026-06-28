@@ -57,10 +57,8 @@ enum class FilterType(val displayName: String) {
 }
 
 enum class DateFilter(val displayName: String) {
-    ALL("All Time"),
-    THIS_WEEK("This Week"),
-    THIS_MONTH("This Month"),
-    THIS_YEAR("This Year")
+    ACTIVE_PERIOD("Active Period"),
+    ALL("All Time")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,6 +69,11 @@ fun TransactionHistoryScreen(
     onMenuClick: () -> Unit = {}
 ) {
     val transactions by viewModel.allTransactions.collectAsStateWithLifecycle()
+    val periodTransactions by viewModel.periodTransactions.collectAsStateWithLifecycle()
+    val selectedTimePeriod by viewModel.selectedTimePeriod.collectAsStateWithLifecycle()
+    val periodLabel by viewModel.periodLabel.collectAsStateWithLifecycle()
+    val activeDate by viewModel.activeDate.collectAsStateWithLifecycle()
+    val isNextPeriodEnabled by viewModel.isNextPeriodEnabled.collectAsStateWithLifecycle()
     val categories by viewModel.allCategories.collectAsStateWithLifecycle()
 
     var searchQuery by remember { mutableStateOf("") }
@@ -80,13 +83,18 @@ fun TransactionHistoryScreen(
     var selectedSort by remember { mutableStateOf(SortOption.DATE_DESC) }
     var selectedFilterType by remember { mutableStateOf(FilterType.ALL) }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
-    var selectedDateFilter by remember { mutableStateOf(DateFilter.ALL) }
+    var selectedDateFilter by remember { mutableStateOf(DateFilter.ACTIVE_PERIOD) }
+    var showDatePicker by remember { mutableStateOf(false) }
 
     // Computed / Filtered Transactions list
     val processedTransactions = remember(
-        transactions, searchQuery, selectedSort, selectedFilterType, selectedCategory, selectedDateFilter
+        transactions, periodTransactions, searchQuery, selectedSort, selectedFilterType, selectedCategory, selectedDateFilter
     ) {
-        var list = transactions
+        var list = if (selectedDateFilter == DateFilter.ACTIVE_PERIOD) {
+            periodTransactions
+        } else {
+            transactions
+        }
 
         // 1. Search Query (Notes, category or source)
         if (searchQuery.isNotBlank()) {
@@ -109,42 +117,7 @@ fun TransactionHistoryScreen(
             list = list.filter { it.category?.name?.equals(selectedCategory, ignoreCase = true) == true }
         }
 
-        // 4. Date Filter
-        if (selectedDateFilter != DateFilter.ALL) {
-            val cal = Calendar.getInstance()
-            val now = System.currentTimeMillis()
-            cal.timeInMillis = now
-
-            when (selectedDateFilter) {
-                DateFilter.THIS_WEEK -> {
-                    cal.set(Calendar.DAY_OF_WEEK, cal.firstDayOfWeek)
-                    cal.set(Calendar.HOUR_OF_DAY, 0)
-                    cal.set(Calendar.MINUTE, 0)
-                    cal.set(Calendar.SECOND, 0)
-                    val startOfWeek = cal.timeInMillis
-                    list = list.filter { it.transaction.date >= startOfWeek }
-                }
-                DateFilter.THIS_MONTH -> {
-                    cal.set(Calendar.DAY_OF_MONTH, 1)
-                    cal.set(Calendar.HOUR_OF_DAY, 0)
-                    cal.set(Calendar.MINUTE, 0)
-                    cal.set(Calendar.SECOND, 0)
-                    val startOfMonth = cal.timeInMillis
-                    list = list.filter { it.transaction.date >= startOfMonth }
-                }
-                DateFilter.THIS_YEAR -> {
-                    cal.set(Calendar.DAY_OF_YEAR, 1)
-                    cal.set(Calendar.HOUR_OF_DAY, 0)
-                    cal.set(Calendar.MINUTE, 0)
-                    cal.set(Calendar.SECOND, 0)
-                    val startOfYear = cal.timeInMillis
-                    list = list.filter { it.transaction.date >= startOfYear }
-                }
-                DateFilter.ALL -> { /* no-op */ }
-            }
-        }
-
-        // 5. Sorting
+        // 4. Sorting
         list = when (selectedSort) {
             SortOption.DATE_DESC -> list.sortedByDescending { it.transaction.date }
             SortOption.DATE_ASC -> list.sortedBy { it.transaction.date }
@@ -157,8 +130,37 @@ fun TransactionHistoryScreen(
         list
     }
 
+    val groupedTransactions = remember(processedTransactions) {
+        val today = Calendar.getInstance()
+        val yesterday = Calendar.getInstance().apply { add(Calendar.DATE, -1) }
+
+        val isSameDay = { c1: Calendar, c2: Calendar ->
+            c1.get(Calendar.YEAR) == c2.get(Calendar.YEAR) &&
+            c1.get(Calendar.DAY_OF_YEAR) == c2.get(Calendar.DAY_OF_YEAR)
+        }
+
+        val groups = processedTransactions.groupBy { item ->
+            val cal = Calendar.getInstance().apply { timeInMillis = item.transaction.date }
+            when {
+                isSameDay(cal, today) -> "Today"
+                isSameDay(cal, yesterday) -> "Yesterday"
+                else -> {
+                    val sdf = SimpleDateFormat("EEEE, MMMM dd, yyyy", Locale.getDefault())
+                    sdf.format(Date(item.transaction.date))
+                }
+            }
+        }
+
+        groups.map { (dateHeader, itemsInGroup) ->
+            val income = itemsInGroup.filter { it.transaction.type == TransactionType.INCOME }.sumOf { it.transaction.amount }
+            val expense = itemsInGroup.filter { it.transaction.type == TransactionType.EXPENSE }.sumOf { it.transaction.amount }
+            val netSum = income - expense
+            Triple(dateHeader, netSum, itemsInGroup)
+        }
+    }
+
     val hasActiveFilters = remember(selectedFilterType, selectedCategory, selectedDateFilter) {
-        selectedFilterType != FilterType.ALL || selectedCategory != null || selectedDateFilter != DateFilter.ALL
+        selectedFilterType != FilterType.ALL || selectedCategory != null || selectedDateFilter != DateFilter.ACTIVE_PERIOD
     }
 
     Scaffold(
@@ -223,6 +225,38 @@ fun TransactionHistoryScreen(
                 )
             )
 
+            // Time Horizon Selector & Period Navigator on Date basis
+            if (selectedDateFilter == DateFilter.ACTIVE_PERIOD) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = AppDimens.paddingNormal, vertical = AppDimens.paddingSmall)
+                ) {
+                    TimePeriodSelector(
+                        selectedPeriod = selectedTimePeriod,
+                        onPeriodSelected = { viewModel.setTimePeriod(it) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
+                    PeriodNavigator(
+                        periodLabel = periodLabel,
+                        onPreviousClick = { viewModel.moveToPreviousPeriod() },
+                        onNextClick = { viewModel.moveToNextPeriod() },
+                        modifier = Modifier.fillMaxWidth(),
+                        onLabelClick = { showDatePicker = true },
+                        isNextEnabled = isNextPeriodEnabled
+                    )
+                }
+                if (showDatePicker) {
+                    CustomPeriodPickerDialog(
+                        timePeriod = selectedTimePeriod,
+                        activeDate = activeDate,
+                        onDateSelected = { viewModel.setDateDirectly(it) },
+                        onDismiss = { showDatePicker = false }
+                    )
+                }
+            }
+
             // Active Filter Chips Row
             if (hasActiveFilters || selectedSort != SortOption.DATE_DESC) {
                 LazyRow(
@@ -260,11 +294,11 @@ fun TransactionHistoryScreen(
                         }
                     }
 
-                    if (selectedDateFilter != DateFilter.ALL) {
+                    if (selectedDateFilter != DateFilter.ACTIVE_PERIOD) {
                         item {
                             FilterActiveChip(
                                 label = selectedDateFilter.displayName,
-                                onClear = { selectedDateFilter = DateFilter.ALL }
+                                onClear = { selectedDateFilter = DateFilter.ACTIVE_PERIOD }
                             )
                         }
                     }
@@ -276,7 +310,7 @@ fun TransactionHistoryScreen(
                                 selectedSort = SortOption.DATE_DESC
                                 selectedFilterType = FilterType.ALL
                                 selectedCategory = null
-                                selectedDateFilter = DateFilter.ALL
+                                selectedDateFilter = DateFilter.ACTIVE_PERIOD
                             }
                         )
                     }
@@ -331,19 +365,48 @@ fun TransactionHistoryScreen(
                     ),
                     verticalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)
                 ) {
-                    items(processedTransactions, key = { it.transaction.id }) { item ->
-                        TransactionHistoryRow(
-                            item = item,
-                            onEditClick = {
-                                navController.navigate("add_transaction/${item.transaction.type.name}?transactionId=${item.transaction.id}")
-                            },
-                            onDeleteClick = {
-                                viewModel.deleteTransaction(item.transaction)
-                            },
-                            onDuplicateClick = {
-                                navController.navigate("add_transaction/${item.transaction.type.name}?transactionId=${item.transaction.id}&duplicate=true")
+                    groupedTransactions.forEach { (dateHeader, netSum, itemsInGroup) ->
+                        item(key = dateHeader) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = AppDimens.paddingNormal, bottom = AppDimens.paddingExtraSmall),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = dateHeader,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                if (netSum != 0.0) {
+                                    val isPositive = netSum > 0
+                                    val formattedAmount = CurrencyUtils.formatRupees(kotlin.math.abs(netSum))
+                                    Text(
+                                        text = if (isPositive) "+$formattedAmount" else "-$formattedAmount",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isPositive) IncomeGreen else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                                    )
+                                }
                             }
-                        )
+                        }
+
+                        items(itemsInGroup, key = { it.transaction.id }) { item ->
+                            TransactionHistoryRow(
+                                item = item,
+                                onEditClick = {
+                                    navController.navigate("add_transaction/${item.transaction.type.name}?transactionId=${item.transaction.id}")
+                                },
+                                onDeleteClick = {
+                                    viewModel.deleteTransaction(item.transaction)
+                                },
+                                onDuplicateClick = {
+                                    navController.navigate("add_transaction/${item.transaction.type.name}?transactionId=${item.transaction.id}&duplicate=true")
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -371,7 +434,7 @@ fun TransactionHistoryScreen(
                     selectedSort = SortOption.DATE_DESC
                     selectedFilterType = FilterType.ALL
                     selectedCategory = null
-                    selectedDateFilter = DateFilter.ALL
+                    selectedDateFilter = DateFilter.ACTIVE_PERIOD
                 },
                 onDismiss = { showFilterSheet = false }
             )
@@ -421,7 +484,7 @@ fun TransactionHistoryRow(
     val formatter = object {
         fun format(amount: Double): String = CurrencyUtils.formatRupees(amount)
     }
-    val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+    val timeFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
     val isExpense = item.transaction.type == TransactionType.EXPENSE
     var expanded by remember { mutableStateOf(false) }
     val isDark = isSystemInDarkTheme()
@@ -474,7 +537,7 @@ fun TransactionHistoryRow(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "${item.category?.name ?: "Unknown"} • ${dateFormat.format(Date(item.transaction.date))}",
+                    text = "${item.category?.name ?: "Unknown"} • ${timeFormat.format(Date(item.transaction.date))}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -608,7 +671,7 @@ fun FilterBottomSheetContent(
                     val hasFilter = when (tab) {
                         FilterTab.SORT -> selectedSort != SortOption.DATE_DESC
                         FilterTab.TYPE -> selectedFilterType != FilterType.ALL
-                        FilterTab.DATE -> selectedDateFilter != DateFilter.ALL
+                        FilterTab.DATE -> selectedDateFilter != DateFilter.ACTIVE_PERIOD
                         FilterTab.CATEGORY -> selectedCategory != null
                     }
 

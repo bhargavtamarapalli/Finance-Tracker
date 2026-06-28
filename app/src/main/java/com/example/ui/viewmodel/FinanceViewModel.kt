@@ -22,12 +22,21 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.UUID
+import java.text.SimpleDateFormat
+import java.util.Locale
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 
 enum class AppTheme {
     LIGHT, DARK, SYSTEM
+}
+
+enum class TimePeriod(val displayName: String) {
+    DAY("Day"),
+    WEEK("Week"),
+    MONTH("Month"),
+    YEAR("Year")
 }
 
 class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() {
@@ -86,6 +95,275 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     )
 
     // Summary stats
+    private val _selectedTimePeriod = MutableStateFlow(TimePeriod.MONTH)
+    val selectedTimePeriod: StateFlow<TimePeriod> = _selectedTimePeriod.asStateFlow()
+
+    private val _activeDate = MutableStateFlow(System.currentTimeMillis())
+    val activeDate: StateFlow<Long> = _activeDate.asStateFlow()
+
+    fun setTimePeriod(period: TimePeriod) {
+        _selectedTimePeriod.value = period
+        // Reset active date to now when changing period to keep it intuitive
+        _activeDate.value = System.currentTimeMillis()
+    }
+
+    fun setDateDirectly(dateInMillis: Long) {
+        val todayMaxCal = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
+        }
+        if (dateInMillis <= todayMaxCal.timeInMillis) {
+            _activeDate.value = dateInMillis
+        }
+    }
+
+    fun moveToPreviousPeriod() {
+        val cal = Calendar.getInstance().apply { timeInMillis = _activeDate.value }
+        when (_selectedTimePeriod.value) {
+            TimePeriod.DAY -> cal.add(Calendar.DATE, -1)
+            TimePeriod.WEEK -> cal.add(Calendar.DATE, -7)
+            TimePeriod.MONTH -> cal.add(Calendar.MONTH, -1)
+            TimePeriod.YEAR -> cal.add(Calendar.YEAR, -1)
+        }
+        _activeDate.value = cal.timeInMillis
+    }
+
+    fun moveToNextPeriod() {
+        val cal = Calendar.getInstance().apply { timeInMillis = _activeDate.value }
+        val nextCal = Calendar.getInstance().apply { timeInMillis = _activeDate.value }
+        val today = Calendar.getInstance()
+        when (_selectedTimePeriod.value) {
+            TimePeriod.DAY -> nextCal.add(Calendar.DATE, 1)
+            TimePeriod.WEEK -> nextCal.add(Calendar.DATE, 7)
+            TimePeriod.MONTH -> nextCal.add(Calendar.MONTH, 1)
+            TimePeriod.YEAR -> nextCal.add(Calendar.YEAR, 1)
+        }
+
+        val isFuture = when (_selectedTimePeriod.value) {
+            TimePeriod.DAY -> {
+                val dayStart = Calendar.getInstance().apply {
+                    timeInMillis = nextCal.timeInMillis
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                val todayStart = Calendar.getInstance().apply {
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                dayStart.timeInMillis > todayStart.timeInMillis
+            }
+            TimePeriod.WEEK -> {
+                val nextWeekStart = Calendar.getInstance().apply {
+                    timeInMillis = nextCal.timeInMillis
+                    set(Calendar.DAY_OF_WEEK, firstDayOfWeek)
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                val todayWeekStart = Calendar.getInstance().apply {
+                    set(Calendar.DAY_OF_WEEK, firstDayOfWeek)
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                nextWeekStart.timeInMillis > todayWeekStart.timeInMillis
+            }
+            TimePeriod.MONTH -> {
+                val nextYear = nextCal.get(Calendar.YEAR)
+                val nextMonth = nextCal.get(Calendar.MONTH)
+                val currentYear = today.get(Calendar.YEAR)
+                val currentMonth = today.get(Calendar.MONTH)
+                nextYear > currentYear || (nextYear == currentYear && nextMonth > currentMonth)
+            }
+            TimePeriod.YEAR -> {
+                val nextYear = nextCal.get(Calendar.YEAR)
+                val currentYear = today.get(Calendar.YEAR)
+                nextYear > currentYear
+            }
+        }
+
+        if (!isFuture) {
+            _activeDate.value = nextCal.timeInMillis
+        }
+    }
+
+    val isNextPeriodEnabled = kotlinx.coroutines.flow.combine(
+        _selectedTimePeriod,
+        _activeDate
+    ) { period, activeTime ->
+        val nextCal = Calendar.getInstance().apply { timeInMillis = activeTime }
+        val today = Calendar.getInstance()
+        when (period) {
+            TimePeriod.DAY -> {
+                nextCal.add(Calendar.DATE, 1)
+                val dayStart = Calendar.getInstance().apply {
+                    timeInMillis = nextCal.timeInMillis
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                val todayStart = Calendar.getInstance().apply {
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                dayStart.timeInMillis <= todayStart.timeInMillis
+            }
+            TimePeriod.WEEK -> {
+                nextCal.add(Calendar.DATE, 7)
+                val nextWeekStart = Calendar.getInstance().apply {
+                    timeInMillis = nextCal.timeInMillis
+                    set(Calendar.DAY_OF_WEEK, firstDayOfWeek)
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                val todayWeekStart = Calendar.getInstance().apply {
+                    set(Calendar.DAY_OF_WEEK, firstDayOfWeek)
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                nextWeekStart.timeInMillis <= todayWeekStart.timeInMillis
+            }
+            TimePeriod.MONTH -> {
+                nextCal.add(Calendar.MONTH, 1)
+                val nextYear = nextCal.get(Calendar.YEAR)
+                val nextMonth = nextCal.get(Calendar.MONTH)
+                val currentYear = today.get(Calendar.YEAR)
+                val currentMonth = today.get(Calendar.MONTH)
+                nextYear < currentYear || (nextYear == currentYear && nextMonth <= currentMonth)
+            }
+            TimePeriod.YEAR -> {
+                nextCal.add(Calendar.YEAR, 1)
+                val nextYear = nextCal.get(Calendar.YEAR)
+                val currentYear = today.get(Calendar.YEAR)
+                nextYear <= currentYear
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val periodRange = kotlinx.coroutines.flow.combine(
+        _selectedTimePeriod,
+        _activeDate
+    ) { period, activeTime ->
+        val startCal = Calendar.getInstance().apply { timeInMillis = activeTime }
+        val endCal = Calendar.getInstance().apply { timeInMillis = activeTime }
+
+        when (period) {
+            TimePeriod.DAY -> {
+                startCal.set(Calendar.HOUR_OF_DAY, 0)
+                startCal.set(Calendar.MINUTE, 0)
+                startCal.set(Calendar.SECOND, 0)
+                startCal.set(Calendar.MILLISECOND, 0)
+
+                endCal.set(Calendar.HOUR_OF_DAY, 23)
+                endCal.set(Calendar.MINUTE, 59)
+                endCal.set(Calendar.SECOND, 59)
+                endCal.set(Calendar.MILLISECOND, 999)
+            }
+            TimePeriod.WEEK -> {
+                // Set to start of week
+                startCal.set(Calendar.DAY_OF_WEEK, startCal.firstDayOfWeek)
+                startCal.set(Calendar.HOUR_OF_DAY, 0)
+                startCal.set(Calendar.MINUTE, 0)
+                startCal.set(Calendar.SECOND, 0)
+                startCal.set(Calendar.MILLISECOND, 0)
+
+                endCal.timeInMillis = startCal.timeInMillis
+                endCal.add(Calendar.DATE, 6)
+                endCal.set(Calendar.HOUR_OF_DAY, 23)
+                endCal.set(Calendar.MINUTE, 59)
+                endCal.set(Calendar.SECOND, 59)
+                endCal.set(Calendar.MILLISECOND, 999)
+            }
+            TimePeriod.MONTH -> {
+                startCal.set(Calendar.DAY_OF_MONTH, 1)
+                startCal.set(Calendar.HOUR_OF_DAY, 0)
+                startCal.set(Calendar.MINUTE, 0)
+                startCal.set(Calendar.SECOND, 0)
+                startCal.set(Calendar.MILLISECOND, 0)
+
+                endCal.timeInMillis = startCal.timeInMillis
+                endCal.set(Calendar.DAY_OF_MONTH, endCal.getActualMaximum(Calendar.DAY_OF_MONTH))
+                endCal.set(Calendar.HOUR_OF_DAY, 23)
+                endCal.set(Calendar.MINUTE, 59)
+                endCal.set(Calendar.SECOND, 59)
+                endCal.set(Calendar.MILLISECOND, 999)
+            }
+            TimePeriod.YEAR -> {
+                startCal.set(Calendar.DAY_OF_YEAR, 1)
+                startCal.set(Calendar.HOUR_OF_DAY, 0)
+                startCal.set(Calendar.MINUTE, 0)
+                startCal.set(Calendar.SECOND, 0)
+                startCal.set(Calendar.MILLISECOND, 0)
+
+                endCal.timeInMillis = startCal.timeInMillis
+                endCal.set(Calendar.MONTH, Calendar.DECEMBER)
+                endCal.set(Calendar.DAY_OF_MONTH, 31)
+                endCal.set(Calendar.HOUR_OF_DAY, 23)
+                endCal.set(Calendar.MINUTE, 59)
+                endCal.set(Calendar.SECOND, 59)
+                endCal.set(Calendar.MILLISECOND, 999)
+            }
+        }
+        startCal.timeInMillis to endCal.timeInMillis
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L to 0L)
+
+    val periodLabel = kotlinx.coroutines.flow.combine(
+        _selectedTimePeriod,
+        _activeDate
+    ) { period, activeTime ->
+        val cal = Calendar.getInstance().apply { timeInMillis = activeTime }
+        when (period) {
+            TimePeriod.DAY -> {
+                val sdf = SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault())
+                sdf.format(cal.time)
+            }
+            TimePeriod.WEEK -> {
+                val startCal = Calendar.getInstance().apply {
+                    timeInMillis = activeTime
+                    set(Calendar.DAY_OF_WEEK, firstDayOfWeek)
+                }
+                val endCal = Calendar.getInstance().apply {
+                    timeInMillis = startCal.timeInMillis
+                    add(Calendar.DATE, 6)
+                }
+                val sdf = SimpleDateFormat("MMM dd", Locale.getDefault())
+                val yearSdf = SimpleDateFormat("yyyy", Locale.getDefault())
+                "${sdf.format(startCal.time)} - ${sdf.format(endCal.time)}, ${yearSdf.format(endCal.time)}"
+            }
+            TimePeriod.MONTH -> {
+                val sdf = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
+                sdf.format(cal.time)
+            }
+            TimePeriod.YEAR -> {
+                val sdf = SimpleDateFormat("yyyy", Locale.getDefault())
+                sdf.format(cal.time)
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
+
+    val periodTransactions = kotlinx.coroutines.flow.combine(
+        allTransactions,
+        periodRange
+    ) { transactions, range ->
+        val (start, end) = range
+        transactions.filter { it.transaction.date in start..end }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val currentMonthTransactions = repository.allTransactions.map { transactions ->
         val currentMonth = Calendar.getInstance().get(Calendar.MONTH)
         val currentYear = Calendar.getInstance().get(Calendar.YEAR)

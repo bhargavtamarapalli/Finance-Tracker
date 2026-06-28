@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -21,8 +22,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.example.ui.theme.AppDimens
 import com.example.ui.theme.AppShapes
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.window.Dialog
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
+import java.util.Date
+
 
 /**
  * Primary central button for the application, following Material 3 guidelines and app theme dimensions.
@@ -333,3 +349,635 @@ fun FinanceCard(
         )
     }
 }
+
+/**
+ * Modern Segmented Control for selecting Time Horizon (Day, Week, Month, Year).
+ */
+@Composable
+fun TimePeriodSelector(
+    selectedPeriod: com.example.ui.viewmodel.TimePeriod,
+    onPeriodSelected: (com.example.ui.viewmodel.TimePeriod) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(44.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(3.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            com.example.ui.viewmodel.TimePeriod.values().forEach { period ->
+                val isSelected = selectedPeriod == period
+                val backgroundAlpha by animateFloatAsState(
+                    targetValue = if (isSelected) 1f else 0f,
+                    animationSpec = tween(durationMillis = 200),
+                    label = "bgAlpha"
+                )
+                
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(
+                            if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = backgroundAlpha)
+                            else Color.Transparent
+                        )
+                        .clickable { onPeriodSelected(period) }
+                        .testTag("time_period_${period.name.lowercase()}"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = period.displayName,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Premium Period Navigator for jumping between days/weeks/months/years.
+ */
+@Composable
+fun PeriodNavigator(
+    periodLabel: String,
+    onPreviousClick: () -> Unit,
+    onNextClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onLabelClick: (() -> Unit)? = null,
+    isNextEnabled: Boolean = true
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .padding(horizontal = AppDimens.paddingSmall),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(
+            onClick = onPreviousClick,
+            modifier = Modifier
+                .size(40.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    shape = CircleShape
+                )
+                .testTag("period_nav_prev")
+        ) {
+            Icon(
+                imageVector = Icons.Default.ChevronLeft,
+                contentDescription = "Previous Period",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        val labelModifier = if (onLabelClick != null) {
+            Modifier
+                .weight(1f)
+                .padding(horizontal = AppDimens.paddingSmall)
+                .clip(RoundedCornerShape(8.dp))
+                .clickable { onLabelClick() }
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
+                .padding(vertical = 6.dp, horizontal = 12.dp)
+                .testTag("period_nav_label_clickable")
+        } else {
+            Modifier
+                .weight(1f)
+                .padding(horizontal = AppDimens.paddingSmall)
+                .testTag("period_nav_label")
+        }
+
+        Row(
+            modifier = labelModifier,
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = periodLabel,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
+            )
+            if (onLabelClick != null) {
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = "Select date",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        IconButton(
+            onClick = onNextClick,
+            enabled = isNextEnabled,
+            modifier = Modifier
+                .size(40.dp)
+                .background(
+                    color = if (isNextEnabled) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f),
+                    shape = CircleShape
+                )
+                .testTag("period_nav_next")
+        ) {
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = "Next Period",
+                tint = if (isNextEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                modifier = Modifier.size(24.dp)
+            )
+        }
+    }
+}
+
+/**
+ * Premium Custom Period Picker Dialog for direct date/year selection.
+ */
+@Composable
+fun CustomPeriodPickerDialog(
+    timePeriod: com.example.ui.viewmodel.TimePeriod,
+    activeDate: Long,
+    onDateSelected: (Long) -> Unit,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = AppShapes.roundedCardLarge,
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(AppDimens.paddingNormal)
+                .testTag("period_picker_dialog")
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(AppDimens.paddingNormal)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = when (timePeriod) {
+                        com.example.ui.viewmodel.TimePeriod.DAY -> "Select Date"
+                        com.example.ui.viewmodel.TimePeriod.WEEK -> "Select Week"
+                        com.example.ui.viewmodel.TimePeriod.MONTH -> "Select Month & Year"
+                        com.example.ui.viewmodel.TimePeriod.YEAR -> "Select Year"
+                    },
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = AppDimens.paddingNormal)
+                )
+
+                when (timePeriod) {
+                    com.example.ui.viewmodel.TimePeriod.DAY,
+                    com.example.ui.viewmodel.TimePeriod.WEEK -> {
+                        DayOrWeekPickerContent(
+                            initialDate = activeDate,
+                            isWeekPicker = (timePeriod == com.example.ui.viewmodel.TimePeriod.WEEK),
+                            onDateSelected = {
+                                onDateSelected(it)
+                                onDismiss()
+                            }
+                        )
+                    }
+                    com.example.ui.viewmodel.TimePeriod.MONTH -> {
+                        MonthPickerContent(
+                            initialDate = activeDate,
+                            onMonthSelected = {
+                                onDateSelected(it)
+                                onDismiss()
+                            }
+                        )
+                    }
+                    com.example.ui.viewmodel.TimePeriod.YEAR -> {
+                        YearPickerContent(
+                            initialDate = activeDate,
+                            onYearSelected = {
+                                onDateSelected(it)
+                                onDismiss()
+                            }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(AppDimens.paddingNormal))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    FinanceTextButton(
+                        text = "Cancel",
+                        onClick = onDismiss
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun YearPickerContent(
+    initialDate: Long,
+    onYearSelected: (Long) -> Unit
+) {
+    val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+    val years = (currentYear - 5)..(currentYear + 5)
+    val selectedYear = Calendar.getInstance().apply { timeInMillis = initialDate }.get(Calendar.YEAR)
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        for (row in years.chunked(3)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                for (year in row) {
+                    val isSelected = year == selectedYear
+                    val isFutureYear = year > currentYear
+                    Box(
+                        modifier = if (isFutureYear) {
+                            Modifier
+                                .weight(1f)
+                                .height(44.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                .padding(4.dp)
+                        } else {
+                            Modifier
+                                .weight(1f)
+                                .height(44.dp)
+                                .background(
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                .clickable {
+                                    val cal = Calendar.getInstance().apply {
+                                        timeInMillis = initialDate
+                                        set(Calendar.YEAR, year)
+                                    }
+                                    onYearSelected(cal.timeInMillis)
+                                }
+                                .padding(4.dp)
+                        },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = year.toString(),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = when {
+                                isFutureYear -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                isSelected -> MaterialTheme.colorScheme.onPrimary
+                                else -> MaterialTheme.colorScheme.onSurface
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MonthPickerContent(
+    initialDate: Long,
+    onMonthSelected: (Long) -> Unit
+) {
+    var calendar by remember {
+        mutableStateOf(Calendar.getInstance().apply { timeInMillis = initialDate })
+    }
+    val currentYear = calendar.get(Calendar.YEAR)
+    val currentMonth = calendar.get(Calendar.MONTH)
+
+    val realCal = Calendar.getInstance()
+    val realYear = realCal.get(Calendar.YEAR)
+    val realMonth = realCal.get(Calendar.MONTH)
+
+    val monthNames = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        // Year Navigation Row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = {
+                val newCal = Calendar.getInstance().apply {
+                    timeInMillis = calendar.timeInMillis
+                    add(Calendar.YEAR, -1)
+                }
+                calendar = newCal
+            }) {
+                Icon(Icons.Default.ChevronLeft, contentDescription = "Previous Year")
+            }
+            Text(
+                text = currentYear.toString(),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            IconButton(
+                onClick = {
+                    val newCal = Calendar.getInstance().apply {
+                        timeInMillis = calendar.timeInMillis
+                        add(Calendar.YEAR, 1)
+                    }
+                    calendar = newCal
+                },
+                enabled = currentYear < realYear
+            ) {
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = "Next Year",
+                    tint = if (currentYear < realYear) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Months 3x4 Grid
+        for (rowIdx in 0..3) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                for (colIdx in 0..2) {
+                    val monthIdx = rowIdx * 3 + colIdx
+                    val isSelected = monthIdx == currentMonth
+                    val monthName = monthNames[monthIdx]
+                    val isMonthFuture = (currentYear > realYear) || (currentYear == realYear && monthIdx > realMonth)
+
+                    Box(
+                        modifier = if (isMonthFuture) {
+                            Modifier
+                                .weight(1f)
+                                .height(44.dp)
+                                .padding(vertical = 4.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                        } else {
+                            Modifier
+                                .weight(1f)
+                                .height(44.dp)
+                                .padding(vertical = 4.dp)
+                                .background(
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                .clickable {
+                                    val selectedCal = Calendar.getInstance().apply {
+                                        timeInMillis = calendar.timeInMillis
+                                        set(Calendar.MONTH, monthIdx)
+                                    }
+                                    onMonthSelected(selectedCal.timeInMillis)
+                                }
+                        },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = monthName,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = when {
+                                isMonthFuture -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                isSelected -> MaterialTheme.colorScheme.onPrimary
+                                else -> MaterialTheme.colorScheme.onSurface
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DayOrWeekPickerContent(
+    initialDate: Long,
+    isWeekPicker: Boolean,
+    onDateSelected: (Long) -> Unit
+) {
+    var calendar by remember {
+        mutableStateOf(Calendar.getInstance().apply { timeInMillis = initialDate })
+    }
+    
+    val selectedCal = Calendar.getInstance().apply { timeInMillis = initialDate }
+    
+    // Calculate the start and end of week if isWeekPicker
+    val weekStart = remember(initialDate) {
+        Calendar.getInstance().apply {
+            timeInMillis = initialDate
+            set(Calendar.DAY_OF_WEEK, firstDayOfWeek)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+    }
+    val weekEnd = remember(initialDate) {
+        Calendar.getInstance().apply {
+            timeInMillis = weekStart
+            add(Calendar.DATE, 6)
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
+        }.timeInMillis
+    }
+
+    val monthYearLabel = remember(calendar) {
+        val sdf = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
+        sdf.format(calendar.time)
+    }
+
+    val realCal = Calendar.getInstance()
+    val realYear = realCal.get(Calendar.YEAR)
+    val realMonth = realCal.get(Calendar.MONTH)
+    val canGoToNextMonth = calendar.get(Calendar.YEAR) < realYear || 
+            (calendar.get(Calendar.YEAR) == realYear && calendar.get(Calendar.MONTH) < realMonth)
+
+    val todayMaxCal = Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, 23)
+        set(Calendar.MINUTE, 59)
+        set(Calendar.SECOND, 59)
+        set(Calendar.MILLISECOND, 999)
+    }
+
+    // Get calendar days for the active month
+    val daysList = remember(calendar) {
+        val list = mutableListOf<Calendar?>()
+        val tempCal = Calendar.getInstance().apply {
+            timeInMillis = calendar.timeInMillis
+            set(Calendar.DAY_OF_MONTH, 1)
+        }
+        
+        // Days before month start (padding)
+        val firstDayOfWeekIndex = tempCal.get(Calendar.DAY_OF_WEEK)
+        val paddingDays = firstDayOfWeekIndex - tempCal.firstDayOfWeek
+        val adjustedPadding = if (paddingDays < 0) paddingDays + 7 else paddingDays
+        
+        for (i in 0 until adjustedPadding) {
+            list.add(null)
+        }
+        
+        // Days of current month
+        val daysInMonth = tempCal.getActualMaximum(Calendar.DAY_OF_MONTH)
+        for (day in 1..daysInMonth) {
+            val dayCal = Calendar.getInstance().apply {
+                timeInMillis = calendar.timeInMillis
+                set(Calendar.DAY_OF_MONTH, day)
+            }
+            list.add(dayCal)
+        }
+        
+        // Padding at the end to make complete rows of 7
+        while (list.size % 7 != 0) {
+            list.add(null)
+        }
+        list
+    }
+
+    val weekdays = listOf("S", "M", "T", "W", "T", "F", "S")
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        // Month/Year navigation header
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = {
+                val newCal = Calendar.getInstance().apply {
+                    timeInMillis = calendar.timeInMillis
+                    add(Calendar.MONTH, -1)
+                }
+                calendar = newCal
+            }) {
+                Icon(Icons.Default.ChevronLeft, contentDescription = "Previous Month")
+            }
+            Text(
+                text = monthYearLabel,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            IconButton(
+                onClick = {
+                    val newCal = Calendar.getInstance().apply {
+                        timeInMillis = calendar.timeInMillis
+                        add(Calendar.MONTH, 1)
+                    }
+                    calendar = newCal
+                },
+                enabled = canGoToNextMonth
+            ) {
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = "Next Month",
+                    tint = if (canGoToNextMonth) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Weekday labels
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceAround
+        ) {
+            for (day in weekdays) {
+                Text(
+                    text = day,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.width(36.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // Days grid
+        for (row in daysList.chunked(7)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround
+            ) {
+                for (dayCal in row) {
+                    if (dayCal != null) {
+                        val isDaySelected = !isWeekPicker && 
+                                dayCal.get(Calendar.YEAR) == selectedCal.get(Calendar.YEAR) &&
+                                dayCal.get(Calendar.DAY_OF_YEAR) == selectedCal.get(Calendar.DAY_OF_YEAR)
+
+                        val isDayInSelectedWeek = isWeekPicker && 
+                                dayCal.timeInMillis in weekStart..weekEnd
+
+                        val isFutureDay = dayCal.timeInMillis > todayMaxCal.timeInMillis
+
+                        val backgroundColor = when {
+                            isDaySelected -> MaterialTheme.colorScheme.primary
+                            isDayInSelectedWeek -> MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+                            else -> Color.Transparent
+                        }
+
+                        val textColor = when {
+                            isFutureDay -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            isDaySelected -> MaterialTheme.colorScheme.onPrimary
+                            isDayInSelectedWeek -> MaterialTheme.colorScheme.primary
+                            else -> MaterialTheme.colorScheme.onSurface
+                        }
+
+                        Box(
+                            modifier = if (isFutureDay) {
+                                Modifier.size(36.dp)
+                            } else {
+                                Modifier
+                                    .size(36.dp)
+                                    .background(backgroundColor, shape = CircleShape)
+                                    .clickable {
+                                        onDateSelected(dayCal.timeInMillis)
+                                    }
+                            },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = dayCal.get(Calendar.DAY_OF_MONTH).toString(),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = if (isDaySelected || isDayInSelectedWeek) FontWeight.Bold else FontWeight.Normal,
+                                color = textColor
+                            )
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.size(36.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+

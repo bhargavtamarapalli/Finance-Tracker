@@ -172,6 +172,33 @@ class AnalyticsScreenTest {
     }
 
     @Test
+    fun analyticsScreen_displaysIndividualSpendsOnCategorySelection() {
+        composeTestRule.setContent {
+            FinanceTrackerTheme {
+                AnalyticsScreen(
+                    viewModel = viewModel,
+                    onMenuClick = {}
+                )
+            }
+        }
+
+        // Wait for Room background query to emit and populate UI
+        composeTestRule.waitUntil(5000) {
+            composeTestRule.onAllNodesWithText("Groceries").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        // Assert that the specific spend (Reliance Smart Supermarket) is NOT displayed yet
+        composeTestRule.onNodeWithText("Reliance Smart Supermarket").assertDoesNotExist()
+
+        // Select the Groceries category breakdown row
+        composeTestRule.onNodeWithTag("category_row_Groceries").performClick()
+        composeTestRule.waitForIdle()
+
+        // Assert that the specific spend (Reliance Smart Supermarket) is now displayed
+        composeTestRule.onNodeWithText("Reliance Smart Supermarket").assertIsDisplayed()
+    }
+
+    @Test
     fun analyticsScreen_screenshot() {
         composeTestRule.setContent {
             FinanceTrackerTheme {
