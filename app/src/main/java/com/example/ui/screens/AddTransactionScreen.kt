@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -14,6 +15,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -80,6 +83,9 @@ fun AddTransactionScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
 
+    // Focus manager for keyboard actions
+    val focusManager = LocalFocusManager.current
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -134,6 +140,11 @@ fun AddTransactionScreen(
                 },
                 label = { Text("Amount") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                    onDone = { focusManager.clearFocus() }
+                ),
+                singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 isError = amountError != null,
                 supportingText = amountError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } }
@@ -144,6 +155,10 @@ fun AddTransactionScreen(
                 onValueChange = { source = it },
                 label = { Text(if (type == TransactionType.EXPENSE) "Payee / Store" else "Source / Employer") },
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                ),
+                singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -242,6 +257,9 @@ fun AddTransactionScreen(
                 onValueChange = { notes = it },
                 label = { Text("Notes (Optional)") },
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(
+                    onDone = { focusManager.clearFocus() }
+                ),
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3
             )
