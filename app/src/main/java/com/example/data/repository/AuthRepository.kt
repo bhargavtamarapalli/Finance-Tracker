@@ -179,8 +179,7 @@ class AuthRepository(private val context: Context) {
             val isPasswordValid = if (savedSalt != null && savedHash != null) {
                 PasswordHasher.verifyPassword(password, savedSalt, savedHash)
             } else {
-                // Backward compatible fallback for the initial pre-configured user
-                password == "password123"
+                false
             }
             
             if (email == savedEmail && isPasswordValid) {
