@@ -15,6 +15,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -131,7 +133,7 @@ fun AddTransactionScreen(
                     if (amountError != null) amountError = null
                 },
                 label = { Text("Amount") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
                 modifier = Modifier.fillMaxWidth(),
                 isError = amountError != null,
                 supportingText = amountError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } }
@@ -141,6 +143,7 @@ fun AddTransactionScreen(
                 value = source,
                 onValueChange = { source = it },
                 label = { Text(if (type == TransactionType.EXPENSE) "Payee / Store" else "Source / Employer") },
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -238,6 +241,7 @@ fun AddTransactionScreen(
                 value = notes,
                 onValueChange = { notes = it },
                 label = { Text("Notes (Optional)") },
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3
             )
