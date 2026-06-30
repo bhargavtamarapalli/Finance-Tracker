@@ -151,9 +151,7 @@ class FinanceRepository(
                 
                 // Clear existing and overwrite/update database
                 dao.insertCategories(payload.categories)
-                payload.transactions.forEach {
-                    dao.insertTransaction(it)
-                }
+                dao.insertTransactions(payload.transactions)
                 
                 // Save to local JSON files to keep fully in sync
                 jsonDataManager.saveCategories(dao.getAllCategoriesOnce())
@@ -189,9 +187,7 @@ class FinanceRepository(
                 ?: return@withContext Result.failure(Exception("Failed to parse local backup file."))
             
             dao.insertCategories(payload.categories)
-            payload.transactions.forEach {
-                dao.insertTransaction(it)
-            }
+            dao.insertTransactions(payload.transactions)
             
             jsonDataManager.saveCategories(dao.getAllCategoriesOnce())
             jsonDataManager.saveTransactions(dao.getAllTransactionsOnce())
