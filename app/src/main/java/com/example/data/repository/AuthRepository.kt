@@ -78,7 +78,7 @@ class AuthRepository(private val context: Context) {
                 useDemoFallback = true
             }
         } catch (e: Exception) {
-            Log.e("AuthRepository", "Failed to initialize Firebase Auth, using Demo Fallback", e)
+            Log.e("AuthRepository", "Failed to initialize Firebase Auth, using Demo Fallback")
             useDemoFallback = true
         }
     }
@@ -162,7 +162,7 @@ class AuthRepository(private val context: Context) {
             _currentUserSession.value = session
             return session
         } catch (e: Exception) {
-            Log.e("AuthRepository", "Sign up failed", e)
+            Log.e("AuthRepository", "Sign up failed")
             throw e
         }
     }
@@ -214,7 +214,7 @@ class AuthRepository(private val context: Context) {
             _currentUserSession.value = session
             return session
         } catch (e: Exception) {
-            Log.e("AuthRepository", "Sign in failed", e)
+            Log.e("AuthRepository", "Sign in failed")
             throw e
         }
     }
@@ -228,7 +228,7 @@ class AuthRepository(private val context: Context) {
         try {
             auth!!.sendPasswordResetEmail(email).await()
         } catch (e: Exception) {
-            Log.e("AuthRepository", "Password reset failed", e)
+            Log.e("AuthRepository", "Password reset failed")
             throw e
         }
     }
@@ -281,7 +281,7 @@ class AuthRepository(private val context: Context) {
             user.updateProfile(profileUpdates).await()
             _currentUserSession.value = _currentUserSession.value?.copy(name = newName)
         } catch (e: Exception) {
-            Log.e("AuthRepository", "Failed to update profile name", e)
+            Log.e("AuthRepository", "Failed to update profile name")
             throw e
         }
     }
@@ -298,7 +298,7 @@ class AuthRepository(private val context: Context) {
             user.updateEmail(newEmail).await()
             _currentUserSession.value = _currentUserSession.value?.copy(email = newEmail)
         } catch (e: Exception) {
-            Log.e("AuthRepository", "Failed to update profile email", e)
+            Log.e("AuthRepository", "Failed to update profile email")
             throw e
         }
     }
