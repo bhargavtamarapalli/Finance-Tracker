@@ -114,8 +114,8 @@ fun AnalyticsScreen(
                 periodTransactions
                     .filter { it.transaction.type == TransactionType.EXPENSE }
                     .forEach { tx ->
-                        val cal = java.util.Calendar.getInstance().apply { timeInMillis = tx.transaction.date }
-                        val hour = cal.get(java.util.Calendar.HOUR_OF_DAY)
+                        calInstance.timeInMillis = tx.transaction.date
+                        val hour = calInstance.get(java.util.Calendar.HOUR_OF_DAY)
                         map[hour] = (map[hour] ?: 0.0) + tx.transaction.amount
                     }
             }
@@ -126,8 +126,8 @@ fun AnalyticsScreen(
                 periodTransactions
                     .filter { it.transaction.type == TransactionType.EXPENSE }
                     .forEach { tx ->
-                        val cal = java.util.Calendar.getInstance().apply { timeInMillis = tx.transaction.date }
-                        val day = cal.get(java.util.Calendar.DAY_OF_WEEK)
+                        calInstance.timeInMillis = tx.transaction.date
+                        val day = calInstance.get(java.util.Calendar.DAY_OF_WEEK)
                         map[day] = (map[day] ?: 0.0) + tx.transaction.amount
                     }
             }
@@ -139,8 +139,8 @@ fun AnalyticsScreen(
                 periodTransactions
                     .filter { it.transaction.type == TransactionType.EXPENSE }
                     .forEach { tx ->
-                        val cal = java.util.Calendar.getInstance().apply { timeInMillis = tx.transaction.date }
-                        val day = cal.get(java.util.Calendar.DAY_OF_MONTH)
+                        calInstance.timeInMillis = tx.transaction.date
+                        val day = calInstance.get(java.util.Calendar.DAY_OF_MONTH)
                         map[day] = (map[day] ?: 0.0) + tx.transaction.amount
                     }
             }
@@ -151,8 +151,8 @@ fun AnalyticsScreen(
                 periodTransactions
                     .filter { it.transaction.type == TransactionType.EXPENSE }
                     .forEach { tx ->
-                        val cal = java.util.Calendar.getInstance().apply { timeInMillis = tx.transaction.date }
-                        val month = cal.get(java.util.Calendar.MONTH)
+                        calInstance.timeInMillis = tx.transaction.date
+                        val month = calInstance.get(java.util.Calendar.MONTH)
                         map[month] = (map[month] ?: 0.0) + tx.transaction.amount
                     }
             }
