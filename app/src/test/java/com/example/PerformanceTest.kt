@@ -3,7 +3,9 @@ package com.example
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.example.data.local.FinanceDao
 import com.example.data.local.AppDatabase
+import com.example.data.model.Category
 import com.example.data.model.TransactionEntity
 import com.example.data.model.TransactionType
 import kotlinx.coroutines.runBlocking
@@ -11,63 +13,61 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 import kotlin.system.measureTimeMillis
+import org.junit.Assert.assertEquals
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36])
 class PerformanceTest {
 
     private lateinit var db: AppDatabase
+    private lateinit var dao: FinanceDao
 
     @Before
-    fun setup() {
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
-            .allowMainThreadQueries()
-            .build()
+    fun createDb() {
+        val context = RuntimeEnvironment.getApplication()
+        db = Room.inMemoryDatabaseBuilder(
+            context, AppDatabase::class.java).allowMainThreadQueries().build()
+        dao = db.financeDao()
     }
 
     @After
-    fun teardown() {
+    fun closeDb() {
         db.close()
     }
 
     @Test
-    fun benchmarkBatchVsLoop() = runBlocking {
-        val dao = db.financeDao()
-        val numTransactions = 1000
-        val transactions = (1..numTransactions).map { i ->
+    fun benchmarkRestoreFromFirebase() = runBlocking {
+        val transactions = (1..5000).map {
             TransactionEntity(
-                id = i,
-                amount = 10.0 + i,
-                source = "Source $i",
+                id = it,
+                amount = 10.0,
+                categoryId = it % 50,
                 date = System.currentTimeMillis(),
-                categoryId = 1,
+                notes = "Note $it",
                 type = TransactionType.EXPENSE,
-                notes = "Note $i"
+                source = "Test"
             )
         }
 
-        // Measure Loop performance
-        val loopTime = measureTimeMillis {
-            transactions.forEach { dao.insertTransaction(it) }
+        val timeBaseline = measureTimeMillis {
+            transactions.forEach {
+                dao.insertTransaction(it)
+            }
         }
 
-        // Clean up
-        dao.getAllTransactionsOnce().forEach { dao.deleteTransaction(it) }
+        db.clearAllTables()
 
-        // Measure Batch performance
-        val batchTime = measureTimeMillis {
+        val timeOptimized = measureTimeMillis {
             dao.insertTransactions(transactions)
         }
 
-        println("Performance Benchmark:")
-        println("Loop Insert Time: ${loopTime}ms")
-        println("Batch Insert Time: ${batchTime}ms")
-        if (loopTime > 0) {
-            println("Improvement: ${((loopTime - batchTime).toDouble() / loopTime * 100).toInt()}%")
-        }
+        println("===============================")
+        println("Restoring ${transactions.size} transactions (forEach loop) took $timeBaseline ms")
+        println("Restoring ${transactions.size} transactions (bulk insert) took $timeOptimized ms")
+        println("===============================")
+
+        assertEquals(5000, dao.getAllTransactionsOnce().size)
     }
 }
