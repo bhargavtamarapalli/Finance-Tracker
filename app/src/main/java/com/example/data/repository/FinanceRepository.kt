@@ -98,9 +98,9 @@ class FinanceRepository(
         val transactions = dao.getAllTransactionsOnce()
         if (transactions.size <= 7) {
             // Delete existing skeleton transactions
-            transactions.forEach { dao.deleteTransaction(it) }
+            dao.deleteTransactions(transactions)
             val seededTransactions = jsonDataManager.loadTransactions()
-            seededTransactions.forEach { dao.insertTransaction(it) }
+            dao.insertTransactions(seededTransactions)
         }
     }
 
