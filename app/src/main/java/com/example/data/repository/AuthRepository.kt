@@ -18,7 +18,8 @@ data class UserSession(
     val userId: String,
     val name: String,
     val email: String,
-    val isGuest: Boolean = false
+    val isGuest: Boolean = false,
+    val role: String = if (isGuest) "GUEST" else if (email == "admin@example.com" || email.startsWith("admin")) "ADMIN" else "USER"
 )
 
 // In-place await extension to avoid needing extra library dependencies
@@ -105,7 +106,8 @@ class AuthRepository(private val context: Context) {
             } else {
                 val demoUserEmail = prefs.getString("demo_user_email", null)
                 val demoUserName = prefs.getString("demo_user_name", null)
-                if (demoUserEmail != null && useDemoFallback) {
+                val isSessionActive = prefs.getBoolean("demo_session_active", false)
+                if (demoUserEmail != null && isSessionActive && useDemoFallback) {
                     _currentUserSession.value = UserSession(
                         userId = "demo_user",
                         name = demoUserName ?: "Demo User",
@@ -132,6 +134,7 @@ class AuthRepository(private val context: Context) {
                 .putString("demo_user_salt", salt)
                 .putString("demo_user_password_hash", passwordHash)
                 .putBoolean("is_guest", false)
+                .putBoolean("demo_session_active", true)
                 .apply()
             
             val session = UserSession(
@@ -186,6 +189,7 @@ class AuthRepository(private val context: Context) {
                 prefs.edit()
                     .putString("demo_user_email", email)
                     .putBoolean("is_guest", false)
+                    .putBoolean("demo_session_active", true)
                     .apply()
                 val session = UserSession(
                     userId = "demo_user",
@@ -307,7 +311,7 @@ class AuthRepository(private val context: Context) {
         com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
             .edit()
             .putBoolean("is_guest", false)
-            .remove("demo_user_email")
+            .putBoolean("demo_session_active", false)
             .apply()
         _currentUserSession.value = null
     }

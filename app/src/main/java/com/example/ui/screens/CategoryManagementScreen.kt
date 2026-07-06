@@ -71,6 +71,24 @@ fun CategoryManagementScreen(
     val allCategories by viewModel.allCategories.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
+    CategoryManagementContent(
+        allCategories = allCategories,
+        isLoading = isLoading,
+        onBackClick = { navController.popBackStack() },
+        addCategory = { name, type, iconName -> viewModel.addCategory(name, type, iconName) },
+        updateCategory = { category -> viewModel.updateCategory(category) }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CategoryManagementContent(
+    allCategories: List<Category>,
+    isLoading: Boolean,
+    onBackClick: () -> Unit,
+    addCategory: (String, TransactionType, String) -> Unit,
+    updateCategory: (Category) -> Unit
+) {
     var selectedTab by remember { mutableStateOf(0) } // 0: Expense, 1: Income
     val type = if (selectedTab == 0) TransactionType.EXPENSE else TransactionType.INCOME
 
@@ -86,7 +104,7 @@ fun CategoryManagementScreen(
                 navigationIcon = {
                     FinanceIconButton(
                         icon = Icons.AutoMirrored.Filled.ArrowBack,
-                        onClick = { navController.popBackStack() },
+                        onClick = onBackClick,
                         contentDescription = "Back"
                     )
                 }
@@ -142,7 +160,7 @@ fun CategoryManagementScreen(
                         CategoryRowItem(
                             category = category,
                             onEditClick = { showEditDialog = category },
-                            onArchiveToggle = { viewModel.updateCategory(category.copy(isArchived = !category.isArchived)) }
+                            onArchiveToggle = { updateCategory(category.copy(isArchived = !category.isArchived)) }
                         )
                     }
                 }
@@ -156,7 +174,7 @@ fun CategoryManagementScreen(
             existingCategories = filteredCategories,
             onDismiss = { showAddDialog = false },
             onSave = { name, iconName ->
-                viewModel.addCategory(name, type, iconName)
+                addCategory(name, type, iconName)
                 showAddDialog = false
             }
         )
@@ -168,7 +186,7 @@ fun CategoryManagementScreen(
             existingCategories = filteredCategories.filter { it.id != category.id },
             onDismiss = { showEditDialog = null },
             onSave = { name ->
-                viewModel.updateCategory(category.copy(name = name))
+                updateCategory(category.copy(name = name))
                 showEditDialog = null
             }
         )

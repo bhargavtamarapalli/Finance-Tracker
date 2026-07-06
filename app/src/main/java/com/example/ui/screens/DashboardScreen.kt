@@ -77,6 +77,58 @@ fun DashboardScreen(
     val isNextPeriodEnabled by viewModel.isNextPeriodEnabled.collectAsStateWithLifecycle()
     val allTransactions by viewModel.allTransactions.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val isOnline by viewModel.isOnline.collectAsStateWithLifecycle()
+    val pendingSync by viewModel.pendingSync.collectAsStateWithLifecycle()
+
+    DashboardContent(
+        periodTransactions = periodTransactions,
+        selectedTimePeriod = selectedTimePeriod,
+        periodLabel = periodLabel,
+        activeDate = activeDate,
+        isNextPeriodEnabled = isNextPeriodEnabled,
+        allTransactions = allTransactions,
+        isLoading = isLoading,
+        isOnline = isOnline,
+        pendingSync = pendingSync,
+        userSession = userSession,
+        onMenuClick = onMenuClick,
+        onAddTransactionClick = { type -> navController.navigate("add_transaction/$type") },
+        onViewAllTransactionsClick = { navController.navigate("transactions") },
+        onEditTransactionClick = { tx -> navController.navigate("add_transaction/${tx.transaction.type}?transactionId=${tx.transaction.id}") },
+        onDuplicateTransactionClick = { tx -> navController.navigate("add_transaction/${tx.transaction.type}?transactionId=${tx.transaction.id}&duplicate=true") },
+        onPeriodSelected = { viewModel.setTimePeriod(it) },
+        onPreviousClick = { viewModel.moveToPreviousPeriod() },
+        onNextClick = { viewModel.moveToNextPeriod() },
+        onDateSelected = { viewModel.setDateDirectly(it) },
+        onDeleteTransaction = { viewModel.deleteTransaction(it.transaction) }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DashboardContent(
+    periodTransactions: List<TransactionWithCategory>,
+    selectedTimePeriod: com.example.ui.viewmodel.TimePeriod,
+    periodLabel: String,
+    activeDate: Long,
+    isNextPeriodEnabled: Boolean,
+    allTransactions: List<TransactionWithCategory>,
+    isLoading: Boolean,
+    isOnline: Boolean,
+    pendingSync: Boolean,
+    userSession: UserSession? = null,
+    onMenuClick: () -> Unit,
+    onAddTransactionClick: (String) -> Unit,
+    onViewAllTransactionsClick: () -> Unit,
+    onEditTransactionClick: (TransactionWithCategory) -> Unit,
+    onDuplicateTransactionClick: (TransactionWithCategory) -> Unit,
+    onPeriodSelected: (com.example.ui.viewmodel.TimePeriod) -> Unit,
+    onPreviousClick: () -> Unit,
+    onNextClick: () -> Unit,
+    onDateSelected: (Long) -> Unit,
+    onDeleteTransaction: (TransactionWithCategory) -> Unit
+) {
+
     var selectedTransactionForDetails by remember { mutableStateOf<TransactionWithCategory?>(null) }
     var showDatePicker by remember { mutableStateOf(false) }
 
@@ -144,8 +196,7 @@ fun DashboardScreen(
                 // Elegant Sleek Header Block
             item {
                 val isDark = isSystemInDarkTheme()
-                val isOnline by viewModel.isOnline.collectAsStateWithLifecycle()
-                val pendingSync by viewModel.pendingSync.collectAsStateWithLifecycle()
+
 
                 Row(
                     modifier = Modifier
@@ -267,14 +318,14 @@ fun DashboardScreen(
                 ) {
                     TimePeriodSelector(
                         selectedPeriod = selectedTimePeriod,
-                        onPeriodSelected = { viewModel.setTimePeriod(it) },
+                        onPeriodSelected = { onPeriodSelected(it) },
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
                     PeriodNavigator(
                         periodLabel = periodLabel,
-                        onPreviousClick = { viewModel.moveToPreviousPeriod() },
-                        onNextClick = { viewModel.moveToNextPeriod() },
+                        onPreviousClick = { onPreviousClick() },
+                        onNextClick = { onNextClick() },
                         modifier = Modifier.fillMaxWidth(),
                         onLabelClick = { showDatePicker = true },
                         isNextEnabled = isNextPeriodEnabled
@@ -283,7 +334,7 @@ fun DashboardScreen(
                         CustomPeriodPickerDialog(
                             timePeriod = selectedTimePeriod,
                             activeDate = activeDate,
-                            onDateSelected = { viewModel.setDateDirectly(it) },
+                            onDateSelected = { onDateSelected(it) },
                             onDismiss = { showDatePicker = false }
                         )
                     }
@@ -325,7 +376,7 @@ fun DashboardScreen(
                 ) {
                     FinanceButton(
                         text = "Add Expense",
-                        onClick = { navController.navigate("add_transaction/EXPENSE") },
+                        onClick = { onAddTransactionClick("EXPENSE") },
                         modifier = Modifier.weight(1f),
                         icon = Icons.Default.Add,
                         containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f),
@@ -334,7 +385,7 @@ fun DashboardScreen(
                     )
                     FinanceButton(
                         text = "Add Income",
-                        onClick = { navController.navigate("add_transaction/INCOME") },
+                        onClick = { onAddTransactionClick("INCOME") },
                         modifier = Modifier.weight(1f),
                         icon = Icons.Default.Add,
                         containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f),
@@ -467,7 +518,7 @@ fun DashboardScreen(
                     }
                     FinanceTextButton(
                         text = "View All",
-                        onClick = { navController.navigate("transactions") },
+                        onClick = { onViewAllTransactionsClick() },
                         contentColor = MaterialTheme.colorScheme.primary,
                         icon = Icons.AutoMirrored.Filled.ArrowForward
                     )
@@ -547,17 +598,17 @@ fun DashboardScreen(
             onEdit = {
                 val tx = selectedTransactionForDetails!!
                 selectedTransactionForDetails = null
-                navController.navigate("add_transaction/${tx.transaction.type}?transactionId=${tx.transaction.id}")
+                onEditTransactionClick(tx)
             },
             onDuplicate = {
                 val tx = selectedTransactionForDetails!!
                 selectedTransactionForDetails = null
-                navController.navigate("add_transaction/${tx.transaction.type}?transactionId=${tx.transaction.id}&duplicate=true")
+                onDuplicateTransactionClick(tx)
             },
             onDelete = {
                 val tx = selectedTransactionForDetails!!
                 selectedTransactionForDetails = null
-                viewModel.deleteTransaction(tx.transaction)
+                onDeleteTransaction(tx)
             }
         )
     }

@@ -22,6 +22,7 @@ import com.example.ui.theme.*
 import com.example.ui.components.*
 import com.example.ui.viewmodel.FinanceViewModel
 import com.example.ui.viewmodel.AuthViewModel
+import com.example.data.repository.UserSession
 import com.example.ui.viewmodel.AppTheme
 import com.example.ui.utils.CurrencyOption
 import kotlinx.coroutines.launch
@@ -39,30 +40,16 @@ fun SettingsScreen(
 ) {
     val userSession by authViewModel.currentUserSession.collectAsStateWithLifecycle()
     val allTransactions by viewModel.allTransactions.collectAsStateWithLifecycle()
+    val reminderEnabled by viewModel.reminderEnabled.collectAsStateWithLifecycle()
+    val biometricLockEnabled by viewModel.biometricLockEnabled.collectAsStateWithLifecycle()
+    val appTheme by viewModel.appTheme.collectAsStateWithLifecycle()
+    val currencyOption by viewModel.currencyOption.collectAsStateWithLifecycle()
+    val appMode by viewModel.appMode.collectAsStateWithLifecycle()
+    val isOnline by viewModel.isOnline.collectAsStateWithLifecycle()
+
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val scrollState = rememberScrollState()
-
     var isSyncing by remember { mutableStateOf(false) }
-    var showRestoreWarning by remember { mutableStateOf(false) }
-    var restoreActionType by remember { mutableStateOf<RestoreType?>(null) }
-    
-    var showEditProfileDialog by remember { mutableStateOf(false) }
-    var editName by remember { mutableStateOf("") }
-    var editEmail by remember { mutableStateOf("") }
-
-    val reminderEnabled by viewModel.reminderEnabled.collectAsStateWithLifecycle()
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            viewModel.setReminderEnabled(true, context)
-            showToast(context, "Daily expense reminder enabled!", Toast.LENGTH_SHORT)
-        } else {
-            showToast(context, "Notification permission is required for reminders.", Toast.LENGTH_SHORT)
-        }
-    }
 
     // CSV Document Creator Launcher
     val createCsvLauncher = rememberLauncherForActivityResult(
@@ -86,6 +73,139 @@ fun SettingsScreen(
         }
     }
 
+    SettingsContent(
+        userSession = userSession,
+        reminderEnabled = reminderEnabled,
+        biometricLockEnabled = biometricLockEnabled,
+        appTheme = appTheme,
+        currencyOption = currencyOption,
+        appMode = appMode,
+        isSyncing = isSyncing,
+        onReminderToggle = { enabled -> viewModel.setReminderEnabled(enabled, context) },
+        onBiometricToggle = { enabled -> viewModel.setBiometricLockEnabled(enabled) },
+        onThemeChange = { theme -> viewModel.setTheme(theme) },
+        onCurrencyChange = { currency -> viewModel.setCurrency(currency) },
+        onManageCategoriesClick = onManageCategoriesClick,
+        onAdminConsoleClick = onAdminConsoleClick,
+        onMenuClick = onMenuClick,
+        onExportCsv = { fileName -> createCsvLauncher.launch(fileName) },
+        onBackupCloud = {
+            if (!isOnline) {
+                showToast(context, "Backup failed: No internet connection. Please check your network settings.", Toast.LENGTH_LONG)
+            } else {
+                scope.launch {
+                    isSyncing = true
+                    val result = viewModel.backupToFirebase(userSession?.userId ?: "")
+                    isSyncing = false
+                    if (result.isSuccess) {
+                        showToast(context, "Backup successfully saved to cloud!", Toast.LENGTH_SHORT)
+                    } else {
+                        showToast(context, "Backup failed: ${result.exceptionOrNull()?.localizedMessage}", Toast.LENGTH_LONG)
+                    }
+                }
+            }
+        },
+        onBackupLocal = {
+            scope.launch {
+                isSyncing = true
+                val result = viewModel.backupLocally()
+                isSyncing = false
+                if (result.isSuccess) {
+                    showToast(context, "Local backup created successfully!", Toast.LENGTH_SHORT)
+                } else {
+                    showToast(context, "Backup failed: ${result.exceptionOrNull()?.localizedMessage}", Toast.LENGTH_LONG)
+                }
+            }
+        },
+        onRestoreCloud = {
+            if (!isOnline) {
+                showToast(context, "Restore failed: No internet connection. Please check your network settings.", Toast.LENGTH_LONG)
+            } else {
+                scope.launch {
+                    isSyncing = true
+                    val result = viewModel.restoreFromFirebase(userSession?.userId ?: "")
+                    isSyncing = false
+                    if (result.isSuccess) {
+                        showToast(context, "Data successfully restored!", Toast.LENGTH_SHORT)
+                    } else {
+                        showToast(context, "Restore failed: ${result.exceptionOrNull()?.localizedMessage}", Toast.LENGTH_LONG)
+                    }
+                }
+            }
+        },
+        onRestoreLocal = {
+            scope.launch {
+                isSyncing = true
+                val result = viewModel.restoreLocally()
+                isSyncing = false
+                if (result.isSuccess) {
+                    showToast(context, "Data successfully restored!", Toast.LENGTH_SHORT)
+                } else {
+                    showToast(context, "Restore failed: ${result.exceptionOrNull()?.localizedMessage}", Toast.LENGTH_LONG)
+                }
+            }
+        },
+        onUpdateProfile = { name, email, onSuccess, onError ->
+            authViewModel.updateProfile(name, email, onSuccess, onError)
+        },
+        onSignOut = {
+            scope.launch {
+                authViewModel.logout()
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsContent(
+    userSession: UserSession?,
+    reminderEnabled: Boolean,
+    biometricLockEnabled: Boolean,
+    appTheme: AppTheme,
+    currencyOption: CurrencyOption,
+    appMode: String,
+    isSyncing: Boolean,
+    onReminderToggle: (Boolean) -> Unit,
+    onBiometricToggle: (Boolean) -> Unit,
+    onThemeChange: (AppTheme) -> Unit,
+    onCurrencyChange: (CurrencyOption) -> Unit,
+    onManageCategoriesClick: () -> Unit,
+    onAdminConsoleClick: () -> Unit,
+    onMenuClick: () -> Unit,
+    onExportCsv: (String) -> Unit,
+    onBackupCloud: () -> Unit,
+    onBackupLocal: () -> Unit,
+    onRestoreCloud: () -> Unit,
+    onRestoreLocal: () -> Unit,
+    onUpdateProfile: (name: String, email: String, onSuccess: () -> Unit, onError: (String) -> Unit) -> Unit,
+    onSignOut: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val scrollState = rememberScrollState()
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            onReminderToggle(true)
+            showToast(context, "Daily expense reminder enabled!", Toast.LENGTH_SHORT)
+        } else {
+            showToast(context, "Notification permission is required for reminders.", Toast.LENGTH_SHORT)
+        }
+    }
+    var showRestoreWarning by remember { mutableStateOf(false) }
+    var restoreActionType by remember { mutableStateOf<RestoreType?>(null) }
+    
+    var showEditProfileDialog by remember { mutableStateOf(false) }
+    var editName by remember { mutableStateOf("") }
+    var editEmail by remember { mutableStateOf("") }
+
+
+
+
+
     if (showRestoreWarning) {
         AlertDialog(
             onDismissRequest = { showRestoreWarning = false },
@@ -100,25 +220,10 @@ fun SettingsScreen(
                         showRestoreWarning = false
                         val type = restoreActionType
                         if (type != null) {
-                            scope.launch {
-                                isSyncing = true
-                                if (type == RestoreType.CLOUD && !viewModel.isOnline.value) {
-                                    isSyncing = false
-                                    showToast(context, "Restore failed: No internet connection. Please check your network settings.", Toast.LENGTH_LONG)
-                                    return@launch
-                                }
-                                val result = if (type == RestoreType.CLOUD) {
-                                    val userId = userSession?.userId ?: ""
-                                    viewModel.restoreFromFirebase(userId)
-                                } else {
-                                    viewModel.restoreLocally()
-                                }
-                                isSyncing = false
-                                if (result.isSuccess) {
-                                    showToast(context, "Data successfully restored!", Toast.LENGTH_SHORT)
-                                } else {
-                                    showToast(context, "Restore failed: ${result.exceptionOrNull()?.localizedMessage}", Toast.LENGTH_LONG)
-                                }
+                            if (type == RestoreType.CLOUD) {
+                                onRestoreCloud()
+                            } else {
+                                onRestoreLocal()
                             }
                         }
                     }
@@ -153,8 +258,8 @@ fun SettingsScreen(
                 .padding(padding)
                 .verticalScroll(scrollState)
         ) {
-            val currentTheme by viewModel.appTheme.collectAsStateWithLifecycle()
-            val currentCurrency by viewModel.currencyOption.collectAsStateWithLifecycle()
+            val currentTheme = appTheme
+            val currentCurrency = currencyOption
 
             // -------------------------------------------------------------
             // Section: Theme Settings
@@ -185,11 +290,11 @@ fun SettingsScreen(
                     trailingContent = {
                         RadioButton(
                             selected = (currentTheme == theme),
-                            onClick = { viewModel.setTheme(theme) }
+                            onClick = { onThemeChange(theme) }
                         )
                     },
                     modifier = Modifier
-                        .clickable { viewModel.setTheme(theme) }
+                        .clickable { onThemeChange(theme) }
                         .padding(vertical = AppDimens.paddingExtraSmall)
                 )
             }
@@ -216,11 +321,11 @@ fun SettingsScreen(
                 trailingContent = {
                     RadioButton(
                         selected = (currentCurrency == CurrencyOption.INR),
-                        onClick = { viewModel.setCurrency(CurrencyOption.INR) }
+                        onClick = { onCurrencyChange(CurrencyOption.INR) }
                     )
                 },
                 modifier = Modifier
-                    .clickable { viewModel.setCurrency(CurrencyOption.INR) }
+                    .clickable { onCurrencyChange(CurrencyOption.INR) }
                     .padding(vertical = AppDimens.paddingExtraSmall)
             )
 
@@ -256,11 +361,11 @@ fun SettingsScreen(
                     trailingContent = {
                         RadioButton(
                             selected = (currentCurrency == currency),
-                            onClick = { viewModel.setCurrency(currency) }
+                            onClick = { onCurrencyChange(currency) }
                         )
                     },
                     modifier = Modifier
-                        .clickable { viewModel.setCurrency(currency) }
+                        .clickable { onCurrencyChange(currency) }
                         .padding(vertical = AppDimens.paddingExtraSmall)
                 )
             }
@@ -324,7 +429,7 @@ fun SettingsScreen(
                             Spacer(modifier = Modifier.height(4.dp))
                             FinanceButton(
                                 text = "Sign In / Register",
-                                onClick = { authViewModel.logout() },
+                                onClick = { onSignOut() },
                                 icon = Icons.Default.Login,
                                 modifier = Modifier.fillMaxWidth()
                             )
@@ -424,12 +529,12 @@ fun SettingsScreen(
                                 }
 
                                 if (hasPermission) {
-                                    viewModel.setReminderEnabled(true, context)
+                                    onReminderToggle(true)
                                 } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
                                     permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
                                 }
                             } else {
-                                viewModel.setReminderEnabled(false, context)
+                                onReminderToggle(false)
                             }
                         }
                     )
@@ -448,12 +553,12 @@ fun SettingsScreen(
                             }
 
                             if (hasPermission) {
-                                viewModel.setReminderEnabled(true, context)
+                                onReminderToggle(true)
                             } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
                                 permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
                             }
                         } else {
-                            viewModel.setReminderEnabled(false, context)
+                            onReminderToggle(false)
                         }
                     }
                     .padding(vertical = AppDimens.paddingExtraSmall)
@@ -471,7 +576,7 @@ fun SettingsScreen(
                 modifier = Modifier.padding(horizontal = AppDimens.paddingLarge, vertical = AppDimens.paddingSmall)
             )
 
-            val biometricLockEnabled by viewModel.biometricLockEnabled.collectAsStateWithLifecycle()
+            
             val isBiometricAvailable = remember(context) { com.example.ui.utils.BiometricHelper.isBiometricAvailable(context) }
 
             ListItem(
@@ -491,7 +596,7 @@ fun SettingsScreen(
                             if (checked && !isBiometricAvailable) {
                                 showToast(context, "Biometric authentication is not set up on this device.", Toast.LENGTH_LONG)
                             } else {
-                                viewModel.setBiometricLockEnabled(checked)
+                                onBiometricToggle(checked)
                             }
                         },
                         enabled = isBiometricAvailable
@@ -499,7 +604,7 @@ fun SettingsScreen(
                 },
                 modifier = Modifier
                     .clickable(enabled = isBiometricAvailable) {
-                        viewModel.setBiometricLockEnabled(!biometricLockEnabled)
+                        onBiometricToggle(!biometricLockEnabled)
                     }
                     .padding(vertical = AppDimens.paddingExtraSmall)
             )
@@ -551,9 +656,9 @@ fun SettingsScreen(
                     Icon(Icons.Default.Share, contentDescription = "Export CSV", tint = MaterialTheme.colorScheme.secondary)
                 },
                 modifier = Modifier
-                    .clickable(enabled = !isSyncing) {
+.clickable(enabled = !isSyncing) {
                         val fileName = "finance_tracker_export_${System.currentTimeMillis()}.csv"
-                        createCsvLauncher.launch(fileName)
+                        onExportCsv(fileName)
                     }
                     .padding(vertical = AppDimens.paddingExtraSmall)
             )
@@ -569,22 +674,8 @@ fun SettingsScreen(
                             Icon(Icons.Default.CloudUpload, contentDescription = "Cloud Backup", tint = MaterialTheme.colorScheme.secondary)
                         },
                         modifier = Modifier
-                            .clickable(enabled = !isSyncing) {
-                                scope.launch {
-                                    isSyncing = true
-                                    if (!viewModel.isOnline.value) {
-                                        isSyncing = false
-                                        showToast(context, "Backup failed: No internet connection. Please check your network settings.", Toast.LENGTH_LONG)
-                                        return@launch
-                                    }
-                                    val result = viewModel.backupToFirebase(session.userId)
-                                    isSyncing = false
-                                    if (result.isSuccess) {
-                                        showToast(context, "Backup successfully saved to cloud!", Toast.LENGTH_SHORT)
-                                    } else {
-                                        showToast(context, "Backup failed: ${result.exceptionOrNull()?.localizedMessage}", Toast.LENGTH_LONG)
-                                    }
-                                }
+.clickable(enabled = !isSyncing) {
+                                onBackupCloud()
                             }
                             .padding(vertical = AppDimens.paddingExtraSmall)
                     )
@@ -626,17 +717,8 @@ fun SettingsScreen(
                     Icon(Icons.Default.Backup, contentDescription = "Local Backup", tint = MaterialTheme.colorScheme.secondary)
                 },
                 modifier = Modifier
-                    .clickable(enabled = !isSyncing) {
-                        scope.launch {
-                            isSyncing = true
-                            val result = viewModel.backupLocally()
-                            isSyncing = false
-                            if (result.isSuccess) {
-                                showToast(context, "Local backup created successfully!", Toast.LENGTH_SHORT)
-                            } else {
-                                showToast(context, "Backup failed: ${result.exceptionOrNull()?.localizedMessage}", Toast.LENGTH_LONG)
-                            }
-                        }
+.clickable(enabled = !isSyncing) {
+                        onBackupLocal()
                     }
                     .padding(vertical = AppDimens.paddingExtraSmall)
             )
@@ -711,7 +793,7 @@ fun SettingsScreen(
             // Logout Button
             FinanceButton(
                 text = "Log Out",
-                onClick = { authViewModel.logout() },
+                onClick = { onSignOut() },
                 containerColor = MaterialTheme.colorScheme.errorContainer,
                 contentColor = MaterialTheme.colorScheme.onErrorContainer,
                 icon = Icons.Default.Logout,
@@ -770,15 +852,16 @@ fun SettingsScreen(
                             showToast(context, "Name cannot be blank", Toast.LENGTH_SHORT)
                             return@FinanceButton
                         }
-                        showEditProfileDialog = false
-                        authViewModel.updateProfile(
-                            name = editName,
-                            email = editEmail,
-                            onSuccess = {
+                        onUpdateProfile(
+                            editName,
+                            editEmail,
+                            {
                                 showToast(context, "Profile updated successfully!", Toast.LENGTH_SHORT)
+                                showEditProfileDialog = false
                             },
-                            onError = { error ->
+                            { error ->
                                 showToast(context, "Failed to update: $error", Toast.LENGTH_LONG)
+                                showEditProfileDialog = false
                             }
                         )
                     }

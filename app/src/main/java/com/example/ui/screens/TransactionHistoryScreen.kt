@@ -33,6 +33,7 @@ import com.example.data.model.TransactionType
 import com.example.data.model.TransactionWithCategory
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.FinanceViewModel
+import com.example.ui.viewmodel.TimePeriod
 import com.example.ui.components.*
 import com.example.ui.utils.CurrencyUtils
 import com.example.ui.utils.getIconByName
@@ -76,6 +77,52 @@ fun TransactionHistoryScreen(
     val isNextPeriodEnabled by viewModel.isNextPeriodEnabled.collectAsStateWithLifecycle()
     val categories by viewModel.allCategories.collectAsStateWithLifecycle()
 
+    TransactionHistoryContent(
+        allTransactions = transactions,
+        periodTransactions = periodTransactions,
+        selectedTimePeriod = selectedTimePeriod,
+        periodLabel = periodLabel,
+        activeDate = activeDate,
+        isNextPeriodEnabled = isNextPeriodEnabled,
+        categories = categories,
+        onMenuClick = onMenuClick,
+        onPeriodSelected = { viewModel.setTimePeriod(it) },
+        onPreviousClick = { viewModel.moveToPreviousPeriod() },
+        onNextClick = { viewModel.moveToNextPeriod() },
+        onDateSelected = { viewModel.setDateDirectly(it) },
+        onEditTransactionClick = { item ->
+            navController.navigate("add_transaction/${item.transaction.type.name}?transactionId=${item.transaction.id}")
+        },
+        onDuplicateTransactionClick = { item ->
+            navController.navigate("add_transaction/${item.transaction.type.name}?transactionId=${item.transaction.id}&duplicate=true")
+        },
+        onDeleteTransactionClick = { item ->
+            viewModel.deleteTransaction(item.transaction)
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TransactionHistoryContent(
+    allTransactions: List<TransactionWithCategory>,
+    periodTransactions: List<TransactionWithCategory>,
+    selectedTimePeriod: TimePeriod,
+    periodLabel: String,
+    activeDate: Long,
+    isNextPeriodEnabled: Boolean,
+    categories: List<Category>,
+    onMenuClick: () -> Unit,
+    onPeriodSelected: (TimePeriod) -> Unit,
+    onPreviousClick: () -> Unit,
+    onNextClick: () -> Unit,
+    onDateSelected: (Long) -> Unit,
+    onEditTransactionClick: (TransactionWithCategory) -> Unit,
+    onDuplicateTransactionClick: (TransactionWithCategory) -> Unit,
+    onDeleteTransactionClick: (TransactionWithCategory) -> Unit
+) {
+
+
     var searchQuery by remember { mutableStateOf("") }
     
     // Bottom Sheet Filters
@@ -88,12 +135,12 @@ fun TransactionHistoryScreen(
 
     // Computed / Filtered Transactions list
     val processedTransactions = remember(
-        transactions, periodTransactions, searchQuery, selectedSort, selectedFilterType, selectedCategory, selectedDateFilter
+        allTransactions, periodTransactions, searchQuery, selectedSort, selectedFilterType, selectedCategory, selectedDateFilter
     ) {
         var list = if (selectedDateFilter == DateFilter.ACTIVE_PERIOD) {
             periodTransactions
         } else {
-            transactions
+            allTransactions
         }
 
         // 1. Search Query (Notes, category or source)
@@ -234,14 +281,14 @@ fun TransactionHistoryScreen(
                 ) {
                     TimePeriodSelector(
                         selectedPeriod = selectedTimePeriod,
-                        onPeriodSelected = { viewModel.setTimePeriod(it) },
+                        onPeriodSelected = { onPeriodSelected(it) },
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
                     PeriodNavigator(
                         periodLabel = periodLabel,
-                        onPreviousClick = { viewModel.moveToPreviousPeriod() },
-                        onNextClick = { viewModel.moveToNextPeriod() },
+                        onPreviousClick = { onPreviousClick() },
+                        onNextClick = { onNextClick() },
                         modifier = Modifier.fillMaxWidth(),
                         onLabelClick = { showDatePicker = true },
                         isNextEnabled = isNextPeriodEnabled
@@ -251,7 +298,7 @@ fun TransactionHistoryScreen(
                     CustomPeriodPickerDialog(
                         timePeriod = selectedTimePeriod,
                         activeDate = activeDate,
-                        onDateSelected = { viewModel.setDateDirectly(it) },
+                        onDateSelected = { onDateSelected(it) },
                         onDismiss = { showDatePicker = false }
                     )
                 }
@@ -397,13 +444,13 @@ fun TransactionHistoryScreen(
                             TransactionHistoryRow(
                                 item = item,
                                 onEditClick = {
-                                    navController.navigate("add_transaction/${item.transaction.type.name}?transactionId=${item.transaction.id}")
+                                    onEditTransactionClick(item)
                                 },
                                 onDeleteClick = {
-                                    viewModel.deleteTransaction(item.transaction)
+                                    onDeleteTransactionClick(item)
                                 },
                                 onDuplicateClick = {
-                                    navController.navigate("add_transaction/${item.transaction.type.name}?transactionId=${item.transaction.id}&duplicate=true")
+                                    onDuplicateTransactionClick(item)
                                 }
                             )
                         }

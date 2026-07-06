@@ -18,4 +18,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "My Application"
 
-include(":app")
+include(":app", ":FinanceManager-tests:app")
+project(":FinanceManager-tests").projectDir = file("../FinanceManager-tests")
+project(":FinanceManager-tests:app").projectDir = file("../FinanceManager-tests/app")

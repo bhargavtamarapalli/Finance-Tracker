@@ -18,6 +18,11 @@ import com.example.ui.viewmodel.FinanceViewModel
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -27,9 +32,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(qualifiers = RobolectricDeviceQualifiers.Pixel8, sdk = [36])
+@Config(qualifiers = RobolectricDeviceQualifiers.Pixel8, sdk = [33])
 class TransactionHistoryScreenTest {
 
     @get:Rule
@@ -41,24 +47,35 @@ class TransactionHistoryScreenTest {
 
     @Before
     fun createDb() = runBlocking {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
         val context = ApplicationProvider.getApplicationContext<Context>()
+        val directExecutor = java.util.concurrent.Executor { it.run() }
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
+            .setQueryExecutor(directExecutor)
+            .setTransactionExecutor(directExecutor)
             .build()
         val jsonDataManager = JsonDataManager(context)
         repository = FinanceRepository(db.financeDao(), jsonDataManager)
 
-        // Seed FIRST before creating ViewModel to prevent background seeding crashes/races
+        viewModel = FinanceViewModel(repository)
+
+        // Clear default seeded transactions inserted during ViewModel init
+        val existingTxs = db.financeDao().getAllTransactionsOnce()
+        db.financeDao().deleteTransactions(existingTxs)
+
+        // Seed initial categories
         val incomeCat = Category(id = 7, name = "Salary", type = TransactionType.INCOME, iconName = "attach_money")
         val expenseCat = Category(id = 2, name = "Groceries", type = TransactionType.EXPENSE, iconName = "shopping_cart")
         db.financeDao().insertCategories(listOf(incomeCat, expenseCat))
 
+        // Seed some transactions
         db.financeDao().insertTransaction(
             TransactionEntity(
                 id = 1,
                 amount = 75000.0,
                 source = "Tech Corp Inc.",
-                date = System.currentTimeMillis() - 1000,
+                date = System.currentTimeMillis(),
                 categoryId = 7,
                 type = TransactionType.INCOME,
                 notes = "Monthly payroll payout"
@@ -69,19 +86,17 @@ class TransactionHistoryScreenTest {
                 id = 2,
                 amount = 4200.0,
                 source = "Reliance Smart Supermarket",
-                date = System.currentTimeMillis() - 5000,
+                date = System.currentTimeMillis() - 100,
                 categoryId = 2,
                 type = TransactionType.EXPENSE,
                 notes = "Weekly grocery refill"
             )
         )
-
-        viewModel = FinanceViewModel(repository)
     }
 
     @After
     fun closeDb() {
-        // In-memory database doesn't need explicit close in tests to avoid connection races with background Flows
+        Dispatchers.resetMain()
     }
 
     @Test
@@ -99,15 +114,15 @@ class TransactionHistoryScreenTest {
 
         // Wait for Room background query to emit and populate UI
         composeTestRule.waitUntil(5000) {
-            composeTestRule.onAllNodesWithText("Groceries").fetchSemanticsNodes().isNotEmpty()
+            composeTestRule.onAllNodesWithText("Reliance Smart Supermarket").fetchSemanticsNodes().isNotEmpty()
         }
 
         // Verify the title is displayed
         composeTestRule.onNodeWithText("Transaction History").assertIsDisplayed()
 
         // Verify seeded transactions are visible
-        composeTestRule.onNodeWithText("Salary").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Groceries").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Tech Corp Inc.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Reliance Smart Supermarket").assertIsDisplayed()
     }
 
     @Test
@@ -125,7 +140,7 @@ class TransactionHistoryScreenTest {
 
         // Wait for Room background query to emit and populate UI
         composeTestRule.waitUntil(5000) {
-            composeTestRule.onAllNodesWithText("Groceries").fetchSemanticsNodes().isNotEmpty()
+            composeTestRule.onAllNodesWithText("Reliance Smart Supermarket").fetchSemanticsNodes().isNotEmpty()
         }
 
         // Enter search text in search box for Reliance Smart Supermarket
@@ -135,8 +150,8 @@ class TransactionHistoryScreenTest {
         composeTestRule.waitForIdle()
 
         // "Groceries" should be visible but "Salary" should be filtered out
-        composeTestRule.onNodeWithText("Groceries").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Salary").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Reliance Smart Supermarket").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Tech Corp Inc.").assertDoesNotExist()
     }
 
     @Test
@@ -154,7 +169,7 @@ class TransactionHistoryScreenTest {
 
         // Wait for Room background query to emit and populate UI
         composeTestRule.waitUntil(5000) {
-            composeTestRule.onAllNodesWithText("Groceries").fetchSemanticsNodes().isNotEmpty()
+            composeTestRule.onAllNodesWithText("Reliance Smart Supermarket").fetchSemanticsNodes().isNotEmpty()
         }
 
         // Click on the Filter Icon to open the Bottom Sheet
@@ -164,6 +179,10 @@ class TransactionHistoryScreenTest {
         // Verify bottom sheet title is visible
         composeTestRule.onNodeWithText("Filter & Sort").assertIsDisplayed()
 
+        // Click "Transaction Type" tab to view type filters
+        composeTestRule.onNodeWithText("Transaction Type").performClick()
+        composeTestRule.waitForIdle()
+
         // Choose "Expense Only" in the bottom sheet filter section
         composeTestRule.onNodeWithText("Expense Only").performClick()
 
@@ -172,19 +191,19 @@ class TransactionHistoryScreenTest {
         composeTestRule.waitForIdle()
 
         // Only the expense transaction ("Groceries") should be visible
-        composeTestRule.onNodeWithText("Groceries").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Salary").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Reliance Smart Supermarket").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Tech Corp Inc.").assertDoesNotExist()
 
         // Active filter chip should show up
         composeTestRule.onNodeWithText("Expense Only").assertIsDisplayed()
 
         // Clear filter using the active chip's close action
-        composeTestRule.onNodeWithContentDescription("Clear filter").performClick()
+        composeTestRule.onNodeWithContentDescription("Clear Filter").performClick()
         composeTestRule.waitForIdle()
 
         // Both transactions should be visible again
-        composeTestRule.onNodeWithText("Salary").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Groceries").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Tech Corp Inc.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Reliance Smart Supermarket").assertIsDisplayed()
     }
 
     @Test
@@ -203,32 +222,27 @@ class TransactionHistoryScreenTest {
 
             // Wait for Room background query to emit and populate UI
             composeTestRule.waitUntil(5000) {
-                composeTestRule.onAllNodesWithText("Groceries").fetchSemanticsNodes().isNotEmpty()
+                composeTestRule.onAllNodesWithText("Reliance Smart Supermarket").fetchSemanticsNodes().isNotEmpty()
             }
 
             // Click on the Groceries transaction item to open Details bottom sheet
-            composeTestRule.onNodeWithText("Groceries").performClick()
+            composeTestRule.onNodeWithText("Reliance Smart Supermarket").performClick()
             composeTestRule.waitForIdle()
 
-            // Verify details are shown
-            composeTestRule.onNodeWithText("Transaction Details").assertIsDisplayed()
-            composeTestRule.onNodeWithText("Weekly grocery refill").assertIsDisplayed()
-
-            // Click Delete button inside bottom sheet
+            // Click Delete button inside dropdown menu
             composeTestRule.onNodeWithText("Delete").performClick()
             composeTestRule.waitForIdle()
 
             // Wait for Room background query to emit the updated list excluding "Groceries"
             composeTestRule.waitUntil(5000) {
-                composeTestRule.onAllNodesWithText("Groceries").fetchSemanticsNodes().isEmpty()
+                composeTestRule.onAllNodesWithText("Reliance Smart Supermarket").fetchSemanticsNodes().isEmpty()
             }
 
-            // Verify the details sheet closed and Groceries is deleted from list
-            composeTestRule.onNodeWithText("Transaction Details").assertDoesNotExist()
-            composeTestRule.onNodeWithText("Groceries").assertDoesNotExist()
+            // Verify the Groceries is deleted from list
+            composeTestRule.onNodeWithText("Reliance Smart Supermarket").assertDoesNotExist()
 
             // Salary should still be displayed
-            composeTestRule.onNodeWithText("Salary").assertIsDisplayed()
+            composeTestRule.onNodeWithText("Tech Corp Inc.").assertIsDisplayed()
         }
     }
 

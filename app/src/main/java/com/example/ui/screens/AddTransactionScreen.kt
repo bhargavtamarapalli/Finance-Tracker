@@ -24,6 +24,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.example.data.model.Category
+import com.example.data.model.TransactionEntity
 import com.example.data.model.TransactionType
 import com.example.ui.theme.*
 import com.example.ui.utils.getIconByName
@@ -44,11 +46,55 @@ fun AddTransactionScreen(
     val allCategories by viewModel.allCategories.collectAsStateWithLifecycle()
     val transactions by viewModel.allTransactions.collectAsStateWithLifecycle()
 
-    // Find editing/duplicating transaction if any
     val editTransaction = remember(transactionId, transactions) {
         transactions.find { it.transaction.id == transactionId }?.transaction
     }
 
+    AddTransactionContent(
+        categories = allCategories,
+        initialType = initialType,
+        editTransaction = editTransaction,
+        isDuplicate = isDuplicate,
+        onDismiss = { navController.popBackStack() },
+        onSave = { amountValue, source, date, categoryId, type, notes, paymentMethod ->
+            if (editTransaction != null && !isDuplicate) {
+                viewModel.updateTransaction(
+                    editTransaction.copy(
+                        amount = amountValue,
+                        source = source,
+                        date = date,
+                        categoryId = categoryId,
+                        type = type,
+                        notes = notes,
+                        paymentMethod = paymentMethod
+                    )
+                )
+            } else {
+                viewModel.addTransaction(
+                    amount = amountValue,
+                    source = source,
+                    date = date,
+                    categoryId = categoryId,
+                    type = type,
+                    notes = notes,
+                    paymentMethod = paymentMethod
+                )
+            }
+            navController.popBackStack()
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddTransactionContent(
+    categories: List<Category>,
+    initialType: String,
+    editTransaction: TransactionEntity? = null,
+    isDuplicate: Boolean = false,
+    onDismiss: () -> Unit,
+    onSave: (amount: Double, source: String, date: Long, categoryId: Int, type: TransactionType, notes: String, paymentMethod: String) -> Unit
+) {
     var type by remember(editTransaction) {
         mutableStateOf(editTransaction?.type ?: if (initialType == "INCOME") TransactionType.INCOME else TransactionType.EXPENSE)
     }
@@ -75,15 +121,13 @@ fun AddTransactionScreen(
     var dateError by remember { mutableStateOf<String?>(null) }
     var categoryError by remember { mutableStateOf<String?>(null) }
 
-    val filteredCategories = allCategories.filter { it.type == type && (!it.isArchived || it.id == selectedCategoryId) }
+    val filteredCategories = categories.filter { it.type == type && (!it.isArchived || it.id == selectedCategoryId) }
     if (selectedCategoryId == null && filteredCategories.isNotEmpty()) {
         selectedCategoryId = filteredCategories.first().id
     }
 
     var showDatePicker by remember { mutableStateOf(false) }
     val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-
-    // Focus manager for keyboard actions
     val focusManager = LocalFocusManager.current
 
     Scaffold(
@@ -100,7 +144,7 @@ fun AddTransactionScreen(
                 navigationIcon = {
                     FinanceIconButton(
                         icon = Icons.AutoMirrored.Filled.ArrowBack,
-                        onClick = { navController.popBackStack() },
+                        onClick = onDismiss,
                         contentDescription = "Back"
                     )
                 }
@@ -304,30 +348,7 @@ fun AddTransactionScreen(
                     }
 
                     if (isValid && amountValue != null && selectedCategoryId != null) {
-                        if (editTransaction != null && !isDuplicate) {
-                            viewModel.updateTransaction(
-                                editTransaction.copy(
-                                    amount = amountValue,
-                                    source = source,
-                                    date = date,
-                                    categoryId = selectedCategoryId!!,
-                                    type = type,
-                                    notes = notes,
-                                    paymentMethod = paymentMethod
-                                )
-                            )
-                        } else {
-                            viewModel.addTransaction(
-                                amount = amountValue,
-                                source = source,
-                                date = date,
-                                categoryId = selectedCategoryId!!,
-                                type = type,
-                                notes = notes,
-                                paymentMethod = paymentMethod
-                            )
-                        }
-                        navController.popBackStack()
+                        onSave(amountValue, source, date, selectedCategoryId!!, type, notes, paymentMethod)
                     }
                 },
                 modifier = Modifier

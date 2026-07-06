@@ -18,6 +18,12 @@ import com.example.ui.viewmodel.FinanceViewModel
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -26,9 +32,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
-@GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(qualifiers = RobolectricDeviceQualifiers.Pixel8, sdk = [36])
+@GraphicsMode(GraphicsMode.Mode.LEGACY)
+@Config(qualifiers = RobolectricDeviceQualifiers.Pixel8, sdk = [33])
 class AddTransactionScreenTest {
 
     @get:Rule
@@ -40,12 +47,22 @@ class AddTransactionScreenTest {
 
     @Before
     fun createDb() = runBlocking {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
         val context = ApplicationProvider.getApplicationContext<Context>()
+        val directExecutor = java.util.concurrent.Executor { it.run() }
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
+            .setQueryExecutor(directExecutor)
+            .setTransactionExecutor(directExecutor)
             .build()
         val jsonDataManager = JsonDataManager(context)
         repository = FinanceRepository(db.financeDao(), jsonDataManager)
+
+        viewModel = FinanceViewModel(repository)
+
+        // Clear default seeded transactions inserted during ViewModel init
+        val existingTxs = db.financeDao().getAllTransactionsOnce()
+        db.financeDao().deleteTransactions(existingTxs)
 
         // Seed categories
         val incomeCat = Category(id = 7, name = "Salary", type = TransactionType.INCOME, iconName = "attach_money")
@@ -65,8 +82,11 @@ class AddTransactionScreenTest {
                 paymentMethod = "Cash"
             )
         )
+    }
 
-        viewModel = FinanceViewModel(repository)
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
     }
 
     @Test
@@ -87,11 +107,11 @@ class AddTransactionScreenTest {
 
             // Input details
             composeTestRule.onNodeWithText("Amount").performTextInput("150.0")
-            composeTestRule.onNodeWithText("Source / Merchant").performTextInput("Starbucks")
+            composeTestRule.onNodeWithText("Payee / Store").performTextInput("Starbucks")
             composeTestRule.onNodeWithText("Notes (Optional)").performTextInput("Coffee with client")
 
-            // Select Payment Method "Credit Card"
-            composeTestRule.onNodeWithText("Credit Card").performClick()
+            // Select Payment Method "Card"
+            composeTestRule.onNodeWithText("Card").performClick()
 
             // Select Category "Groceries"
             composeTestRule.onNodeWithText("Groceries").performClick()
@@ -107,7 +127,7 @@ class AddTransactionScreenTest {
             assert(created != null)
             assert(created!!.transaction.amount == 150.0)
             assert(created.transaction.notes == "Coffee with client")
-            assert(created.transaction.paymentMethod == "Credit Card")
+            assert(created.transaction.paymentMethod == "Card")
             assert(created.transaction.categoryId == 2)
         }
     }
@@ -188,8 +208,8 @@ class AddTransactionScreenTest {
             composeTestRule.onNodeWithText("Update").assertDoesNotExist()
 
             // Clear and input the duplicate source to avoid caret placement issues
-            composeTestRule.onNodeWithText("Source / Merchant").performTextClearance()
-            composeTestRule.onNodeWithText("Source / Merchant").performTextInput("Reliance Smart Supermarket (Duplicate)")
+            composeTestRule.onNodeWithText("Payee / Store").performTextClearance()
+            composeTestRule.onNodeWithText("Payee / Store").performTextInput("Reliance Smart Supermarket (Duplicate)")
 
             // Click Save
             composeTestRule.onNodeWithText("Save").performClick()
@@ -228,7 +248,7 @@ class AddTransactionScreenTest {
 
             // Input invalid numeric amount
             composeTestRule.onNodeWithText("Amount").performTextInput("abc")
-            composeTestRule.onNodeWithText("Source / Merchant").performTextInput("Starbucks")
+            composeTestRule.onNodeWithText("Payee / Store").performTextInput("Starbucks")
             composeTestRule.onNodeWithText("Groceries").performClick()
 
             // Click Save
@@ -258,7 +278,7 @@ class AddTransactionScreenTest {
 
             // Input negative/zero amount
             composeTestRule.onNodeWithText("Amount").performTextInput("-10.0")
-            composeTestRule.onNodeWithText("Source / Merchant").performTextInput("Starbucks")
+            composeTestRule.onNodeWithText("Payee / Store").performTextInput("Starbucks")
             composeTestRule.onNodeWithText("Groceries").performClick()
 
             // Click Save

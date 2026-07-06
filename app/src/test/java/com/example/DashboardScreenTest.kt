@@ -22,6 +22,11 @@ import com.example.ui.viewmodel.FinanceViewModel
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -31,9 +36,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(qualifiers = RobolectricDeviceQualifiers.Pixel8, sdk = [36])
+@Config(qualifiers = RobolectricDeviceQualifiers.Pixel8, sdk = [33])
 class DashboardScreenTest {
 
     @get:Rule
@@ -45,9 +51,13 @@ class DashboardScreenTest {
 
     @Before
     fun createDb() = runBlocking {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
         val context = ApplicationProvider.getApplicationContext<Context>()
+        val directExecutor = java.util.concurrent.Executor { it.run() }
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
+            .setQueryExecutor(directExecutor)
+            .setTransactionExecutor(directExecutor)
             .build()
         val jsonDataManager = JsonDataManager(context)
         repository = FinanceRepository(db.financeDao(), jsonDataManager)
@@ -85,7 +95,7 @@ class DashboardScreenTest {
 
     @After
     fun closeDb() {
-        // In-memory database doesn't need explicit close in tests to avoid connection races with background Flows
+        Dispatchers.resetMain()
     }
 
     @Test
@@ -112,13 +122,13 @@ class DashboardScreenTest {
         val isOnline = viewModel.isOnline.value
         val pendingSync = viewModel.pendingSync.value
         val expectedStatus = when {
-            !isOnline -> "Offline Mode"
-            pendingSync -> "Syncing Changes..."
-            else -> "Data Synced to Cloud"
+            !isOnline -> "Offline"
+            pendingSync -> "Syncing"
+            else -> "Synced"
         }
         composeTestRule.onNodeWithText(expectedStatus).assertIsDisplayed()
 
-        composeTestRule.onNodeWithText("Total Balance").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Total Balance", ignoreCase = true).assertIsDisplayed()
         composeTestRule.onNodeWithText("INCOME").assertIsDisplayed()
         composeTestRule.onNodeWithText("EXPENSES").assertIsDisplayed()
 

@@ -19,7 +19,7 @@ import org.robolectric.annotation.Config
 import java.util.Calendar
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36])
+@Config(sdk = [33])
 class ExampleRobolectricTest {
 
     @Test

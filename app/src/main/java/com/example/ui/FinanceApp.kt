@@ -372,10 +372,18 @@ fun FinanceApp(
                     ) 
                 }
                 composable("admin_console") {
-                    AdminConsoleScreen(
-                        viewModel = viewModel,
-                        onBackClick = { navController.popBackStack() }
-                    )
+                    if (userSession?.role == "ADMIN") {
+                        AdminConsoleScreen(
+                            viewModel = viewModel,
+                            onBackClick = { navController.popBackStack() }
+                        )
+                    } else {
+                        LaunchedEffect(Unit) {
+                            navController.navigate("dashboard") {
+                                popUpTo("admin_console") { inclusive = true }
+                            }
+                        }
+                    }
                 }
                 composable("categories_management") {
                     CategoryManagementScreen(viewModel, navController)

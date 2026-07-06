@@ -70,6 +70,37 @@ fun AnalyticsScreen(
     val activeDate by viewModel.activeDate.collectAsStateWithLifecycle()
     val isNextPeriodEnabled by viewModel.isNextPeriodEnabled.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+
+    AnalyticsScreenContent(
+        periodTransactions = periodTransactions,
+        selectedTimePeriod = selectedTimePeriod,
+        periodLabel = periodLabel,
+        activeDate = activeDate,
+        isNextPeriodEnabled = isNextPeriodEnabled,
+        isLoading = isLoading,
+        onMenuClick = onMenuClick,
+        setTimePeriod = { viewModel.setTimePeriod(it) },
+        moveToPreviousPeriod = { viewModel.moveToPreviousPeriod() },
+        moveToNextPeriod = { viewModel.moveToNextPeriod() },
+        setDateDirectly = { viewModel.setDateDirectly(it) }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AnalyticsScreenContent(
+    periodTransactions: List<com.example.data.model.TransactionWithCategory>,
+    selectedTimePeriod: com.example.ui.viewmodel.TimePeriod,
+    periodLabel: String,
+    activeDate: Long,
+    isNextPeriodEnabled: Boolean,
+    isLoading: Boolean,
+    onMenuClick: () -> Unit,
+    setTimePeriod: (com.example.ui.viewmodel.TimePeriod) -> Unit,
+    moveToPreviousPeriod: () -> Unit,
+    moveToNextPeriod: () -> Unit,
+    setDateDirectly: (Long) -> Unit
+) {
     var showDatePicker by remember { mutableStateOf(false) }
     
     // Switch between Expense and Income analytics
@@ -306,14 +337,14 @@ fun AnalyticsScreen(
                 ) {
                     TimePeriodSelector(
                         selectedPeriod = selectedTimePeriod,
-                        onPeriodSelected = { viewModel.setTimePeriod(it) },
+                        onPeriodSelected = { setTimePeriod(it) },
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
                     PeriodNavigator(
                         periodLabel = periodLabel,
-                        onPreviousClick = { viewModel.moveToPreviousPeriod() },
-                        onNextClick = { viewModel.moveToNextPeriod() },
+                        onPreviousClick = { moveToPreviousPeriod() },
+                        onNextClick = { moveToNextPeriod() },
                         modifier = Modifier.fillMaxWidth(),
                         onLabelClick = { showDatePicker = true },
                         isNextEnabled = isNextPeriodEnabled
@@ -322,7 +353,7 @@ fun AnalyticsScreen(
                         CustomPeriodPickerDialog(
                             timePeriod = selectedTimePeriod,
                             activeDate = activeDate,
-                            onDateSelected = { viewModel.setDateDirectly(it) },
+                            onDateSelected = { setDateDirectly(it) },
                             onDismiss = { showDatePicker = false }
                         )
                     }
@@ -394,12 +425,12 @@ fun AnalyticsScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(AppDimens.paddingLarge),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                                .padding(AppDimens.paddingLarge)
                         ) {
                             Text(
                                 text = if (selectedType == TransactionType.EXPENSE) "Monthly Expenses" else "Monthly Income",
                                 style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
@@ -407,236 +438,202 @@ fun AnalyticsScreen(
                                 text = CurrencyUtils.formatRupees(totalAmount),
                                 style = MaterialTheme.typography.headlineLarge,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = if (selectedType == TransactionType.EXPENSE) {
-                                    MaterialTheme.colorScheme.error
-                                } else {
-                                    MaterialTheme.colorScheme.primary
-                                },
+                                color = if (selectedType == TransactionType.EXPENSE) ExpenseRed else IncomeGreen,
                                 modifier = Modifier.testTag("total_amount_text")
                             )
                         }
                     }
                 }
 
-            // Monthly Summary Card
-            item {
-                MonthlySummaryRow(
-                    income = totalIncome,
-                    expense = totalExpense,
-                    savings = netSavings,
-                    modifier = Modifier.testTag("monthly_summary_card")
-                )
-            }
-
-            // Income vs Expense Comparison Chart
-            item {
-                IncomeExpenseComparisonChart(
-                    income = totalIncome,
-                    expense = totalExpense,
-                    modifier = Modifier.testTag("income_expense_comparison_chart")
-                )
-            }
-
-            // Spending Trend Chart
-            item {
-                SpendingTrendChart(
-                    dailyExpenses = dailyExpenses,
-                    timePeriod = selectedTimePeriod,
-                    modifier = Modifier.testTag("spending_trend_chart")
-                )
-            }
-
-            if (breakdown.isEmpty()) {
+                // Monthly Summary Card (only shown when view is active and populated)
                 item {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = AppDimens.paddingExtraLarge),
-                        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(AppDimens.paddingLarge),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.PieChart,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                modifier = Modifier.size(64.dp)
-                            )
-                            Spacer(modifier = Modifier.height(AppDimens.paddingNormal))
-                            Text(
-                                text = "No transactions found for this month",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+                    MonthlySummaryRow(
+                        income = totalIncome,
+                        expense = totalExpense,
+                        savings = netSavings,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
-            } else {
-                // Interactive Donut Chart Section
+
+                // Income vs Expense Comparison Chart
                 item {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { listVisible = !listVisible }
-                            .testTag("donut_chart_card"),
-                        shape = AppShapes.roundedCardLarge,
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                    ) {
-                        Column(
+                    IncomeExpenseComparisonChart(
+                        income = totalIncome,
+                        expense = totalExpense,
+                        modifier = Modifier.testTag("income_expense_comparison_chart")
+                    )
+                }
+
+                // Spending Trend Chart
+                item {
+                    SpendingTrendChart(
+                        dailyExpenses = dailyExpenses,
+                        timePeriod = selectedTimePeriod,
+                        modifier = Modifier.testTag("spending_trend_chart")
+                    )
+                }
+
+                if (breakdown.isEmpty()) {
+                    item {
+                        Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(AppDimens.paddingLarge),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                                .padding(vertical = AppDimens.paddingExtraLarge),
+                            colors = CardDefaults.cardColors(containerColor = Color.Transparent)
                         ) {
-                            Text(
-                                text = "Interactive Visual",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.align(Alignment.Start)
-                            )
-                            Text(
-                                text = "Tap chart or the indicator below to toggle details",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.align(Alignment.Start)
-                            )
-                            Spacer(modifier = Modifier.height(AppDimens.paddingLarge))
-
-                            DonutChart(
-                                portions = breakdown,
-                                total = totalAmount,
-                                segmentColors = segmentColors,
-                                selectedIndex = selectedCategoryIndex,
-                                onSliceClick = { index ->
-                                    selectedCategoryIndex = index
-                                    listVisible = true
-                                },
-                                onSelectionCycle = {
-                                    selectedCategoryIndex = if (breakdown.isEmpty()) -1 else (selectedCategoryIndex + 1) % breakdown.size
-                                    listVisible = true
-                                },
-                                modifier = Modifier
-                                    .height(340.dp)
-                                    .fillMaxWidth()
-                                    .testTag("donut_chart")
-                            )
-
-                            Spacer(modifier = Modifier.height(AppDimens.paddingNormal))
-                            
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center,
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(top = AppDimens.paddingSmall)
+                                    .padding(AppDimens.paddingLarge),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
                             ) {
                                 Icon(
-                                    imageVector = if (listVisible) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                    imageVector = Icons.Default.PieChart,
                                     contentDescription = null,
-                                    tint = BrandPrimary,
-                                    modifier = Modifier.size(24.dp)
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(64.dp)
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
+                                Spacer(modifier = Modifier.height(AppDimens.paddingNormal))
                                 Text(
-                                    text = if (listVisible) "Hide Detailed Breakdown" else "View Detailed Breakdown",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = BrandPrimary,
-                                    fontWeight = FontWeight.Bold
+                                    text = "No transactions found for this month",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
                     }
-                }
-
-                // Breakdown list header and items, shown with high-end spring expand/collapse animations
-                item {
-                    AnimatedVisibility(
-                        visible = listVisible,
-                        enter = expandVertically(
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioLowBouncy,
-                                stiffness = Spring.StiffnessLow
-                            )
-                        ) + fadeIn(),
-                        exit = shrinkVertically(
-                            animationSpec = spring(
-                                stiffness = Spring.StiffnessLow
-                            )
-                        ) + fadeOut()
-                    ) {
-                        Column(
+                } else {
+                    // Interactive Donut Chart Section
+                    item {
+                        Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = AppDimens.paddingSmall),
-                            verticalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)
+                                .clickable { listVisible = !listVisible }
+                                .testTag("donut_chart_card"),
+                            shape = AppShapes.roundedCardLarge,
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                         ) {
-                            Text(
-                                text = "Category Breakdown",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(top = AppDimens.paddingSmall)
-                            )
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(AppDimens.paddingLarge),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "Interactive Visual",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.align(Alignment.Start)
+                                )
+                                Text(
+                                    text = "Tap chart or the indicator below to toggle details",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.align(Alignment.Start)
+                                )
+                                Spacer(modifier = Modifier.height(AppDimens.paddingLarge))
 
-                            breakdown.forEachIndexed { index, item ->
-                                val (categoryName, amount) = item
-                                val percentage = if (totalAmount > 0) (amount / totalAmount).toFloat() else 0f
-                                val isSelected = index == selectedCategoryIndex
-                                
-                                CategoryBreakdownRow(
-                                    categoryName = categoryName,
-                                    amount = amount,
-                                    percentage = percentage,
-                                    barColor = segmentColors[index % segmentColors.size],
-                                    isSelected = isSelected,
-                                    onClick = {
-                                        selectedCategoryIndex = if (isSelected) -1 else index
+                                DonutChart(
+                                    portions = breakdown,
+                                    total = totalAmount,
+                                    segmentColors = segmentColors,
+                                    selectedIndex = selectedCategoryIndex,
+                                    onSliceClick = { index ->
+                                        selectedCategoryIndex = index
+                                        listVisible = true
                                     },
-                                    modifier = Modifier.testTag("category_row_$categoryName")
+                                    onSelectionCycle = {
+                                        selectedCategoryIndex = if (breakdown.isEmpty()) -1 else (selectedCategoryIndex + 1) % breakdown.size
+                                        listVisible = true
+                                    },
+                                    modifier = Modifier
+                                        .height(340.dp)
+                                        .fillMaxWidth()
+                                        .testTag("donut_chart")
                                 )
 
-                                AnimatedVisibility(
-                                    visible = isSelected,
-                                    enter = expandVertically() + fadeIn(),
-                                    exit = shrinkVertically() + fadeOut()
-                                ) {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = AppDimens.paddingSmall, vertical = AppDimens.paddingSmall),
-                                        verticalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)
-                                    ) {
-                                        val categoryTransactions = remember(periodTransactions, categoryName, selectedType) {
-                                            periodTransactions.filter { 
-                                                it.category?.name == categoryName && it.transaction.type == selectedType 
-                                            }.sortedByDescending { it.transaction.date }
-                                        }
+                                Spacer(modifier = Modifier.height(AppDimens.paddingNormal))
+                            }
+                        }
+                    }
 
-                                        if (categoryTransactions.isEmpty()) {
-                                            Text(
-                                                text = "No individual transactions found",
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.padding(vertical = AppDimens.paddingSmall)
-                                            )
-                                        } else {
-                                            Text(
-                                                text = "Transactions under $categoryName:",
-                                                style = MaterialTheme.typography.labelMedium,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                fontWeight = FontWeight.Bold,
-                                                modifier = Modifier.padding(bottom = 4.dp, start = 4.dp)
-                                            )
-                                            categoryTransactions.forEach { transaction ->
-                                                TransactionItem(
-                                                    transaction = transaction,
-                                                    modifier = Modifier.fillMaxWidth()
+                    // Breakdown list header and items, shown with high-end spring expand/collapse animations
+                    item {
+                        AnimatedVisibility(
+                            visible = listVisible,
+                            enter = expandVertically(animationSpec = spring(stiffness = Spring.StiffnessLow)) + fadeIn(),
+                            exit = shrinkVertically(animationSpec = spring(stiffness = Spring.StiffnessLow)) + fadeOut()
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = AppDimens.paddingSmall),
+                                verticalArrangement = Arrangement.spacedBy(AppDimens.paddingNormal)
+                            ) {
+                                Text(
+                                    text = "Category Breakdown",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(top = AppDimens.paddingSmall)
+                                )
+
+                                breakdown.forEachIndexed { index, item ->
+                                    val (categoryName, amount) = item
+                                    val percentage = if (totalAmount > 0) (amount / totalAmount).toFloat() else 0f
+                                    val isSelected = index == selectedCategoryIndex
+                                    
+                                    CategoryBreakdownRow(
+                                        categoryName = categoryName,
+                                        amount = amount,
+                                        percentage = percentage,
+                                        barColor = segmentColors[index % segmentColors.size],
+                                        isSelected = isSelected,
+                                        onClick = {
+                                            selectedCategoryIndex = if (isSelected) -1 else index
+                                        },
+                                        modifier = Modifier.testTag("category_row_$categoryName")
+                                    )
+
+                                    AnimatedVisibility(
+                                        visible = isSelected,
+                                        enter = expandVertically() + fadeIn(),
+                                        exit = shrinkVertically() + fadeOut()
+                                    ) {
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = AppDimens.paddingSmall, vertical = AppDimens.paddingSmall),
+                                            verticalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)
+                                        ) {
+                                            val categoryTransactions = remember(periodTransactions, categoryName, selectedType) {
+                                                periodTransactions.filter { 
+                                                    it.category?.name == categoryName && it.transaction.type == selectedType 
+                                                }.sortedByDescending { it.transaction.date }
+                                            }
+
+                                            if (categoryTransactions.isEmpty()) {
+                                                Text(
+                                                    text = "No individual transactions found",
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.padding(vertical = AppDimens.paddingSmall)
                                                 )
+                                            } else {
+                                                Text(
+                                                    text = "Transactions under $categoryName:",
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    fontWeight = FontWeight.Bold,
+                                                    modifier = Modifier.padding(bottom = 4.dp, start = 4.dp)
+                                                )
+                                                categoryTransactions.forEach { transaction ->
+                                                    TransactionItem(
+                                                        transaction = transaction,
+                                                        modifier = Modifier.fillMaxWidth()
+                                                    )
+                                                }
                                             }
                                         }
                                     }
@@ -647,9 +644,8 @@ fun AnalyticsScreen(
                 }
             } // Close inner else
         } // Close outer if
-        } // Close LazyColumn
-    } // Close Scaffold lambda
-} // Close AnalyticsScreen
+    } // Close LazyColumn
+} // Close AnalyticsScreenContent
 
 @Composable
 fun DonutChart(

@@ -39,7 +39,7 @@ import org.robolectric.shadows.ShadowNotificationManager
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36])
+@Config(sdk = [33])
 class OfflineSyncAndNotificationTest {
 
     private lateinit var context: Context

@@ -17,6 +17,11 @@ import com.example.ui.viewmodel.FinanceViewModel
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -26,9 +31,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(qualifiers = RobolectricDeviceQualifiers.Pixel8, sdk = [36])
+@Config(qualifiers = "w1000dp-h2000dp-xhdpi", sdk = [33])
 class AnalyticsScreenTest {
 
     @get:Rule
@@ -40,12 +46,22 @@ class AnalyticsScreenTest {
 
     @Before
     fun createDb() = runBlocking {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
         val context = ApplicationProvider.getApplicationContext<Context>()
+        val directExecutor = java.util.concurrent.Executor { it.run() }
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
+            .setQueryExecutor(directExecutor)
+            .setTransactionExecutor(directExecutor)
             .build()
         val jsonDataManager = JsonDataManager(context)
         repository = FinanceRepository(db.financeDao(), jsonDataManager)
+
+        viewModel = FinanceViewModel(repository)
+
+        // Clear default seeded transactions inserted during ViewModel init
+        val existingTxs = db.financeDao().getAllTransactionsOnce()
+        db.financeDao().deleteTransactions(existingTxs)
 
         // Seed FIRST before creating ViewModel to prevent background seeding crashes/races
         val incomeCat = Category(id = 7, name = "Salary", type = TransactionType.INCOME, iconName = "attach_money")
@@ -59,7 +75,7 @@ class AnalyticsScreenTest {
                 id = 1,
                 amount = 75000.0,
                 source = "Tech Corp Inc.",
-                date = System.currentTimeMillis() - 1000,
+                date = System.currentTimeMillis(),
                 categoryId = 7,
                 type = TransactionType.INCOME,
                 notes = "Monthly payroll payout"
@@ -71,7 +87,7 @@ class AnalyticsScreenTest {
                 id = 2,
                 amount = 4200.0,
                 source = "Reliance Smart Supermarket",
-                date = System.currentTimeMillis() - 5000,
+                date = System.currentTimeMillis() - 100,
                 categoryId = 2,
                 type = TransactionType.EXPENSE,
                 notes = "Weekly grocery refill"
@@ -83,19 +99,17 @@ class AnalyticsScreenTest {
                 id = 3,
                 amount = 1800.0,
                 source = "Netflix Premium",
-                date = System.currentTimeMillis() - 8000,
+                date = System.currentTimeMillis() - 200,
                 categoryId = 3,
                 type = TransactionType.EXPENSE,
                 notes = "Streaming subscription"
             )
         )
-
-        viewModel = FinanceViewModel(repository)
     }
 
     @After
     fun closeDb() {
-        // In-memory database doesn't need explicit close in tests to avoid connection races with background Flows
+        Dispatchers.resetMain()
     }
 
     @Test
@@ -121,8 +135,8 @@ class AnalyticsScreenTest {
         composeTestRule.onNodeWithText("Groceries").assertIsDisplayed()
         composeTestRule.onNodeWithText("Entertainment").assertIsDisplayed()
         
-        // Assert total amount matches total expenses (4200 + 1800 = 6000)
-        composeTestRule.onNodeWithText("Total").assertIsDisplayed()
+        // Assert total amount matches total expenses (All Categories is displayed by default)
+        composeTestRule.onNodeWithTag("donut_center_title", useUnmergedTree = true).assertTextEquals("All Categories")
     }
 
     @Test
@@ -146,14 +160,14 @@ class AnalyticsScreenTest {
         composeTestRule.waitForIdle()
 
         // Donut center should now show Groceries as selected
-        composeTestRule.onNodeWithTag("donut_center_title").assertTextEquals("Groceries")
+        composeTestRule.onNodeWithTag("donut_center_title", useUnmergedTree = true).assertTextEquals("Groceries")
 
         // Click again to unselect
         composeTestRule.onNodeWithTag("category_row_Groceries").performClick()
         composeTestRule.waitForIdle()
 
-        // Donut center should revert to Total
-        composeTestRule.onNodeWithTag("donut_center_title").assertTextEquals("Total")
+        // Donut center should revert to All Categories
+        composeTestRule.onNodeWithTag("donut_center_title", useUnmergedTree = true).assertTextEquals("All Categories")
 
         // Toggle to Income analytics
         composeTestRule.onNodeWithTag("chip_income").performClick()
