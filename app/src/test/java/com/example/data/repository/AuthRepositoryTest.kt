@@ -115,4 +115,52 @@ class AuthRepositoryTest {
         }
         assertTrue(threwException)
     }
+
+    @Test
+    fun testSignInWithBiometrics_createsSession() = runBlocking {
+        // Setup some saved preferences first
+        val prefs = EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+        prefs.edit()
+            .putString("demo_user_email", "bio@example.com")
+            .putString("demo_user_name", "Bio User")
+            .apply()
+
+        val session = authRepository.signInWithBiometrics()
+        assertNotNull(session)
+        assertEquals("bio@example.com", session.email)
+        assertEquals("Bio User", session.name)
+        assertFalse(session.isGuest)
+    }
+
+    @Test
+    fun testSendPasswordResetEmail_doesNotCrash() = runBlocking {
+        // In local demo fallback, it just logs and returns Unit without throwing
+        authRepository.sendPasswordResetEmail("reset@example.com")
+    }
+
+    @Test
+    fun testUpdateProfileName_updatesSessionAndPrefs() = runBlocking {
+        authRepository.signUpWithEmail("user@example.com", "Pass123", "Old Name")
+        authRepository.updateProfileName("New Name")
+        
+        val session = authRepository.currentUserSession.value
+        assertNotNull(session)
+        assertEquals("New Name", session!!.name)
+        
+        val prefs = EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+        assertEquals("New Name", prefs.getString("demo_user_name", null))
+    }
+
+    @Test
+    fun testUpdateProfileEmail_updatesSessionAndPrefs() = runBlocking {
+        authRepository.signUpWithEmail("user@example.com", "Pass123", "Old Name")
+        authRepository.updateProfileEmail("new@example.com")
+        
+        val session = authRepository.currentUserSession.value
+        assertNotNull(session)
+        assertEquals("new@example.com", session!!.email)
+        
+        val prefs = EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+        assertEquals("new@example.com", prefs.getString("demo_user_email", null))
+    }
 }
