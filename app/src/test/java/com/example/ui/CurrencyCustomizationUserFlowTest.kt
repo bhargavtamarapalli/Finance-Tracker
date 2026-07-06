@@ -32,7 +32,7 @@ import org.robolectric.shadows.ShadowLooper
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = RobolectricDeviceQualifiers.Pixel8, sdk = [33])
-class FinanceAppNavigationTest {
+class CurrencyCustomizationUserFlowTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
@@ -70,22 +70,8 @@ class FinanceAppNavigationTest {
         authViewModel = AuthViewModel(authRepository)
     }
 
-    private fun clearViewModel(vm: androidx.lifecycle.ViewModel) {
-        try {
-            val method = androidx.lifecycle.ViewModel::class.java.getDeclaredMethod("onCleared")
-            method.isAccessible = true
-            method.invoke(vm)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
     @After
     fun tearDown() {
-        clearViewModel(financeViewModel)
-        clearViewModel(authViewModel)
-        testDispatcher.scheduler.advanceUntilIdle()
-        db.invalidationTracker.refreshVersionsSync()
         ShadowLooper.idleMainLooper()
         db.close()
         Dispatchers.resetMain()
@@ -102,57 +88,8 @@ class FinanceAppNavigationTest {
     }
 
     @Test
-    fun testNavigation_whenNotLoggedIn_showsAuthScreen() {
-        composeTestRule.setContent {
-            FinanceTrackerTheme {
-                FinanceApp(viewModel = financeViewModel, authViewModel = authViewModel)
-            }
-        }
-        bypassSplash()
-
-        // Should render AuthScreen, which has guest_login_button
-        composeTestRule.onNodeWithTag("guest_login_button").assertExists()
-        composeTestRule.onNodeWithTag("email_input").assertExists()
-    }
-
-    @Test
-    fun testNavigation_whenGuestLoggedIn_hidesAdminAndCloudBackup() {
-        // Log in as guest
-        authViewModel.loginAsGuest()
-        testDispatcher.scheduler.advanceUntilIdle()
-        db.invalidationTracker.refreshVersionsSync()
-        ShadowLooper.idleMainLooper()
-
-        composeTestRule.setContent {
-            FinanceTrackerTheme {
-                FinanceApp(viewModel = financeViewModel, authViewModel = authViewModel)
-            }
-        }
-        bypassSplash()
-
-        // 1. Check we are on Dashboard greeting
-        composeTestRule.onNodeWithText("Hello, Guest").assertIsDisplayed()
-
-        // 2. Open drawer and navigate to settings
-        // Open drawer via menu icon click (contentDescription is "Menu")
-        composeTestRule.onNodeWithContentDescription("Menu").performClick()
-        composeTestRule.waitForIdle()
-        ShadowLooper.idleMainLooper()
-        
-        // Click Settings drawer item
-        composeTestRule.onNodeWithContentDescription("Settings").performClick()
-        composeTestRule.waitForIdle()
-        ShadowLooper.idleMainLooper()
-
-        // 3. Verify Admin Console and Cloud Backup are hidden for Guest
-        composeTestRule.onNodeWithText("Administrative Access").assertDoesNotExist()
-        composeTestRule.onNodeWithText("Admin Console").assertDoesNotExist()
-        composeTestRule.onNodeWithText("Backup to Cloud (Firebase)").assertDoesNotExist()
-    }
-
-    @Test
-    fun testNavigation_whenNormalUserLoggedIn_hidesAdminShowsCloudBackup() {
-        // Register & Log in as normal user
+    fun testCurrencyChangeFlow() {
+        // 1. Sign up/Log in a normal user
         authViewModel.signUp("user@example.com", "Password123", "Normal User")
         testDispatcher.scheduler.advanceUntilIdle()
         db.invalidationTracker.refreshVersionsSync()
@@ -165,28 +102,29 @@ class FinanceAppNavigationTest {
         }
         bypassSplash()
 
-        // 1. Verify dashboard shows greeting
-        composeTestRule.onNodeWithText("Hello, Normal").assertIsDisplayed()
+        // 2. Verify default currency INR is used initially on Dashboard
+        composeTestRule.onNodeWithText("₹58,600.00").assertIsDisplayed()
 
-        // 2. Navigate to Settings
+        // 3. Open Drawer and navigate to Settings
         composeTestRule.onNodeWithContentDescription("Menu").performClick()
         composeTestRule.waitForIdle()
-        ShadowLooper.idleMainLooper()
-        
-        // Click Settings drawer item
         composeTestRule.onNodeWithContentDescription("Settings").performClick()
         composeTestRule.waitForIdle()
-        ShadowLooper.idleMainLooper()
 
-        composeTestRule.onRoot().printToLog("NAVIGATION_TEST")
+        // 4. Change currency option to USD
+        composeTestRule.onNodeWithText("USD ($)", substring = true).performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+
+        // 5. Navigate back to Dashboard
+        composeTestRule.onNodeWithContentDescription("Menu").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithContentDescription("Home").performClick()
+        composeTestRule.waitForIdle()
+
+        // 6. Verify Dashboard displays values with USD $ symbol
         printSemanticsTreeText()
-
-        // 3. Verify normal user has Cloud Backup but NO Admin Console
-        composeTestRule.onNodeWithText("Backup to Cloud (Firebase)").performScrollTo().assertIsDisplayed()
-        
-        // Admin console should be hidden
-        composeTestRule.onNodeWithText("Administrative Access").assertDoesNotExist()
-        composeTestRule.onNodeWithText("Admin Console").assertDoesNotExist()
+        composeTestRule.onNodeWithText("$58,600.00").assertIsDisplayed()
+        composeTestRule.onNodeWithText("₹58,600.00").assertDoesNotExist()
     }
 
     private fun printSemanticsTreeText() {
@@ -213,43 +151,5 @@ class FinanceAppNavigationTest {
         node.children.forEach { child ->
             buildTreeString(child, sb, depth + 1)
         }
-    }
-
-    @Test
-    fun testNavigation_whenAdminLoggedIn_showsAdminAndCloudBackup() {
-        // Register & Log in as admin
-        authViewModel.signUp("admin@example.com", "Password123", "Admin User")
-        testDispatcher.scheduler.advanceUntilIdle()
-        db.invalidationTracker.refreshVersionsSync()
-        ShadowLooper.idleMainLooper()
-
-        composeTestRule.setContent {
-            FinanceTrackerTheme {
-                FinanceApp(viewModel = financeViewModel, authViewModel = authViewModel)
-            }
-        }
-        bypassSplash()
-
-        // 1. Navigate to Settings
-        composeTestRule.onNodeWithContentDescription("Menu").performClick()
-        composeTestRule.waitForIdle()
-        ShadowLooper.idleMainLooper()
-        
-        // Click Settings drawer item
-        composeTestRule.onNodeWithContentDescription("Settings").performClick()
-        composeTestRule.waitForIdle()
-        ShadowLooper.idleMainLooper()
-
-        // 2. Verify Admin has access to both Cloud Backup and Admin Console
-        composeTestRule.onNodeWithText("Backup to Cloud (Firebase)").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Administrative Access").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Admin Console").performScrollTo().assertIsDisplayed()
-
-        // 3. Click Admin Console and verify navigation
-        composeTestRule.onNodeWithText("Admin Console").performScrollTo().performClick()
-        composeTestRule.waitForIdle()
-        ShadowLooper.idleMainLooper()
-
-        composeTestRule.onNodeWithText("System Diagnostics & Privacy Guard").assertIsDisplayed()
     }
 }

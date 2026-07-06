@@ -39,7 +39,10 @@ enum class TimePeriod(val displayName: String) {
     YEAR("Year")
 }
 
-class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() {
+class FinanceViewModel(
+    private val repository: FinanceRepository,
+    networkMonitor: com.example.ui.utils.NetworkMonitor? = null
+) : ViewModel() {
     private val prefs = repository.getSettingsPreferences()
 
     private val _appTheme = MutableStateFlow(getSavedTheme())
@@ -54,8 +57,11 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     private val _biometricLockEnabled = MutableStateFlow(getSavedBiometricLockEnabled())
     val biometricLockEnabled: StateFlow<Boolean> = _biometricLockEnabled.asStateFlow()
 
-    private val networkMonitor = com.example.ui.utils.NetworkMonitor(repository.getContext())
-    val isOnline: StateFlow<Boolean> = networkMonitor.isOnline
+    private val _networkMonitor: com.example.ui.utils.NetworkMonitor by lazy {
+        networkMonitor ?: com.example.ui.utils.NetworkMonitor(repository.getContext())
+    }
+    val isOnline: StateFlow<Boolean> get() = _networkMonitor.isOnline
+
 
     private val _pendingSync = MutableStateFlow(getSavedPendingSync())
     val pendingSync: StateFlow<Boolean> = _pendingSync.asStateFlow()
@@ -389,12 +395,12 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     }
 
     private fun getSavedPendingSync(): Boolean {
-        return prefs?.getBoolean("pending_sync_preference", false) ?: false
+        return prefs.getBoolean("pending_sync_preference", false)
     }
 
     private fun setPendingSync(pending: Boolean) {
         _pendingSync.value = pending
-        prefs?.edit()?.putBoolean("pending_sync_preference", pending)?.apply()
+        prefs.edit().putBoolean("pending_sync_preference", pending).apply()
     }
 
     fun updateSession(userId: String?, isGuest: Boolean) {
@@ -423,7 +429,7 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     }
 
     private fun getSavedTheme(): AppTheme {
-        val themeStr = prefs?.getString("theme_preference", AppTheme.SYSTEM.name) ?: AppTheme.SYSTEM.name
+        val themeStr = prefs.getString("theme_preference", AppTheme.SYSTEM.name) ?: AppTheme.SYSTEM.name
         return try {
             AppTheme.valueOf(themeStr)
         } catch (e: Exception) {
@@ -432,7 +438,7 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     }
 
     private fun getSavedCurrency(): CurrencyOption {
-        val currencyStr = prefs?.getString("currency_preference", CurrencyOption.INR.name) ?: CurrencyOption.INR.name
+        val currencyStr = prefs.getString("currency_preference", CurrencyOption.INR.name) ?: CurrencyOption.INR.name
         return try {
             CurrencyOption.valueOf(currencyStr)
         } catch (e: Exception) {
@@ -441,27 +447,27 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     }
 
     private fun getSavedReminderEnabled(): Boolean {
-        return prefs?.getBoolean("reminder_preference", false) ?: false
+        return prefs.getBoolean("reminder_preference", false)
     }
 
     private fun getSavedBiometricLockEnabled(): Boolean {
-        return prefs?.getBoolean("biometric_lock_preference", false) ?: false
+        return prefs.getBoolean("biometric_lock_preference", false)
     }
 
     fun setTheme(theme: AppTheme) {
         _appTheme.value = theme
-        prefs?.edit()?.putString("theme_preference", theme.name)?.apply()
+        prefs.edit().putString("theme_preference", theme.name).apply()
     }
 
     fun setCurrency(currency: CurrencyOption) {
         _currencyOption.value = currency
         CurrencyUtils.selectedCurrency = currency
-        prefs?.edit()?.putString("currency_preference", currency.name)?.apply()
+        prefs.edit().putString("currency_preference", currency.name).apply()
     }
 
     fun setReminderEnabled(enabled: Boolean, context: Context) {
         _reminderEnabled.value = enabled
-        prefs?.edit()?.putBoolean("reminder_preference", enabled)?.apply()
+        prefs.edit().putBoolean("reminder_preference", enabled).apply()
         if (enabled) {
             com.example.receiver.ReminderScheduler.scheduleDailyReminder(context)
         } else {
@@ -471,7 +477,7 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
 
     fun setBiometricLockEnabled(enabled: Boolean) {
         _biometricLockEnabled.value = enabled
-        prefs?.edit()?.putBoolean("biometric_lock_preference", enabled)?.apply()
+        prefs.edit().putBoolean("biometric_lock_preference", enabled).apply()
     }
 
     fun addTransaction(amount: Double, source: String, date: Long, categoryId: Int, type: TransactionType, notes: String, paymentMethod: String = "Cash") {
@@ -544,16 +550,16 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
 
     // --- Admin helper actions ---
     fun getSavedAppMode(): String {
-        return prefs?.getString("admin_app_mode", "Personal Finance Ledger") ?: "Personal Finance Ledger"
+        return prefs.getString("admin_app_mode", "Personal Finance Ledger") ?: "Personal Finance Ledger"
     }
 
     fun setAppMode(mode: String) {
         _appMode.value = mode
-        prefs?.edit()?.putString("admin_app_mode", mode)?.apply()
+        prefs.edit().putString("admin_app_mode", mode).apply()
     }
 
     fun getSavedAnnouncements(): List<Announcement> {
-        val json = prefs?.getString("admin_announcements", null)
+        val json = prefs.getString("admin_announcements", null)
         if (json.isNullOrEmpty()) {
             val defaultAnnouncements = listOf(
                 Announcement(
@@ -604,18 +610,21 @@ class FinanceViewModel(private val repository: FinanceRepository) : ViewModel() 
     private fun saveAnnouncementsLocally(list: List<Announcement>) {
         try {
             val json = announcementAdapter.toJson(list)
-            prefs?.edit()?.putString("admin_announcements", json)?.apply()
+            prefs.edit().putString("admin_announcements", json).apply()
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 }
 
-class FinanceViewModelFactory(private val repository: FinanceRepository) : ViewModelProvider.Factory {
+class FinanceViewModelFactory(
+    private val repository: FinanceRepository,
+    private val networkMonitor: com.example.ui.utils.NetworkMonitor? = null
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(FinanceViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return FinanceViewModel(repository) as T
+            return FinanceViewModel(repository, networkMonitor) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

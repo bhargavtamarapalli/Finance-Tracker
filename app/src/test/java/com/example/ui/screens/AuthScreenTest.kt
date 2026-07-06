@@ -11,7 +11,7 @@ import com.example.ui.viewmodel.AuthState
 import com.example.ui.viewmodel.AuthViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -27,13 +27,13 @@ import org.robolectric.shadows.ShadowLooper
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
+@Config(sdk = [33])
 class AuthScreenTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    private val testDispatcher = StandardTestDispatcher()
+    private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var context: Context
     private lateinit var repository: AuthRepository
     private lateinit var viewModel: AuthViewModel
@@ -45,10 +45,16 @@ class AuthScreenTest {
         android.provider.Settings.Global.putFloat(context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 0f)
         android.provider.Settings.Global.putFloat(context.contentResolver, android.provider.Settings.Global.TRANSITION_ANIMATION_SCALE, 0f)
         android.provider.Settings.Global.putFloat(context.contentResolver, android.provider.Settings.Global.WINDOW_ANIMATION_SCALE, 0f)
+        
         val prefs = EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
         prefs.edit().clear().commit()
 
         repository = AuthRepository(context)
+        // Seed a user for login/forgot password tests to succeed
+        kotlinx.coroutines.runBlocking {
+            repository.signUpWithEmail("test@example.com", "Password123", "Test User")
+            repository.logout()
+        }
         viewModel = AuthViewModel(repository)
     }
 
@@ -65,7 +71,6 @@ class AuthScreenTest {
     @After
     fun tearDown() {
         clearViewModel(viewModel)
-        testDispatcher.scheduler.advanceUntilIdle()
         ShadowLooper.idleMainLooper()
         Dispatchers.resetMain()
     }
@@ -78,9 +83,6 @@ class AuthScreenTest {
             }
         }
         composeTestRule.waitForIdle()
-        testDispatcher.scheduler.advanceUntilIdle()
-        composeTestRule.waitForIdle()
-        ShadowLooper.idleMainLooper()
 
         // Email and Password should be displayed
         composeTestRule.onNodeWithTag("email_input").assertExists()
@@ -101,22 +103,10 @@ class AuthScreenTest {
             }
         }
         composeTestRule.waitForIdle()
-        testDispatcher.scheduler.advanceUntilIdle()
-        composeTestRule.waitForIdle()
-        ShadowLooper.idleMainLooper()
 
         // Click "Sign Up" toggle
-        composeTestRule.onNodeWithTag("go_to_register_button").performClick()
-        composeTestRule.mainClock.advanceTimeBy(3000L)
+        composeTestRule.onNodeWithTag("go_to_register_button").performScrollTo().performClick()
         composeTestRule.waitForIdle()
-        testDispatcher.scheduler.advanceUntilIdle()
-        composeTestRule.waitForIdle()
-        ShadowLooper.idleMainLooper()
-
-        // Wait for the animation to transition and display "name_input"
-        composeTestRule.waitUntil(5000) {
-            composeTestRule.onAllNodesWithTag("name_input").fetchSemanticsNodes().isNotEmpty()
-        }
 
         // Verify fields updated
         composeTestRule.onNodeWithTag("name_input").assertExists()
@@ -137,20 +127,11 @@ class AuthScreenTest {
             }
         }
         composeTestRule.waitForIdle()
-        testDispatcher.scheduler.advanceUntilIdle()
-        composeTestRule.waitForIdle()
-        ShadowLooper.idleMainLooper()
 
-        composeTestRule.onNodeWithTag("guest_login_button").performClick()
+        composeTestRule.onNodeWithTag("guest_login_button").performScrollTo().performClick()
         composeTestRule.waitForIdle()
-        testDispatcher.scheduler.advanceUntilIdle()
-        composeTestRule.waitForIdle()
-        ShadowLooper.idleMainLooper()
         
         // Verify user session is set as guest
-        if (viewModel.currentUserSession.value == null) {
-            viewModel.loginAsGuest()
-        }
         val session = viewModel.currentUserSession.value
         org.junit.Assert.assertNotNull(session)
         assertTrue(session!!.isGuest)
@@ -165,23 +146,118 @@ class AuthScreenTest {
             }
         }
         composeTestRule.waitForIdle()
-        testDispatcher.scheduler.advanceUntilIdle()
-        composeTestRule.waitForIdle()
-        ShadowLooper.idleMainLooper()
 
         // Force set an error state on VM to test card display
         viewModel.setError("Authentication has failed. Please verify credentials.")
         composeTestRule.waitForIdle()
-        testDispatcher.scheduler.advanceUntilIdle()
-        composeTestRule.waitForIdle()
-        ShadowLooper.idleMainLooper()
-
-        // Wait for error card to display
-        composeTestRule.waitUntil(5000) {
-            composeTestRule.onAllNodesWithText("Authentication has failed. Please verify credentials.").fetchSemanticsNodes().isNotEmpty()
-        }
 
         // Verify card display
         composeTestRule.onNodeWithText("Authentication has failed. Please verify credentials.").assertIsDisplayed()
+    }
+
+    @Test
+    fun testAuthScreen_successfulLoginFlow() {
+        composeTestRule.setContent {
+            FinanceTrackerTheme {
+                AuthScreen(viewModel = viewModel)
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        // Enter credentials
+        composeTestRule.onNodeWithTag("email_input").performTextInput("test@example.com")
+        composeTestRule.onNodeWithTag("password_input").performTextInput("Password123")
+        
+        // Click login submit
+        composeTestRule.onNodeWithTag("login_submit_button").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+
+        // Verify the AuthViewModel sign-in state transitions to success
+        val session = viewModel.currentUserSession.value
+        org.junit.Assert.assertNotNull(session)
+        assertEquals("test@example.com", session!!.email)
+    }
+
+    @Test
+    fun testAuthScreen_registerPasswordMismatch_showsError() {
+        composeTestRule.setContent {
+            FinanceTrackerTheme {
+                AuthScreen(viewModel = viewModel)
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        // Toggle to register mode
+        composeTestRule.onNodeWithTag("go_to_register_button").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+
+        // Input matching details except password
+        composeTestRule.onNodeWithTag("name_input").performTextInput("Test User")
+        composeTestRule.onNodeWithTag("email_input").performTextInput("user@example.com")
+        composeTestRule.onNodeWithTag("password_input").performTextInput("Password123")
+        composeTestRule.onNodeWithTag("confirm_password_input").performTextInput("DifferentPassword456")
+
+        // Click register
+        composeTestRule.onNodeWithTag("register_submit_button").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+
+        // Assert error message displays
+        composeTestRule.onNodeWithTag("auth_error_card").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Passwords do not match").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun testAuthScreen_forgotPasswordFlow_navigationAndReset() {
+        composeTestRule.setContent {
+            FinanceTrackerTheme {
+                AuthScreen(viewModel = viewModel)
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        // Click Forgot Password?
+        composeTestRule.onNodeWithTag("forgot_password_button").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+
+        // Reset password fields should be displayed
+        composeTestRule.onNodeWithText("Reset Password").assertExists()
+        composeTestRule.onNodeWithTag("email_input").assertExists()
+        composeTestRule.onNodeWithTag("reset_submit_button").assertExists()
+
+        // Enter email and send reset link
+        composeTestRule.onNodeWithTag("email_input").performTextInput("reset@example.com")
+        composeTestRule.onNodeWithTag("reset_submit_button").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+
+        // Assert status success card displays
+        composeTestRule.onNodeWithTag("auth_status_card").assertIsDisplayed()
+        composeTestRule.onNodeWithText("A password reset link has been sent to reset@example.com.").assertIsDisplayed()
+
+        // Navigate back to Login
+        composeTestRule.onNodeWithText("Back to Login").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+
+        // Verify we are back on Login Screen
+        composeTestRule.onNodeWithTag("login_submit_button").assertExists()
+    }
+
+    @Test
+    fun testAuthScreen_googleSignIn_triggersSuccess() {
+        composeTestRule.setContent {
+            FinanceTrackerTheme {
+                AuthScreen(viewModel = viewModel)
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        // Click Google Login
+        composeTestRule.onNodeWithTag("google_login_button").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+
+        // Verify user logged in as google user session
+        val session = viewModel.currentUserSession.value
+        org.junit.Assert.assertNotNull(session)
+        assertEquals("bhargav1999.t@gmail.com", session!!.email)
+        assertEquals("Bhargav T", session.name)
     }
 }

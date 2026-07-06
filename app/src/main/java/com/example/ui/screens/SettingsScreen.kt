@@ -765,28 +765,30 @@ fun SettingsContent(
             HorizontalDivider()
 
             // Admin Access Section
-            Text(
-                text = "Administrative Access",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = AppDimens.paddingLarge, vertical = AppDimens.paddingSmall)
-            )
+            if (userSession?.role == "ADMIN") {
+                Text(
+                    text = "Administrative Access",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = AppDimens.paddingLarge, vertical = AppDimens.paddingSmall)
+                )
 
-            ListItem(
-                headlineContent = { Text("Admin Console") },
-                supportingContent = { Text("Configure app focus modes, publish updates feed, and view diagnostics.") },
-                leadingContent = {
-                    Icon(Icons.Default.SupervisorAccount, contentDescription = "Admin Console", tint = MaterialTheme.colorScheme.primary)
-                },
-                trailingContent = {
-                    Icon(Icons.Default.ChevronRight, contentDescription = "Navigate to Admin")
-                },
-                modifier = Modifier
-                    .clickable { onAdminConsoleClick() }
-                    .padding(vertical = AppDimens.paddingExtraSmall)
-            )
-            HorizontalDivider()
+                ListItem(
+                    headlineContent = { Text("Admin Console") },
+                    supportingContent = { Text("Configure app focus modes, publish updates feed, and view diagnostics.") },
+                    leadingContent = {
+                        Icon(Icons.Default.SupervisorAccount, contentDescription = "Admin Console", tint = MaterialTheme.colorScheme.primary)
+                    },
+                    trailingContent = {
+                        Icon(Icons.Default.ChevronRight, contentDescription = "Navigate to Admin")
+                    },
+                    modifier = Modifier
+                        .clickable { onAdminConsoleClick() }
+                        .padding(vertical = AppDimens.paddingExtraSmall)
+                )
+                HorizontalDivider()
+            }
             
             Spacer(modifier = Modifier.height(AppDimens.paddingLarge))
             
