@@ -24,8 +24,11 @@ import com.example.data.repository.AuthRepository
 import com.example.ui.viewmodel.AuthViewModel
 import com.example.ui.viewmodel.AuthViewModelFactory
 
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+
 class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
@@ -38,6 +41,10 @@ class MainActivity : FragmentActivity() {
         val authRepository = AuthRepository(this)
         val authViewModelFactory = AuthViewModelFactory(authRepository)
         val authViewModel = ViewModelProvider(this, authViewModelFactory)[AuthViewModel::class.java]
+
+        splashScreen.setKeepOnScreenCondition {
+            viewModel.isLoading.value
+        }
 
         setContent {
             val appTheme by viewModel.appTheme.collectAsState()

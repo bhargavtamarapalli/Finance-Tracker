@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -31,6 +32,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Settings
@@ -57,15 +59,6 @@ fun FinanceApp(
     val userSession by authViewModel.currentUserSession.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
-    var isSplashAnimComplete by remember { mutableStateOf(false) }
-    var showSplash by remember { mutableStateOf(true) }
-
-    LaunchedEffect(isSplashAnimComplete, isLoading) {
-        if (isSplashAnimComplete && !isLoading) {
-            showSplash = false
-        }
-    }
-
     LaunchedEffect(userSession) {
         val session = userSession
         if (session != null) {
@@ -75,8 +68,9 @@ fun FinanceApp(
         }
     }
 
-    if (showSplash) {
-        SplashScreen(onAnimationComplete = { isSplashAnimComplete = true })
+    if (isLoading) {
+        // Show empty background while initial DB loading completes
+        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
         return
     }
 
@@ -319,31 +313,53 @@ fun FinanceApp(
         Scaffold(
             bottomBar = {
                 if (currentRoute in listOf("dashboard", "transactions", "analytics", "settings")) {
-                    NavigationBar {
-                        NavigationBarItem(
-                            selected = currentRoute == "dashboard",
-                            onClick = { navController.navigate("dashboard") { launchSingleTop = true; restoreState = true } },
-                            icon = { Icon(Icons.Default.Home, contentDescription = "Dashboard") },
-                            label = { Text("Home") }
-                        )
-                        NavigationBarItem(
-                            selected = currentRoute == "transactions",
-                            onClick = { navController.navigate("transactions") { launchSingleTop = true; restoreState = true } },
-                            icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "History") },
-                            label = { Text("History") }
-                        )
-                        NavigationBarItem(
-                            selected = currentRoute == "analytics",
-                            onClick = { navController.navigate("analytics") { launchSingleTop = true; restoreState = true } },
-                            icon = { Icon(Icons.Default.PieChart, contentDescription = "Analytics") },
-                            label = { Text("Analytics") }
-                        )
-                        NavigationBarItem(
-                            selected = currentRoute == "settings",
-                            onClick = { navController.navigate("settings") { launchSingleTop = true; restoreState = true } },
-                            icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
-                            label = { Text("Settings") }
-                        )
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        NavigationBar(
+                            modifier = Modifier.align(Alignment.BottomCenter)
+                        ) {
+                            NavigationBarItem(
+                                selected = currentRoute == "dashboard",
+                                onClick = { navController.navigate("dashboard") { launchSingleTop = true; restoreState = true } },
+                                icon = { Icon(Icons.Default.Home, contentDescription = "Dashboard") },
+                                label = { Text("Home", style = MaterialTheme.typography.labelSmall) }
+                            )
+                            NavigationBarItem(
+                                selected = currentRoute == "transactions",
+                                onClick = { navController.navigate("transactions") { launchSingleTop = true; restoreState = true } },
+                                icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "History") },
+                                label = { Text("History", style = MaterialTheme.typography.labelSmall) }
+                            )
+                            
+                            NavigationBarItem(
+                                selected = false,
+                                onClick = { navController.navigate("add_transaction/EXPENSE") },
+                                icon = { 
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(48.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(Icons.Default.Add, contentDescription = "Add", tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
+                                        }
+                                    }
+                                },
+                                label = { Text("Add", style = MaterialTheme.typography.labelSmall) }
+                            )
+                            
+                            NavigationBarItem(
+                                selected = currentRoute == "analytics",
+                                onClick = { navController.navigate("analytics") { launchSingleTop = true; restoreState = true } },
+                                icon = { Icon(Icons.Default.PieChart, contentDescription = "Analytics") },
+                                label = { Text("Analytics", style = MaterialTheme.typography.labelSmall) }
+                            )
+                            NavigationBarItem(
+                                selected = currentRoute == "settings",
+                                onClick = { navController.navigate("settings") { launchSingleTop = true; restoreState = true } },
+                                icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
+                                label = { Text("Settings", style = MaterialTheme.typography.labelSmall) }
+                            )
+                        }
                     }
                 }
             }

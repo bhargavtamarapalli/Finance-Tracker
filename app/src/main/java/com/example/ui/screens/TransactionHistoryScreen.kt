@@ -121,6 +121,8 @@ fun TransactionHistoryContent(
     onDuplicateTransactionClick: (TransactionWithCategory) -> Unit,
     onDeleteTransactionClick: (TransactionWithCategory) -> Unit
 ) {
+    var selectedTransactionForDetails by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<com.example.data.model.TransactionWithCategory?>(null) }
+
 
 
     var searchQuery by remember { mutableStateOf("") }
@@ -441,18 +443,7 @@ fun TransactionHistoryContent(
                         }
 
                         items(itemsInGroup, key = { it.transaction.id }) { item ->
-                            TransactionHistoryRow(
-                                item = item,
-                                onEditClick = {
-                                    onEditTransactionClick(item)
-                                },
-                                onDeleteClick = {
-                                    onDeleteTransactionClick(item)
-                                },
-                                onDuplicateClick = {
-                                    onDuplicateTransactionClick(item)
-                                }
-                            )
+                            com.example.ui.components.TransactionItem(transaction = item, modifier = Modifier.clickable { selectedTransactionForDetails = item })
                         }
                     }
                 }
@@ -486,6 +477,25 @@ fun TransactionHistoryContent(
                 onDismiss = { showFilterSheet = false }
             )
         }
+    }
+    
+    if (selectedTransactionForDetails != null) {
+        com.example.ui.components.TransactionDetailsBottomSheet(
+            transactionWithCat = selectedTransactionForDetails!!,
+            onDismiss = { selectedTransactionForDetails = null },
+            onEdit = { 
+                onEditTransactionClick(selectedTransactionForDetails!!)
+                selectedTransactionForDetails = null
+            },
+            onDuplicate = { 
+                onDuplicateTransactionClick(selectedTransactionForDetails!!)
+                selectedTransactionForDetails = null
+            },
+            onDelete = { 
+                onDeleteTransactionClick(selectedTransactionForDetails!!)
+                selectedTransactionForDetails = null
+            }
+        )
     }
 }
 

@@ -31,6 +31,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.window.Dialog
@@ -975,6 +976,150 @@ fun DayOrWeekPickerContent(
                     } else {
                         Spacer(modifier = Modifier.size(36.dp))
                     }
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+fun TransactionItem(
+    transaction: com.example.data.model.TransactionWithCategory,
+    modifier: Modifier = Modifier
+) {
+    val tx = transaction.transaction
+    val category = transaction.category
+    val formatter = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
+    val isExpense = tx.type == com.example.data.model.TransactionType.EXPENSE
+    
+    Row(
+        modifier = modifier
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Surface(
+            shape = androidx.compose.foundation.shape.CircleShape,
+            color = if (isExpense) com.example.ui.theme.ExpenseRed.copy(alpha = 0.15f) else com.example.ui.theme.IncomeGreen.copy(alpha = 0.15f),
+            modifier = Modifier.size(40.dp)
+        ) {
+            Icon(
+                imageVector = com.example.ui.utils.getIconByName(category?.iconName ?: "category"),
+                contentDescription = null,
+                tint = if (isExpense) com.example.ui.theme.ExpenseRed else com.example.ui.theme.IncomeGreen,
+                modifier = Modifier.padding(8.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = tx.source.ifBlank { category?.name ?: "Unknown" },
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
+            Text(
+                text = formatter.format(java.util.Date(tx.date)),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Text(
+            text = "${if (isExpense) "-" else "+"}${com.example.ui.utils.CurrencyUtils.formatRupees(tx.amount)}",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+            color = if (isExpense) com.example.ui.theme.ExpenseRed else com.example.ui.theme.IncomeGreen
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TransactionDetailsBottomSheet(
+    transactionWithCat: com.example.data.model.TransactionWithCategory,
+    onDismiss: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onDuplicate: () -> Unit
+) {
+    val tx = transactionWithCat.transaction
+    val cat = transactionWithCat.category
+    val isExpense = tx.type == com.example.data.model.TransactionType.EXPENSE
+    
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 32.dp, top = 8.dp, start = 24.dp, end = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = if (isExpense) Color(0xFFFDE9E9) else Color(0xFFE9FDF0),
+                modifier = Modifier.size(64.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = com.example.ui.utils.getIconByName(cat?.iconName ?: "category"),
+                        contentDescription = null,
+                        modifier = Modifier.size(32.dp),
+                        tint = if (isExpense) Color(0xFFD32F2F) else Color(0xFF2E7D32)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = com.example.ui.utils.CurrencyUtils.formatRupees(tx.amount),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (isExpense) Color(0xFFD32F2F) else Color(0xFF2E7D32)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = tx.source.ifBlank { cat?.name ?: "Unknown" },
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            if (tx.notes.isNotBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = tx.notes,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { onEdit() }) {
+                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(48.dp)) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.padding(12.dp))
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Edit", style = MaterialTheme.typography.labelMedium)
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { onDuplicate() }) {
+                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(48.dp)) {
+                        Icon(Icons.Default.ContentCopy, contentDescription = "Duplicate", modifier = Modifier.padding(12.dp))
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Duplicate", style = MaterialTheme.typography.labelMedium)
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { onDelete() }) {
+                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.errorContainer, modifier = Modifier.size(48.dp)) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.padding(12.dp), tint = MaterialTheme.colorScheme.error)
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Delete", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
                 }
             }
         }

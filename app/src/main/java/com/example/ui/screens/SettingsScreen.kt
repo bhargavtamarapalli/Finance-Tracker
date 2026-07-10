@@ -10,6 +10,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import com.example.ui.utils.CurrencyUtils
+
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,6 +50,7 @@ fun SettingsScreen(
     val currencyOption by viewModel.currencyOption.collectAsStateWithLifecycle()
     val appMode by viewModel.appMode.collectAsStateWithLifecycle()
     val isOnline by viewModel.isOnline.collectAsStateWithLifecycle()
+    val monthlyBudgetGoal by viewModel.monthlyBudgetGoal.collectAsStateWithLifecycle()
 
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -81,6 +86,8 @@ fun SettingsScreen(
         currencyOption = currencyOption,
         appMode = appMode,
         isSyncing = isSyncing,
+        monthlyBudgetGoal = monthlyBudgetGoal,
+        onBudgetGoalChange = { goal -> viewModel.updateMonthlyBudgetGoal(goal) },
         onReminderToggle = { enabled -> viewModel.setReminderEnabled(enabled, context) },
         onBiometricToggle = { enabled -> viewModel.setBiometricLockEnabled(enabled) },
         onThemeChange = { theme -> viewModel.setTheme(theme) },
@@ -166,6 +173,8 @@ fun SettingsContent(
     currencyOption: CurrencyOption,
     appMode: String,
     isSyncing: Boolean,
+    monthlyBudgetGoal: Double,
+    onBudgetGoalChange: (Double) -> Unit,
     onReminderToggle: (Boolean) -> Unit,
     onBiometricToggle: (Boolean) -> Unit,
     onThemeChange: (AppTheme) -> Unit,
@@ -303,6 +312,66 @@ fun SettingsContent(
             // -------------------------------------------------------------
             // Section: Currency Settings
             // -------------------------------------------------------------
+            // Budget Goal Section
+            Text(
+                text = "Budget",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = AppDimens.paddingLarge, vertical = AppDimens.paddingSmall)
+            )
+            
+            var isEditingBudget by remember { mutableStateOf(false) }
+            var tempBudgetInput by remember(monthlyBudgetGoal) { mutableStateOf(monthlyBudgetGoal.toInt().toString()) }
+            
+            ListItem(
+                headlineContent = { Text("Monthly Budget Goal") },
+                supportingContent = { 
+                    if (isEditingBudget) {
+                        OutlinedTextField(
+                            value = tempBudgetInput,
+                            onValueChange = { tempBudgetInput = it },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                        )
+                    } else {
+                        Text(CurrencyUtils.formatRupees(monthlyBudgetGoal))
+                    }
+                },
+                leadingContent = {
+                    Icon(
+                        imageVector = Icons.Default.AccountBalanceWallet,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                trailingContent = {
+                    if (isEditingBudget) {
+                        Row {
+                            IconButton(onClick = { isEditingBudget = false }) {
+                                Icon(Icons.Default.Close, contentDescription = "Cancel")
+                            }
+                            IconButton(onClick = { 
+                                val newGoal = tempBudgetInput.toDoubleOrNull()
+                                if (newGoal != null && newGoal > 0) {
+                                    onBudgetGoalChange(newGoal)
+                                }
+                                isEditingBudget = false 
+                            }) {
+                                Icon(Icons.Default.Check, contentDescription = "Save")
+                            }
+                        }
+                    } else {
+                        IconButton(onClick = { isEditingBudget = true }) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit Budget")
+                        }
+                    }
+                },
+                colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface)
+            )
+            HorizontalDivider()
+
             Text(
                 text = "Currency",
                 style = MaterialTheme.typography.titleMedium,

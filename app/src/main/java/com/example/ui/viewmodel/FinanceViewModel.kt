@@ -57,6 +57,15 @@ class FinanceViewModel(
     private val _biometricLockEnabled = MutableStateFlow(getSavedBiometricLockEnabled())
     val biometricLockEnabled: StateFlow<Boolean> = _biometricLockEnabled.asStateFlow()
 
+    private val _monthlyBudgetGoal = MutableStateFlow(prefs.getFloat("monthly_budget_goal", 100000.0f).toDouble())
+    val monthlyBudgetGoal: StateFlow<Double> = _monthlyBudgetGoal.asStateFlow()
+
+    fun updateMonthlyBudgetGoal(goal: Double) {
+        prefs.edit().putFloat("monthly_budget_goal", goal.toFloat()).apply()
+        _monthlyBudgetGoal.value = goal
+    }
+
+
     private val _networkMonitor: com.example.ui.utils.NetworkMonitor by lazy {
         networkMonitor ?: com.example.ui.utils.NetworkMonitor(repository.getContext())
     }
@@ -378,6 +387,7 @@ class FinanceViewModel(
             cal.get(Calendar.MONTH) == currentMonth && cal.get(Calendar.YEAR) == currentYear
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
 
     init {
         CurrencyUtils.selectedCurrency = getSavedCurrency()
