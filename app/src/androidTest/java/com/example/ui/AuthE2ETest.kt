@@ -2,6 +2,7 @@ package com.example.ui
 
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.MainActivity
@@ -20,11 +21,23 @@ class AuthE2ETest {
 
     @Before
     fun setUp() {
+        clearUserData()
+    }
+
+    @org.junit.After
+    fun tearDown() {
+        clearUserData()
+    }
+
+    private fun clearUserData() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         
         // Clear preferences
-        val prefs = EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
-        prefs.edit().clear().commit()
+        val authPrefs = EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+        authPrefs.edit().clear().commit()
+
+        val settingsPrefs = EncryptedPrefsManager.getEncryptedPrefs(context, "settings_prefs")
+        settingsPrefs.edit().clear().commit()
         
         // Clear database
         val db = AppDatabase.getDatabase(context)
@@ -33,78 +46,116 @@ class AuthE2ETest {
 
     @Test
     fun testGuestLoginAndLogout() {
-        // Wait for splash screen to complete and transition to AuthScreen
-        composeTestRule.waitUntil(timeoutMillis = 5000) {
+        // Wait for splash screen to complete and transition to AuthScreen (generous 20s timeout for slow emulators)
+        composeTestRule.waitUntil(timeoutMillis = 20000) {
             composeTestRule.onAllNodesWithTag("guest_login_button").fetchSemanticsNodes().isNotEmpty()
         }
 
-        // Click guest login
-        composeTestRule.onNodeWithTag("guest_login_button").performClick()
+        // Scroll to guest login button and click it
+        composeTestRule.onNodeWithTag("guest_login_button").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
 
-        // Verify Dashboard displays Guest greeting
+        // Wait for Dashboard to display and verify greeting
+        composeTestRule.waitUntil(timeoutMillis = 15000) {
+            composeTestRule.onAllNodesWithText("Hello, Guest", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
         composeTestRule.onNodeWithText("Hello, Guest", substring = true).assertIsDisplayed()
 
-        // Open drawer menu
-        composeTestRule.onNodeWithContentDescription("Menu").performClick()
+        // Click Settings bottom navigation item directly
+        composeTestRule.onNode(hasText("Settings") and hasAnyAncestor(hasTestTag("bottom_navigation_bar"))).performClick()
+        composeTestRule.waitForIdle()
 
-        // Click Settings drawer item
-        composeTestRule.onNodeWithContentDescription("Settings").performClick()
+        // Wait for Settings screen to navigate and load
+        composeTestRule.waitUntil(timeoutMillis = 15000) {
+            composeTestRule.onAllNodesWithText("Guest Account").fetchSemanticsNodes().isNotEmpty()
+        }
 
-        // Verify guest account indicators are shown and "Log Out" button exists
-        composeTestRule.onNodeWithText("Guest Account", substring = true).assertIsDisplayed()
-        composeTestRule.onNodeWithText("Log Out").assertIsDisplayed()
+        // Verify guest account indicators are shown and "Log Out" button exists (scrolling to them first)
+        composeTestRule.onNodeWithText("Guest Account").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithTag("settings_logout_button").performScrollTo().assertIsDisplayed()
 
         // Click Log Out
-        composeTestRule.onNodeWithText("Log Out").performClick()
+        composeTestRule.onNodeWithTag("settings_logout_button").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
 
         // Verify navigation back to AuthScreen
-        composeTestRule.onNodeWithTag("guest_login_button").assertIsDisplayed()
+        composeTestRule.waitUntil(timeoutMillis = 15000) {
+            composeTestRule.onAllNodesWithTag("guest_login_button").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithTag("guest_login_button").performScrollTo().assertIsDisplayed()
     }
 
     @Test
     fun testUserSignUpAndProfileUpdate() {
-        // Wait for splash screen
-        composeTestRule.waitUntil(timeoutMillis = 5000) {
+        // Wait for splash screen (generous 20s timeout)
+        composeTestRule.waitUntil(timeoutMillis = 20000) {
             composeTestRule.onAllNodesWithTag("go_to_register_button").fetchSemanticsNodes().isNotEmpty()
         }
 
-        // Go to registration mode
-        composeTestRule.onNodeWithTag("go_to_register_button").performClick()
+        // Scroll to "Sign Up" / Register switcher and click it
+        composeTestRule.onNodeWithTag("go_to_register_button").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
 
         // Fill registration form
         composeTestRule.onNodeWithTag("name_input").performTextInput("John E2E")
         composeTestRule.onNodeWithTag("email_input").performTextInput("john.e2e@example.com")
         composeTestRule.onNodeWithTag("password_input").performTextInput("Password123")
         composeTestRule.onNodeWithTag("confirm_password_input").performTextInput("Password123")
+        composeTestRule.waitForIdle()
 
-        // Click Register
-        composeTestRule.onNodeWithTag("register_submit_button").performClick()
+        // Dismiss keyboard to ensure fields/buttons are not covered
+        Espresso.closeSoftKeyboard()
+        composeTestRule.waitForIdle()
 
-        // Verify redirected to Dashboard
+        // Click Register (scrolling to it first)
+        composeTestRule.onNodeWithTag("register_submit_button").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+
+        // Wait for redirection to Dashboard and verify greeting
+        composeTestRule.waitUntil(timeoutMillis = 15000) {
+            composeTestRule.onAllNodesWithText("Hello, John", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
         composeTestRule.onNodeWithText("Hello, John", substring = true).assertIsDisplayed()
 
-        // Navigate to Settings
-        composeTestRule.onNodeWithContentDescription("Menu").performClick()
-        composeTestRule.onNodeWithContentDescription("Settings").performClick()
+        // Navigate to Settings directly using bottom navigation bar
+        composeTestRule.onNode(hasText("Settings") and hasAnyAncestor(hasTestTag("bottom_navigation_bar"))).performClick()
+        composeTestRule.waitForIdle()
 
-        // Verify Name and Email are listed
-        composeTestRule.onNodeWithText("John E2E").assertIsDisplayed()
-        composeTestRule.onNodeWithText("john.e2e@example.com").assertIsDisplayed()
+        // Wait for Settings screen to navigate and load
+        composeTestRule.waitUntil(timeoutMillis = 15000) {
+            composeTestRule.onAllNodesWithText("Settings").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        // Verify Name and Email are listed (scrolling to them first)
+        composeTestRule.onNodeWithTag("profile_name_text", useUnmergedTree = true).performScrollTo().assertTextEquals("John E2E")
+        composeTestRule.onNodeWithTag("profile_email_text", useUnmergedTree = true).performScrollTo().assertTextEquals("john.e2e@example.com")
 
         // Click Edit Profile Details
-        composeTestRule.onNodeWithText("Edit Profile Details").performClick()
+        composeTestRule.onNodeWithText("Edit Profile Details").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
 
         // Change Name
         composeTestRule.onNodeWithText("Full Name").performTextReplacement("John Updated")
+        Espresso.closeSoftKeyboard()
+        composeTestRule.waitForIdle()
+
         composeTestRule.onNodeWithText("Save Changes").performClick()
+        composeTestRule.waitForIdle()
 
         // Verify name updated in settings
-        composeTestRule.onNodeWithText("John Updated").assertIsDisplayed()
+        composeTestRule.waitUntil(timeoutMillis = 15000) {
+            composeTestRule.onAllNodesWithTag("profile_name_text", useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithTag("profile_name_text", useUnmergedTree = true).performScrollTo().assertTextEquals("John Updated")
 
         // Log Out
-        composeTestRule.onNodeWithText("Log Out").performClick()
+        composeTestRule.onNodeWithTag("settings_logout_button").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
 
         // Verify we are back on AuthScreen
-        composeTestRule.onNodeWithTag("login_submit_button").assertIsDisplayed()
+        composeTestRule.waitUntil(timeoutMillis = 15000) {
+            composeTestRule.onAllNodesWithTag("login_submit_button").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithTag("login_submit_button").performScrollTo().assertIsDisplayed()
     }
 }

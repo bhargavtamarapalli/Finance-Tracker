@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -208,7 +209,7 @@ fun FinanceApp(
         drawerState = drawerState,
         gesturesEnabled = currentRoute in listOf("dashboard", "transactions", "analytics", "settings"),
         drawerContent = {
-            ModalDrawerSheet {
+            ModalDrawerSheet(modifier = Modifier.testTag("drawer_sheet")) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Column(
                     modifier = Modifier
@@ -319,7 +320,7 @@ fun FinanceApp(
         Scaffold(
             bottomBar = {
                 if (currentRoute in listOf("dashboard", "transactions", "analytics", "settings")) {
-                    NavigationBar {
+                    NavigationBar(modifier = Modifier.testTag("bottom_navigation_bar")) {
                         NavigationBarItem(
                             selected = currentRoute == "dashboard",
                             onClick = { navController.navigate("dashboard") { launchSingleTop = true; restoreState = true } },

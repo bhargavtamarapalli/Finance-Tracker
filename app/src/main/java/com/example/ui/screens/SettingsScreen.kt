@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -395,7 +396,7 @@ fun SettingsContent(
 
                     ListItem(
                         headlineContent = { Text("Email") },
-                        supportingContent = { Text("Guest Account") },
+                        supportingContent = { Text("Guest Account", modifier = Modifier.testTag("guest_account_text")) },
                         leadingContent = {
                             Icon(Icons.Default.Email, contentDescription = "Email", tint = MaterialTheme.colorScheme.secondary)
                         }
@@ -439,7 +440,7 @@ fun SettingsContent(
                 } else {
                     ListItem(
                         headlineContent = { Text("Name") },
-                        supportingContent = { Text(session.name, fontWeight = FontWeight.SemiBold) },
+                        supportingContent = { Text(session.name, fontWeight = FontWeight.SemiBold, modifier = Modifier.testTag("profile_name_text")) },
                         leadingContent = {
                             Icon(Icons.Default.Person, contentDescription = "Name", tint = MaterialTheme.colorScheme.secondary)
                         },
@@ -457,7 +458,7 @@ fun SettingsContent(
 
                     ListItem(
                         headlineContent = { Text("Email") },
-                        supportingContent = { Text(session.email) },
+                        supportingContent = { Text(session.email, modifier = Modifier.testTag("profile_email_text")) },
                         leadingContent = {
                             Icon(Icons.Default.Email, contentDescription = "Email", tint = MaterialTheme.colorScheme.secondary)
                         },
@@ -802,7 +803,8 @@ fun SettingsContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(AppDimens.paddingLarge),
-                shape = AppShapes.roundedCardMedium
+                shape = AppShapes.roundedCardMedium,
+                testTag = "settings_logout_button"
             )
         }
     }
