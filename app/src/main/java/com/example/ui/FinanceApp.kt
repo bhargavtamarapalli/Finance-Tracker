@@ -1,6 +1,7 @@
 package com.example.ui
 
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -216,11 +217,10 @@ fun FinanceApp(
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            painter = painterResource(id = com.example.R.drawable.ic_app_logo_content),
+                        Image(
+                            painter = painterResource(id = com.example.R.drawable.ic_app_logo),
                             contentDescription = "App Logo",
-                            modifier = Modifier.size(24.dp),
-                            tint = MaterialTheme.colorScheme.primary
+                            modifier = Modifier.size(32.dp)
                         )
                         Spacer(modifier = Modifier.width(AppDimens.paddingMedium))
                         Text(
@@ -297,9 +297,22 @@ fun FinanceApp(
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 28.dp))
                 Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
 
+                val isGuest = userSession?.isGuest == true
                 NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.Logout, contentDescription = "Log Out", tint = MaterialTheme.colorScheme.error) },
-                    label = { Text("Log Out", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error) },
+                    icon = { 
+                        Icon(
+                            imageVector = if (isGuest) Icons.Default.Login else Icons.Default.Logout, 
+                            contentDescription = if (isGuest) "Sign In" else "Log Out", 
+                            tint = if (isGuest) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                        ) 
+                    },
+                    label = { 
+                        Text(
+                            text = if (isGuest) "Sign In / Register" else "Log Out", 
+                            fontWeight = FontWeight.Bold, 
+                            color = if (isGuest) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                        ) 
+                    },
                     selected = false,
                     onClick = {
                         scope.launch { drawerState.close() }
@@ -308,8 +321,8 @@ fun FinanceApp(
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                     colors = NavigationDrawerItemDefaults.colors(
                         unselectedContainerColor = Color.Transparent,
-                        unselectedIconColor = MaterialTheme.colorScheme.error,
-                        unselectedTextColor = MaterialTheme.colorScheme.error
+                        unselectedIconColor = if (isGuest) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                        unselectedTextColor = if (isGuest) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                     )
                 )
                 Spacer(modifier = Modifier.height(AppDimens.paddingNormal))

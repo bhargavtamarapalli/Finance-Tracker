@@ -350,7 +350,6 @@ fun TransactionHistoryContent(
                     }
                     .offset { IntOffset(0, headerOffsetPx.roundToInt()) }
                     .background(MaterialTheme.colorScheme.background)
-                    .statusBarsPadding()
                     .padding(horizontal = AppDimens.paddingNormal)
             ) {
                 Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
@@ -528,7 +527,7 @@ fun TransactionHistoryContent(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(AppDimens.paddingNormal))
+                Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
  
                 Surface(
                     onClick = { showDatePicker = true },

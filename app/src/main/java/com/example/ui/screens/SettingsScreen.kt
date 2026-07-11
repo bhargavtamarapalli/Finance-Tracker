@@ -555,12 +555,13 @@ fun SettingsContent(
  
             Spacer(modifier = Modifier.height(AppDimens.paddingLarge))
             
+            val isGuest = userSession?.isGuest == true
             FinanceButton(
-                text = "Log Out",
+                text = if (isGuest) "Sign In / Register" else "Log Out",
                 onClick = { onSignOut() },
-                containerColor = MaterialTheme.colorScheme.errorContainer,
-                contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                icon = Icons.Default.Logout,
+                containerColor = if (isGuest) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer,
+                contentColor = if (isGuest) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer,
+                icon = if (isGuest) Icons.Default.Login else Icons.Default.Logout,
                 modifier = Modifier.fillMaxWidth(),
                 shape = AppShapes.roundedCardMedium
             )
