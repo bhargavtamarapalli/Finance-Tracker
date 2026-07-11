@@ -246,9 +246,9 @@ fun DashboardContent(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = AppDimens.paddingNormal),
             contentPadding = PaddingValues(top = 6.dp, bottom = 100.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(AppDimens.paddingIconInside)
         ) {
             item {
                 HeroBalanceCard(
@@ -282,8 +282,8 @@ fun DashboardContent(
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(AppDimens.paddingIconInside)) {
                             items(topCategories) { (cat, amount) ->
                                 CategoryChip(
                                     name = cat?.name ?: "Unknown",
@@ -300,16 +300,16 @@ fun DashboardContent(
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
+                    shape = AppShapes.roundedCardMedium,
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                    border = BorderStroke(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         // Header row — tighter vertical padding (8dp instead of 12dp)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                                .padding(horizontal = AppDimens.paddingNormal, vertical = AppDimens.paddingSmall),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -321,7 +321,7 @@ fun DashboardContent(
                             )
                             TextButton(
                                 onClick = onViewAllTransactionsClick,
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                                contentPadding = PaddingValues(horizontal = AppDimens.paddingSmall, vertical = 0.dp)
                             ) {
                                 Text("View All", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                             }
@@ -332,24 +332,33 @@ fun DashboardContent(
                             thickness = 1.dp
                         )
 
-                        // Transaction rows
-                        recentTransactions.forEachIndexed { index, item ->
-                            TransactionItem(
-                                transaction = item,
-                                modifier = Modifier.clickable { selectedTransactionForDetails = item },
-                                verticalPadding = 0.dp,
-                                shape = when {
-                                    recentTransactions.size == 1 -> RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp)
-                                    index == recentTransactions.size - 1 -> RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp)
-                                    else -> RoundedCornerShape(0.dp)
-                                }
+                        if (recentTransactions.isEmpty()) {
+                            EmptyStatePlaceholder(
+                                message = "No transactions yet",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = AppDimens.paddingExtraLarge)
                             )
-                            if (index < recentTransactions.size - 1) {
-                                HorizontalDivider(
-                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f),
-                                    thickness = 1.dp,
-                                    modifier = Modifier.padding(horizontal = 16.dp)
+                        } else {
+                            // Transaction rows
+                            recentTransactions.forEachIndexed { index, item ->
+                                TransactionItem(
+                                    transaction = item,
+                                    modifier = Modifier.clickable { selectedTransactionForDetails = item },
+                                    verticalPadding = 0.dp,
+                                    shape = when {
+                                        recentTransactions.size == 1 -> RoundedCornerShape(bottomStart = AppDimens.paddingNormal, bottomEnd = AppDimens.paddingNormal)
+                                        index == recentTransactions.size - 1 -> RoundedCornerShape(bottomStart = AppDimens.paddingNormal, bottomEnd = AppDimens.paddingNormal)
+                                        else -> RoundedCornerShape(0.dp)
+                                    }
                                 )
+                                if (index < recentTransactions.size - 1) {
+                                    HorizontalDivider(
+                                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f),
+                                        thickness = 1.dp,
+                                        modifier = Modifier.padding(horizontal = AppDimens.paddingNormal)
+                                    )
+                                }
                             }
                         }
                     }
@@ -395,13 +404,13 @@ fun HeroBalanceCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        shape = AppShapes.roundedCardLarge,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
+        border = BorderStroke(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = AppDimens.paddingNormal),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
@@ -412,7 +421,7 @@ fun HeroBalanceCard(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(AppDimens.paddingExtraSmall))
             Text(
                 text = balance,
                 style = MaterialTheme.typography.headlineLarge,
@@ -436,7 +445,7 @@ fun HeroBalanceCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(AppDimens.paddingNormal))
 
             // ── Key Insights row ─────────────────────────────────────────────
             Row(modifier = Modifier.fillMaxWidth()) {
@@ -460,7 +469,7 @@ fun HeroBalanceCard(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(AppDimens.paddingExtraSmall))
                     LinearProgressIndicator(
                         progress = { savingsValue },
                         modifier = Modifier.fillMaxWidth().height(5.dp).clip(CircleShape),
@@ -484,7 +493,7 @@ fun HeroBalanceCard(
                         color = MaterialTheme.colorScheme.onSurface,
                         textAlign = androidx.compose.ui.text.style.TextAlign.End
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(AppDimens.paddingExtraSmall))
                     LinearProgressIndicator(
                         progress = { budgetProgressValue },
                         modifier = Modifier.fillMaxWidth().height(5.dp).clip(CircleShape),
@@ -510,7 +519,7 @@ fun StatPillRow(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)
     ) {
         StatPill(
             modifier = Modifier.weight(1f),
@@ -560,10 +569,10 @@ fun StatPill(
         modifier = modifier,
         shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+        border = BorderStroke(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
+            modifier = Modifier.padding(horizontal = AppDimens.paddingSmall, vertical = AppDimens.paddingIconInside),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
@@ -603,10 +612,10 @@ fun CategoryChip(
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier.width(130.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+        border = BorderStroke(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
     ) {
         Row(
-            modifier = Modifier.padding(10.dp),
+            modifier = Modifier.padding(AppDimens.paddingIconInside),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
@@ -623,7 +632,7 @@ fun CategoryChip(
                     )
                 }
             }
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(AppDimens.paddingSmall))
             Column {
                 Text(
                     name,
@@ -656,21 +665,21 @@ fun MonthlySummaryCard(
     budgetLeftAmount: Double
 ) {
     Card(
-        shape = RoundedCornerShape(24.dp),
+        shape = AppShapes.roundedCardLarge,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier.fillMaxWidth(),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+        border = BorderStroke(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Text("MONTHLY SUMMARY", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(AppDimens.paddingNormal))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Income: ", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
                         Text(income, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = IncomeGreen)
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Expenses: ", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
                         Text(expense, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = ExpenseRed)
@@ -681,7 +690,7 @@ fun MonthlySummaryCard(
                         Text("Savings: ", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
                         Text(savings, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = IncomeGreen)
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Budget Left: ", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
                         Text(budgetLeft, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = if (budgetLeftAmount >= 0.0) IncomeGreen else ExpenseRed)
@@ -707,13 +716,13 @@ fun TotalBalanceCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        shape = AppShapes.roundedCardLarge,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
+        border = BorderStroke(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
-            modifier = Modifier.padding(24.dp),
+            modifier = Modifier.padding(AppDimens.paddingLarge),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
@@ -722,14 +731,14 @@ fun TotalBalanceCard(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
             Text(
                 text = balance,
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = if (isTrendPositive) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
@@ -745,15 +754,15 @@ fun TotalBalanceCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(AppDimens.paddingExtraLarge))
 
             Row(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text("KEY INSIGHTS", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(AppDimens.paddingMedium))
                     Text("SPENDING EFFICIENCY", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                     Text(savingsText, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(AppDimens.paddingExtraSmall))
                     LinearProgressIndicator(
                         progress = { savingsValue },
                         modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
@@ -761,12 +770,12 @@ fun TotalBalanceCard(
                         trackColor = MaterialTheme.colorScheme.surfaceVariant
                     )
                 }
-                Spacer(modifier = Modifier.width(24.dp))
+                Spacer(modifier = Modifier.width(AppDimens.paddingLarge))
                 Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
                     Spacer(modifier = Modifier.height(28.dp))
                     Text("BUDGET USED", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                     Text(budgetProgressText, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, textAlign = androidx.compose.ui.text.style.TextAlign.End)
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(AppDimens.paddingExtraSmall))
                     LinearProgressIndicator(
                         progress = { budgetProgressValue },
                         modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),

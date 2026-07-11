@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -250,7 +251,7 @@ fun CategoryRowItem(
                 MaterialTheme.colorScheme.surface
             }
         ),
-        border = if (category.isArchived) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        border = if (category.isArchived) null else BorderStroke(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(
             modifier = Modifier
@@ -261,7 +262,7 @@ fun CategoryRowItem(
             // Icon container
             Box(
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(AppDimens.sizeIconContainer)
                     .background(
                         color = if (category.isArchived) {
                             MaterialTheme.colorScheme.surfaceVariant
@@ -280,7 +281,7 @@ fun CategoryRowItem(
                     } else {
                         MaterialTheme.colorScheme.onPrimaryContainer
                     },
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(AppDimens.sizeIconNormal)
                 )
             }
 
@@ -299,7 +300,7 @@ fun CategoryRowItem(
                 )
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(AppDimens.paddingExtraSmall)
                 ) {
                     if (category.isArchived) {
                         SuggestionChip(
@@ -417,7 +418,7 @@ fun AddCategoryDialog(
                             ) {
                                 Column(
                                     modifier = Modifier
-                                        .padding(4.dp)
+                                        .padding(AppDimens.paddingExtraSmall)
                                         .fillMaxWidth(),
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.Center
@@ -430,7 +431,7 @@ fun AddCategoryDialog(
                                         } else {
                                             MaterialTheme.colorScheme.onSurfaceVariant
                                         },
-                                        modifier = Modifier.size(24.dp)
+                                        modifier = Modifier.size(AppDimens.sizeIconNormal)
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text(

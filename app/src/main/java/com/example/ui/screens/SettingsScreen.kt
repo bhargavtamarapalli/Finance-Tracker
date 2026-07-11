@@ -192,21 +192,21 @@ fun SettingsContent(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(scrollState)
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = AppDimens.paddingNormal)
         ) {
             // Profile Section
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 10.dp),
+                    .padding(vertical = AppDimens.paddingIconInside),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 ProfileAvatar(
                     name = userSession?.name,
                     isGuest = userSession?.isGuest == true,
-                    size = 48.dp
+                    size = AppDimens.sizeAvatar
                 )
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(AppDimens.paddingNormal))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = userSession?.name ?: "Guest User",
@@ -226,7 +226,7 @@ fun SettingsContent(
                         onClick = { showEditProfileDialog = true },
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary,
-                        shape = RoundedCornerShape(12.dp),
+                        shape = AppShapes.roundedIconContainer,
                         height = 36.dp
                     )
                 }
@@ -236,10 +236,10 @@ fun SettingsContent(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                shape = RoundedCornerShape(20.dp),
+                    .padding(vertical = AppDimens.paddingExtraSmall),
+                shape = AppShapes.roundedCardMedium,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+                border = BorderStroke(AppDimens.borderWidthThin, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
             ) {
                 Column(
                     modifier = Modifier
@@ -248,7 +248,7 @@ fun SettingsContent(
                                 colors = listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), Color.Transparent)
                             )
                         )
-                        .padding(16.dp)
+                        .padding(AppDimens.paddingNormal)
                 ) {
                     Text(
                         "Upgrade to Business",
@@ -256,33 +256,33 @@ fun SettingsContent(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(AppDimens.paddingExtraSmall))
                     Text(
                         "Unlock advanced analytics and business features. Scale your financial management.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(AppDimens.paddingMedium))
                     FinanceButton(
                         text = "Learn More",
                         onClick = { /* Learn more */ },
                         modifier = Modifier.fillMaxWidth(),
                         containerColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f),
                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        shape = RoundedCornerShape(12.dp)
+                        shape = AppShapes.roundedIconContainer
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
+ 
+            Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
 
             // Account Section
             SettingsSectionHeader("Account")
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
+                shape = AppShapes.roundedCardMedium,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                border = BorderStroke(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     SettingsItem(
@@ -293,7 +293,7 @@ fun SettingsContent(
                     )
                     HorizontalDivider(
                         color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f),
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                        modifier = Modifier.padding(horizontal = AppDimens.paddingNormal)
                     )
                     SettingsItem(
                         icon = Icons.Default.List,
@@ -302,7 +302,7 @@ fun SettingsContent(
                     )
                     HorizontalDivider(
                         color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f),
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                        modifier = Modifier.padding(horizontal = AppDimens.paddingNormal)
                     )
                     var isEditingBudget by remember { mutableStateOf(false) }
                     var tempBudgetInput by remember(monthlyBudgetGoal) { mutableStateOf(monthlyBudgetGoal.toInt().toString()) }
@@ -313,7 +313,7 @@ fun SettingsContent(
                             if (isEditingBudget) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)
                                 ) {
                                     OutlinedTextField(
                                         value = tempBudgetInput,
@@ -350,7 +350,7 @@ fun SettingsContent(
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Spacer(modifier = Modifier.width(AppDimens.paddingSmall))
                                     Icon(
                                         imageVector = Icons.Default.Edit,
                                         contentDescription = "Edit Goal",
@@ -364,15 +364,15 @@ fun SettingsContent(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
 
             // Preferences Section
             SettingsSectionHeader("Preferences")
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
+                shape = AppShapes.roundedCardMedium,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                border = BorderStroke(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     SettingsItem(
@@ -393,7 +393,7 @@ fun SettingsContent(
                     )
                     HorizontalDivider(
                         color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f),
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                        modifier = Modifier.padding(horizontal = AppDimens.paddingNormal)
                     )
                     SettingsItem(
                         icon = Icons.Default.Notifications,
@@ -413,7 +413,7 @@ fun SettingsContent(
                     )
                     HorizontalDivider(
                         color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f),
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                        modifier = Modifier.padding(horizontal = AppDimens.paddingNormal)
                     )
                     SettingsItem(
                         icon = Icons.Default.Public,
@@ -424,15 +424,15 @@ fun SettingsContent(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
 
             // Security Section
             SettingsSectionHeader("Security")
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
+                shape = AppShapes.roundedCardMedium,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                border = BorderStroke(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     SettingsItem(
@@ -453,7 +453,7 @@ fun SettingsContent(
                     )
                     HorizontalDivider(
                         color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f),
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                        modifier = Modifier.padding(horizontal = AppDimens.paddingNormal)
                     )
                     SettingsItem(
                         icon = Icons.Default.Lock,
@@ -463,15 +463,15 @@ fun SettingsContent(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
 
             // Data & Backup Section
             SettingsSectionHeader("Data & Backup")
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
+                shape = AppShapes.roundedCardMedium,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                border = BorderStroke(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     SettingsItem(
@@ -481,7 +481,7 @@ fun SettingsContent(
                     )
                     HorizontalDivider(
                         color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f),
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                        modifier = Modifier.padding(horizontal = AppDimens.paddingNormal)
                     )
                     SettingsItem(
                         icon = Icons.Default.Restore,
@@ -495,7 +495,7 @@ fun SettingsContent(
                     if (userSession?.isGuest == false) {
                         HorizontalDivider(
                             color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f),
-                            modifier = Modifier.padding(horizontal = 16.dp)
+                            modifier = Modifier.padding(horizontal = AppDimens.paddingNormal)
                         )
                         SettingsItem(
                             icon = Icons.Default.CloudUpload,
@@ -504,7 +504,7 @@ fun SettingsContent(
                         )
                         HorizontalDivider(
                             color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f),
-                            modifier = Modifier.padding(horizontal = 16.dp)
+                            modifier = Modifier.padding(horizontal = AppDimens.paddingNormal)
                         )
                         SettingsItem(
                             icon = Icons.Default.CloudDownload,
@@ -520,13 +520,13 @@ fun SettingsContent(
 
             // Admin Access Section
             if (userSession?.role == "ADMIN") {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
                 SettingsSectionHeader("Administrative Access")
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
+                    shape = AppShapes.roundedCardMedium,
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                    border = BorderStroke(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
                 ) {
                     SettingsItem(
                         icon = Icons.Default.SupervisorAccount,
@@ -536,15 +536,15 @@ fun SettingsContent(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
 
             // App Info Section
             SettingsSectionHeader("App Info")
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
+                shape = AppShapes.roundedCardMedium,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                border = BorderStroke(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
             ) {
                 SettingsItem(
                     icon = Icons.Default.Info,
@@ -552,8 +552,8 @@ fun SettingsContent(
                     trailingText = "v1.1"
                 )
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
+ 
+            Spacer(modifier = Modifier.height(AppDimens.paddingLarge))
             
             FinanceButton(
                 text = "Log Out",
@@ -562,7 +562,7 @@ fun SettingsContent(
                 contentColor = MaterialTheme.colorScheme.onErrorContainer,
                 icon = Icons.Default.Logout,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp)
+                shape = AppShapes.roundedCardMedium
             )
 
             Spacer(modifier = Modifier.height(60.dp))
@@ -601,7 +601,7 @@ fun SettingsContent(
             onDismissRequest = { showEditProfileDialog = false },
             title = { Text("Edit Profile", fontWeight = FontWeight.Bold) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)) {
                     OutlinedTextField(
                         value = editName,
                         onValueChange = { editName = it },
@@ -643,7 +643,7 @@ fun SettingsSectionHeader(title: String) {
         style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.primary,
         fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(top = 6.dp, bottom = 4.dp)
+        modifier = Modifier.padding(top = 6.dp, bottom = AppDimens.paddingExtraSmall)
     )
 }
 
@@ -659,7 +659,7 @@ fun SettingsItem(
         modifier = Modifier
             .fillMaxWidth()
             .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = AppDimens.paddingNormal, vertical = AppDimens.paddingIconInside),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Surface(
@@ -671,7 +671,7 @@ fun SettingsItem(
                 Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
             }
         }
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(AppDimens.paddingNormal))
         Text(
             text = title,
             style = MaterialTheme.typography.bodyLarge,

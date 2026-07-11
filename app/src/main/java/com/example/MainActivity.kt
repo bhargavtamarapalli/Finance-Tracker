@@ -15,6 +15,9 @@ import com.example.ui.FinanceApp
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.example.ui.viewmodel.AppTheme
 import com.example.ui.theme.FinanceTrackerTheme
 import com.example.ui.viewmodel.FinanceViewModel
@@ -53,9 +56,18 @@ class MainActivity : FragmentActivity() {
                 AppTheme.DARK -> true
                 AppTheme.SYSTEM -> isSystemInDarkTheme()
             }
+
+            var showSplash by rememberSaveable { mutableStateOf(true) }
+
             FinanceTrackerTheme(darkTheme = isDark) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    FinanceApp(viewModel = viewModel, authViewModel = authViewModel)
+                    if (showSplash) {
+                        com.example.ui.screens.CustomSplashScreen(
+                            onAnimationComplete = { showSplash = false }
+                        )
+                    } else {
+                        FinanceApp(viewModel = viewModel, authViewModel = authViewModel)
+                    }
                 }
             }
         }

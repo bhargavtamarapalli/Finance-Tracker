@@ -32,6 +32,7 @@ import com.example.ui.viewmodel.FinanceViewModel
 import com.example.ui.viewmodel.AuthViewModel
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Add
@@ -119,7 +120,7 @@ fun FinanceApp(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
-                .padding(24.dp),
+                .padding(AppDimens.paddingLarge),
             contentAlignment = Alignment.Center
         ) {
             Column(
@@ -134,7 +135,7 @@ fun FinanceApp(
                     modifier = Modifier.size(72.dp)
                 )
                 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(AppDimens.paddingLarge))
                 
                 Text(
                     text = "Finance App Locked",
@@ -143,7 +144,7 @@ fun FinanceApp(
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
                 
                 Text(
                     text = "Confirm biometrics to unlock and view your secure session",
@@ -173,7 +174,7 @@ fun FinanceApp(
                     modifier = Modifier.fillMaxWidth(0.8f)
                 )
                 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(AppDimens.paddingNormal))
                 
                 FinanceTextButton(
                     text = "Log Out",
@@ -206,18 +207,36 @@ fun FinanceApp(
         gesturesEnabled = currentRoute in listOf("dashboard", "transactions", "analytics", "settings"),
         drawerContent = {
             ModalDrawerSheet {
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(AppDimens.paddingNormal))
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 28.dp, vertical = 20.dp)
                 ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(id = com.example.R.drawable.ic_app_logo_content),
+                            contentDescription = "App Logo",
+                            modifier = Modifier.size(24.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(AppDimens.paddingMedium))
+                        Text(
+                            text = "Finance Manager",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(AppDimens.paddingNormal))
                     ProfileAvatar(
                         name = userSession?.name,
                         isGuest = userSession?.isGuest == true,
-                        size = 60.dp
+                        size = AppDimens.sizeDrawerAvatar
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(AppDimens.paddingMedium))
                     Text(
                         text = userSession?.name ?: "Guest User",
                         style = MaterialTheme.typography.titleMedium,
@@ -230,7 +249,7 @@ fun FinanceApp(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     if (userSession?.isGuest == true) {
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
                         SuggestionChip(
                             onClick = {
                                 scope.launch { drawerState.close() }
@@ -248,7 +267,7 @@ fun FinanceApp(
                     }
                 }
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 28.dp))
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(AppDimens.paddingNormal))
                 drawerItems.forEach { item ->
                     NavigationDrawerItem(
                         icon = { Icon(item.icon, contentDescription = item.label) },
@@ -276,7 +295,7 @@ fun FinanceApp(
                 Spacer(modifier = Modifier.weight(1f))
 
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 28.dp))
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
 
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Default.Logout, contentDescription = "Log Out", tint = MaterialTheme.colorScheme.error) },
@@ -293,7 +312,7 @@ fun FinanceApp(
                         unselectedTextColor = MaterialTheme.colorScheme.error
                     )
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(AppDimens.paddingNormal))
             }
         }
     ) {
@@ -305,8 +324,8 @@ fun FinanceApp(
                         containerColor = MaterialTheme.colorScheme.surface,
                         tonalElevation = 0.dp,
                         modifier = Modifier
-                            .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
-                            .border(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+                            .clip(RoundedCornerShape(topStart = AppDimens.paddingNormal, topEnd = AppDimens.paddingNormal))
+                            .border(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), RoundedCornerShape(topStart = AppDimens.paddingNormal, topEnd = AppDimens.paddingNormal))
                     ) {
                         val items = listOf(
                             Triple("dashboard", "Home", Icons.Default.Home),

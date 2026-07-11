@@ -278,49 +278,62 @@ fun TransactionHistoryContent(
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(AppDimens.paddingMedium),
                 contentPadding = PaddingValues(
-                    top = with(LocalDensity.current) { headerHeightPx.toDp() } + 4.dp,
+                    top = with(LocalDensity.current) { headerHeightPx.toDp() } + AppDimens.paddingExtraSmall,
                     bottom = 80.dp,
-                    start = 16.dp,
-                    end = 16.dp
+                    start = AppDimens.paddingNormal,
+                    end = AppDimens.paddingNormal
                 )
             ) {
-                groupedTransactions.forEach { (dateHeader, items) ->
+                if (groupedTransactions.isEmpty()) {
                     item {
-                        Text(
-                            text = dateHeader,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 6.dp, bottom = 4.dp)
-                        )
-                    }
-                    item {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(20.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                        Box(
+                            modifier = Modifier
+                                .fillParentMaxWidth()
+                                .fillParentMaxHeight(),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Column(
+                            EmptyStatePlaceholder()
+                        }
+                    }
+                } else {
+                    groupedTransactions.forEach { (dateHeader, items) ->
+                        item {
+                            Text(
+                                text = dateHeader,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 6.dp, bottom = AppDimens.paddingExtraSmall)
+                            )
+                        }
+                        item {
+                            Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(0.dp)
+                                shape = AppShapes.roundedCardMedium,
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                border = BorderStroke(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
                             ) {
-                                items.forEachIndexed { index, item ->
-                                    TransactionItem(
-                                        transaction = item,
-                                        modifier = Modifier.clickable { selectedTransactionForDetails = item },
-                                        verticalPadding = 0.dp,
-                                        shape = RoundedCornerShape(0.dp),
-                                        containerColor = Color.Transparent,
-                                        border = null
-                                    )
-                                    if (index < items.size - 1) {
-                                        HorizontalDivider(
-                                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f),
-                                            thickness = 1.dp,
-                                            modifier = Modifier.padding(horizontal = 16.dp)
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalArrangement = Arrangement.spacedBy(0.dp)
+                                ) {
+                                    items.forEachIndexed { index, item ->
+                                        TransactionItem(
+                                            transaction = item,
+                                            modifier = Modifier.clickable { selectedTransactionForDetails = item },
+                                            verticalPadding = 0.dp,
+                                            shape = RoundedCornerShape(0.dp),
+                                            containerColor = Color.Transparent,
+                                            border = null
                                         )
+                                        if (index < items.size - 1) {
+                                            HorizontalDivider(
+                                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f),
+                                                thickness = 1.dp,
+                                                modifier = Modifier.padding(horizontal = AppDimens.paddingNormal)
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -338,9 +351,9 @@ fun TransactionHistoryContent(
                     .offset { IntOffset(0, headerOffsetPx.roundToInt()) }
                     .background(MaterialTheme.colorScheme.background)
                     .statusBarsPadding()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = AppDimens.paddingNormal)
             ) {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
                 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -363,23 +376,23 @@ fun TransactionHistoryContent(
                         ),
                         singleLine = true
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(AppDimens.paddingMedium))
                     Box(
                         modifier = Modifier
                             .size(56.dp)
                             .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape)
-                            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), CircleShape)
+                            .border(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), CircleShape)
                             .clickable { showFilterSheet = true },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(Icons.Default.FilterList, contentDescription = "Filter", tint = MaterialTheme.colorScheme.primary)
                     }
                 }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
+ 
+                Spacer(modifier = Modifier.height(AppDimens.paddingMedium))
+ 
                 LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)
                 ) {
                     item {
                         val isAllSelected = selectedCategoryNames.isEmpty() && selectedFilterType == FilterType.ALL && maxPriceLimit >= 10000.0
@@ -395,7 +408,7 @@ fun TransactionHistoryContent(
                                 Icon(
                                     imageVector = Icons.Default.GridOn,
                                     contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(AppDimens.sizeIconSmall)
                                 )
                             },
                             colors = FilterChipDefaults.filterChipColors(
@@ -425,7 +438,7 @@ fun TransactionHistoryContent(
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.TrendingUp,
                                     contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(AppDimens.sizeIconSmall)
                                 )
                             },
                             colors = FilterChipDefaults.filterChipColors(
@@ -455,7 +468,7 @@ fun TransactionHistoryContent(
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.TrendingDown,
                                     contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(AppDimens.sizeIconSmall)
                                 )
                             },
                             colors = FilterChipDefaults.filterChipColors(
@@ -493,7 +506,7 @@ fun TransactionHistoryContent(
                                     Icon(
                                         imageVector = getIconByName(it.iconName),
                                         contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
+                                        modifier = Modifier.size(AppDimens.sizeIconSmall)
                                     )
                                 }
                             },
@@ -515,32 +528,32 @@ fun TransactionHistoryContent(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
+                Spacer(modifier = Modifier.height(AppDimens.paddingNormal))
+ 
                 Surface(
                     onClick = { showDatePicker = true },
                     color = MaterialTheme.colorScheme.surfaceContainerLow,
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                    shape = AppShapes.roundedCardMedium,
+                    border = BorderStroke(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        modifier = Modifier.padding(horizontal = AppDimens.paddingNormal, vertical = AppDimens.paddingMedium),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(Icons.Default.DateRange, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(AppDimens.paddingMedium))
                         Text(
                             text = periodLabel,
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Medium
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(AppDimens.paddingSmall))
                         Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                     }
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(AppDimens.paddingExtraSmall))
             }
         }
     }
@@ -657,7 +670,7 @@ fun FilterScreen(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 16.dp)
+            .padding(horizontal = AppDimens.paddingLarge, vertical = AppDimens.paddingNormal)
             .navigationBarsPadding()
     ) {
         Row(
@@ -679,7 +692,7 @@ fun FilterScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
 
         OutlinedTextField(
             value = searchQuery,
@@ -699,33 +712,33 @@ fun FilterScreen(
             singleLine = true
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(AppDimens.paddingNormal))
 
         Column(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(AppDimens.paddingNormal)
         ) {
 
             Column {
                 Text("DATE RANGE", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(AppDimens.paddingMedium))
                 Card(
                     onClick = { showDateFilterDropdown = true },
-                    shape = RoundedCornerShape(16.dp),
+                    shape = AppShapes.roundedCardMedium,
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                    border = BorderStroke(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Box {
                         Row(
-                            modifier = Modifier.padding(16.dp),
+                            modifier = Modifier.padding(AppDimens.paddingNormal),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(Icons.Default.DateRange, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.width(16.dp))
+                            Spacer(modifier = Modifier.width(AppDimens.paddingNormal))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = if (selectedDateFilter == DateFilter.ACTIVE_PERIOD) periodLabel else "All Time",
@@ -774,14 +787,14 @@ fun FilterScreen(
 
             Column {
                 Text("TYPE", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(AppDimens.paddingMedium))
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), CircleShape)
+                        .border(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), CircleShape)
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f), CircleShape)
-                        .padding(4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        .padding(AppDimens.paddingExtraSmall),
+                    horizontalArrangement = Arrangement.spacedBy(AppDimens.paddingExtraSmall)
                 ) {
                     listOf(FilterType.ALL, FilterType.INCOME, FilterType.EXPENSE).forEach { type ->
                         val isSelected = selectedFilterType == type
@@ -828,12 +841,12 @@ fun FilterScreen(
                 }
 
                 Text("CATEGORIES", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(AppDimens.paddingMedium))
 
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall),
+                    verticalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)
                 ) {
                     // Delegate to the shared CategoryChipGrid for the display categories
                     // We embed it inline inside FlowRow to keep the "More" chip in the same row
@@ -852,7 +865,7 @@ fun FilterScreen(
                                 Icon(
                                     getIconByName(category.iconName),
                                     contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(AppDimens.sizeIconSmall)
                                 )
                             },
                             colors = FilterChipDefaults.filterChipColors(
@@ -883,7 +896,7 @@ fun FilterScreen(
                                 Icon(
                                     Icons.Default.AddCircle,
                                     contentDescription = "More",
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(AppDimens.sizeIconSmall)
                                 )
                             },
                             colors = FilterChipDefaults.filterChipColors(
@@ -921,7 +934,7 @@ fun FilterScreen(
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(AppDimens.paddingMedium))
                 Slider(
                     value = (maxPriceLimit / 10000.0).toFloat().coerceIn(0f, 1f),
                     onValueChange = {
@@ -941,9 +954,9 @@ fun FilterScreen(
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
+                shape = AppShapes.roundedCardLarge,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                border = BorderStroke(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Row(
@@ -967,7 +980,7 @@ fun FilterScreen(
                         Box(
                             modifier = Modifier
                                 .size(40.dp)
-                                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f), RoundedCornerShape(12.dp)),
+                                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f), AppShapes.roundedIconContainer),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -977,7 +990,7 @@ fun FilterScreen(
                             )
                         }
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(AppDimens.paddingNormal))
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text(
                             text = CurrencyUtils.formatRupees(predictedSpending),
@@ -985,9 +998,9 @@ fun FilterScreen(
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(AppDimens.paddingSmall))
                         if (spendingChangePercentage != 0.0) {
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 4.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = AppDimens.paddingExtraSmall)) {
                                 val isDown = spendingChangePercentage < 0
                                 Icon(
                                     imageVector = if (isDown) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
@@ -1008,7 +1021,7 @@ fun FilterScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(AppDimens.paddingNormal))
 
         FinanceButton(
             text = "Apply Filters",
@@ -1016,7 +1029,7 @@ fun FilterScreen(
             modifier = Modifier.fillMaxWidth(),
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,
-            shape = RoundedCornerShape(16.dp),
+            shape = AppShapes.roundedCardMedium,
             icon = Icons.Default.CheckCircle
         )
     }
@@ -1042,7 +1055,7 @@ fun FilterScreen(
                     categories.filter { it.name.contains(popSearchQuery, ignoreCase = true) }
                 }
                 
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(AppDimens.paddingNormal)) {
                     OutlinedTextField(
                         value = popSearchQuery,
                         onValueChange = { popSearchQuery = it },
@@ -1054,14 +1067,14 @@ fun FilterScreen(
                     
                     Box(modifier = Modifier.heightIn(max = 240.dp)) {
                         if (filteredPopCategories.isEmpty()) {
-                            Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                            Box(modifier = Modifier.fillMaxWidth().padding(AppDimens.paddingLarge), contentAlignment = Alignment.Center) {
                                 Text("No categories found", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         } else {
                             LazyVerticalGrid(
                                 columns = GridCells.Fixed(3),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall),
+                                verticalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)
                             ) {
                                 items(filteredPopCategories) { category ->
                                     val isSelected = selectedCategoryNames.contains(category.name)
@@ -1074,18 +1087,18 @@ fun FilterScreen(
                                             }
                                             onCategorySelected(nextSelection)
                                         },
-                                        shape = RoundedCornerShape(16.dp),
+                                        shape = AppShapes.roundedCardMedium,
                                         colors = CardDefaults.cardColors(
                                             containerColor = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                                         ),
                                         border = BorderStroke(
-                                            1.dp, 
+                                            AppDimens.borderWidthThin, 
                                             if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
                                         ),
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
                                         Column(
-                                            modifier = Modifier.padding(8.dp),
+                                            modifier = Modifier.padding(AppDimens.paddingSmall),
                                             horizontalAlignment = Alignment.CenterHorizontally,
                                             verticalArrangement = Arrangement.Center
                                         ) {
@@ -1099,7 +1112,7 @@ fun FilterScreen(
                                                         getIconByName(category.iconName),
                                                         contentDescription = null,
                                                         tint = MaterialTheme.colorScheme.primary,
-                                                        modifier = Modifier.size(18.dp)
+                                                        modifier = Modifier.size(AppDimens.sizeIconSmall)
                                                     )
                                                 }
                                             }
@@ -1129,12 +1142,12 @@ fun FilterScreen(
                                 showMoreCategoriesDialog = false
                                 showAddCategoryDialog = true
                             }
-                            .padding(vertical = 8.dp),
+                            .padding(vertical = AppDimens.paddingSmall),
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(AppDimens.paddingSmall))
                         Text(
                             "Add Custom Category",
                             color = MaterialTheme.colorScheme.primary,
@@ -1163,7 +1176,7 @@ fun FilterScreen(
             title = { Text("Add Custom Category", fontWeight = FontWeight.Bold) },
             text = {
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(AppDimens.paddingNormal),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     OutlinedTextField(
@@ -1176,14 +1189,14 @@ fun FilterScreen(
                     
                     Column {
                         Text("Type", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), CircleShape)
+                                .border(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), CircleShape)
                                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f), CircleShape)
-                                .padding(4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                .padding(AppDimens.paddingExtraSmall),
+                            horizontalArrangement = Arrangement.spacedBy(AppDimens.paddingExtraSmall)
                         ) {
                             listOf(TransactionType.EXPENSE, TransactionType.INCOME).forEach { type ->
                                 val isSelected = newCategoryType == type
@@ -1211,9 +1224,9 @@ fun FilterScreen(
                     
                     Column {
                         Text("Select Icon", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
                         LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             items(iconsList) { iconName ->
@@ -1226,7 +1239,7 @@ fun FilterScreen(
                                             CircleShape
                                         )
                                         .border(
-                                            1.dp,
+                                            AppDimens.borderWidthThin,
                                             if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
                                             CircleShape
                                         )

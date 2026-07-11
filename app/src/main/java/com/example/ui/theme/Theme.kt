@@ -78,7 +78,9 @@ object AppDimens {
     val heightButton = 56.dp
     val heightSpacerLarge = 80.dp
     val sizeIconSmall = 18.dp
+    val sizeIconNormal = 24.dp
     val sizeIconMedium = 40.dp
+    val sizeIconContainer = 48.dp
     val sizeAvatar = 48.dp
     val sizeDrawerAvatar = 60.dp
     val borderWidthThin = 1.dp

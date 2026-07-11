@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "1083618534945",
+    "project_id": "finance-manager-dev-1a609",
+    "storage_bucket": "finance-manager-dev-1a609.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1083618534945:android:a817e0f2e3118c0f366560",
+        "android_client_info": {
+          "package_name": "com.Finance.Tracker"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1083618534945-1q1kh1b3fh14hhfnsmmfnb796pjebrq2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDhUUQGfoWsYkXNHnxZvodjxVRLaBTV5uk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1083618534945-1q1kh1b3fh14hhfnsmmfnb796pjebrq2.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

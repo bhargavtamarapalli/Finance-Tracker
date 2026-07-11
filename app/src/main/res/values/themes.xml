@@ -4,6 +4,7 @@
     <style name="Theme.App.Starting" parent="Theme.SplashScreen">
         <!-- Set the splash screen background, animated icon, and animation duration. -->
         <item name="windowSplashScreenBackground">#0B0E14</item>
+        <item name="windowSplashScreenAnimatedIcon">@android:color/transparent</item>
         <!-- Use clear theme colors and standard theme as post-splash -->
         <item name="postSplashScreenTheme">@style/Theme.MyApplication</item>
     </style>

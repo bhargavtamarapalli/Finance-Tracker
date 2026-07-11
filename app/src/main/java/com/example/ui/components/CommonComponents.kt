@@ -13,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -1302,6 +1303,36 @@ fun TransactionDetailsBottomSheet(
                 }
             }
         }
+    }
+}
+
+/**
+ * A reusable empty state placeholder displaying an app watermark and message.
+ */
+@Composable
+fun EmptyStatePlaceholder(
+    message: String = "No transactions yet",
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            painter = painterResource(id = com.example.R.drawable.ic_app_logo_content),
+            contentDescription = "Empty State Logo",
+            modifier = Modifier.size(72.dp),
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 24.dp)
+        )
     }
 }
 
