@@ -45,6 +45,6 @@ class TransactionHistoryScreenContentTest {
                 )
             }
         }
-        composeTestRule.onNodeWithText("Transaction History", ignoreCase = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Search transactions...", ignoreCase = true).assertIsDisplayed()
     }
 }

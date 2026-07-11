@@ -130,24 +130,32 @@ class CategoryCustomizationUserFlowTest {
         composeTestRule.onAllNodesWithText("Food").onLast().performClick()
         composeTestRule.onNodeWithText("Create").performClick()
         composeTestRule.waitForIdle()
+        testDispatcher.scheduler.advanceUntilIdle()
+        db.invalidationTracker.refreshVersionsSync()
         ShadowLooper.idleMainLooper()
+        composeTestRule.waitForIdle()
 
         // 6. Navigate back to Settings, then back to Dashboard
         composeTestRule.onNodeWithContentDescription("Back").performClick()
         composeTestRule.waitForIdle()
+        testDispatcher.scheduler.advanceUntilIdle()
         ShadowLooper.idleMainLooper()
-        composeTestRule.onNodeWithContentDescription("Menu").performClick()
         composeTestRule.waitForIdle()
-        ShadowLooper.idleMainLooper()
         composeTestRule.onNodeWithContentDescription("Home").performClick()
         composeTestRule.waitForIdle()
+        testDispatcher.scheduler.advanceUntilIdle()
         ShadowLooper.idleMainLooper()
-
-        // 7. Click Add Expense and verify the custom category "Organic Tea" is selectable
-        composeTestRule.onNodeWithText("Add Expense").performClick()
         composeTestRule.waitForIdle()
+
+        // 7. Click Add Transaction FAB and verify the custom category "Organic Tea" is selectable
+        composeTestRule.onNodeWithContentDescription("Add Transaction").performClick()
+        composeTestRule.waitForIdle()
+        testDispatcher.scheduler.advanceUntilIdle()
+        db.invalidationTracker.refreshVersionsSync()
         ShadowLooper.idleMainLooper()
+        composeTestRule.waitForIdle()
         
-        composeTestRule.onNodeWithText("Organic Tea").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithTag("category_lazy_row").performScrollToNode(hasText("Organic Tea"))
+        composeTestRule.onNodeWithText("Organic Tea").assertIsDisplayed()
     }
 }

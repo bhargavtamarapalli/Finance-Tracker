@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -1019,38 +1020,51 @@ fun CategoryChipGrid(
     ) {
         categories.forEach { category ->
             val isSelected = selectedIds.contains(category.id)
-            FilterChip(
-                selected = isSelected,
-                onClick = { onToggle(category.id) },
-                label = { Text(category.name) },
-                leadingIcon = {
+            Surface(
+                shape = RoundedCornerShape(50),
+                color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                border = BorderStroke(
+                    1.dp,
+                    if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                ),
+                modifier = (if (category.isArchived) Modifier.alpha(0.6f) else Modifier)
+                    .combinedClickable(
+                        onClick = { onToggle(category.id) },
+                        onLongClick = onLongPress?.let { { it(category.id) } }
+                    )
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Icon(
                         imageVector = getIconByName(category.iconName),
                         contentDescription = category.name,
+                        tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp)
                     )
-                },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                    selectedLabelColor = MaterialTheme.colorScheme.primary,
-                    selectedLeadingIconColor = MaterialTheme.colorScheme.primary,
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    iconColor = MaterialTheme.colorScheme.onSurfaceVariant
-                ),
-                border = FilterChipDefaults.filterChipBorder(
-                    enabled = true,
-                    selected = isSelected,
-                    borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
-                    selectedBorderColor = MaterialTheme.colorScheme.primary
-                ),
-                modifier = if (onLongPress != null) {
-                    Modifier.combinedClickable(
-                        onClick = { onToggle(category.id) },
-                        onLongClick = { onLongPress(category.id) }
+                    Text(
+                        text = category.name,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelLarge
                     )
-                } else Modifier
-            )
+                    if (category.isArchived) {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            modifier = Modifier.padding(horizontal = 2.dp)
+                        ) {
+                            Text(
+                                text = "Archived",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

@@ -105,19 +105,17 @@ class CurrencyCustomizationUserFlowTest {
         // 2. Verify default currency INR is used initially on Dashboard
         composeTestRule.onNodeWithText("₹58,600.00").assertIsDisplayed()
 
-        // 3. Open Drawer and navigate to Settings
-        composeTestRule.onNodeWithContentDescription("Menu").performClick()
-        composeTestRule.waitForIdle()
+        // 3. Navigate to Settings using the bottom bar
         composeTestRule.onNodeWithContentDescription("Settings").performClick()
         composeTestRule.waitForIdle()
 
-        // 4. Change currency option to USD
-        composeTestRule.onNodeWithText("USD ($)", substring = true).performScrollTo().performClick()
+        // 4. Click Currency setting item to open selection dialog, and select USD
+        composeTestRule.onNodeWithText("Currency").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("USD ($)", substring = true).performClick()
         composeTestRule.waitForIdle()
 
-        // 5. Navigate back to Dashboard
-        composeTestRule.onNodeWithContentDescription("Menu").performClick()
-        composeTestRule.waitForIdle()
+        // 5. Navigate back to Dashboard using the bottom bar
         composeTestRule.onNodeWithContentDescription("Home").performClick()
         composeTestRule.waitForIdle()
 

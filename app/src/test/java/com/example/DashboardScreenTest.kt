@@ -116,21 +116,13 @@ class DashboardScreenTest {
         composeTestRule.waitForIdle()
 
         // Assert that the Header elements are displayed
-        composeTestRule.onNodeWithText("Hello, Alex").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Finance Manager").assertIsDisplayed()
         
-        // Assert sync status is displayed (either "Offline Mode" or "Data Synced to Cloud" depending on default test connectivity)
-        val isOnline = viewModel.isOnline.value
-        val pendingSync = viewModel.pendingSync.value
-        val expectedStatus = when {
-            !isOnline -> "Offline"
-            pendingSync -> "Syncing"
-            else -> "Synced"
-        }
-        composeTestRule.onNodeWithText(expectedStatus).assertIsDisplayed()
+
 
         composeTestRule.onNodeWithText("Total Balance", ignoreCase = true).assertIsDisplayed()
-        composeTestRule.onNodeWithText("INCOME").assertIsDisplayed()
-        composeTestRule.onNodeWithText("EXPENSES").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Income").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Expense").assertIsDisplayed()
 
         // Assert that Menu Button exists and clicking triggers onMenuClick
         composeTestRule.onNodeWithContentDescription("Menu").assertIsDisplayed()

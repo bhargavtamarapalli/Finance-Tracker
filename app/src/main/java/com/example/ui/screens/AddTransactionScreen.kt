@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -242,7 +243,7 @@ fun AddTransactionContent(
                 } else {
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().testTag("category_lazy_row")
                     ) {
                         items(filteredCategories) { category ->
                             CategoryItem(

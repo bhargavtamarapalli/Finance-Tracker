@@ -49,6 +49,6 @@ class SettingsScreenContentTest {
                 )
             }
         }
-        composeTestRule.onNodeWithText("Daily Expense Reminder", ignoreCase = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Notifications", ignoreCase = true).assertIsDisplayed()
     }
 }

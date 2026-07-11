@@ -177,6 +177,7 @@ fun SettingsContent(
     var editEmail by remember { mutableStateOf(userSession?.email ?: "") }
     var showRestoreWarning by remember { mutableStateOf(false) }
     var restoreActionType by remember { mutableStateOf<RestoreType?>(null) }
+    var showCurrencyDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -289,7 +290,7 @@ fun SettingsContent(
                         icon = Icons.Default.CurrencyExchange,
                         title = "Currency",
                         trailingText = currencyOption.name,
-                        onClick = { /* Change currency */ }
+                        onClick = { showCurrencyDialog = true }
                     )
                     HorizontalDivider(
                         color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f),
@@ -591,6 +592,44 @@ fun SettingsContent(
             },
             dismissButton = {
                 TextButton(onClick = { showRestoreWarning = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showCurrencyDialog) {
+        AlertDialog(
+            onDismissRequest = { showCurrencyDialog = false },
+            title = { Text("Select Currency", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)) {
+                    CurrencyOption.values().forEach { option ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onCurrencyChange(option)
+                                    showCurrencyDialog = false
+                                }
+                                .padding(vertical = AppDimens.paddingSmall),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = currencyOption == option,
+                                onClick = {
+                                    onCurrencyChange(option)
+                                    showCurrencyDialog = false
+                                }
+                            )
+                            Spacer(modifier = Modifier.width(AppDimens.paddingNormal))
+                            Text(text = option.label, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showCurrencyDialog = false }) {
                     Text("Cancel")
                 }
             }

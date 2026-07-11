@@ -102,11 +102,15 @@ class FinanceLedgerUserFlowTest {
         }
         bypassSplash()
 
-        // 2. Verify we are on Dashboard showing user greeting
-        composeTestRule.onNodeWithText("Hello, Normal").assertIsDisplayed()
+        // 2. Verify we are on Dashboard showing user initials/badge
+        composeTestRule.onNodeWithText("Normal").assertIsDisplayed()
 
-        // 3. Click "Add Expense" button to open Add Transaction screen
-        composeTestRule.onNodeWithText("Add Expense").performClick()
+        // 3. Click "Add Transaction" FAB to open Add Transaction screen
+        composeTestRule.onNodeWithContentDescription("Add Transaction").performClick()
+        composeTestRule.waitForIdle()
+        testDispatcher.scheduler.advanceUntilIdle()
+        db.invalidationTracker.refreshVersionsSync()
+        ShadowLooper.idleMainLooper()
         composeTestRule.waitForIdle()
 
         // 4. Fill in amount, payee, notes, payment method, category, and save
@@ -121,7 +125,7 @@ class FinanceLedgerUserFlowTest {
         composeTestRule.waitForIdle()
 
         // 5. Verify we are navigated back to Dashboard and balance / average updates
-        composeTestRule.onNodeWithText("Hello, Normal").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Normal").assertIsDisplayed()
         
         // The default seeded income is ₹92,000.00 and seeded expenses sum to ₹33,400.00
         // Adding an expense of ₹1,500.00 should change the total balance:
@@ -130,8 +134,6 @@ class FinanceLedgerUserFlowTest {
         composeTestRule.onNodeWithText("₹57,100.00").assertIsDisplayed()
         
         // Navigate to History screen to verify all transactions list
-        composeTestRule.onNodeWithContentDescription("Menu").performClick()
-        composeTestRule.waitForIdle()
         composeTestRule.onNodeWithContentDescription("History").performClick()
         composeTestRule.waitForIdle()
 

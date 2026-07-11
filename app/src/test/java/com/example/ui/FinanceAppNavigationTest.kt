@@ -57,6 +57,8 @@ class FinanceAppNavigationTest {
         val prefs = EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
         prefs.edit().clear().commit()
 
+
+
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .setQueryExecutor { it.run() }
@@ -130,17 +132,11 @@ class FinanceAppNavigationTest {
         }
         bypassSplash()
 
-        // 1. Check we are on Dashboard greeting
+        // 1. Check we are on Dashboard
         composeTestRule.onRoot().printToLog("TAG_UNIT_TEST")
-        composeTestRule.onNodeWithText("Hello, Guest").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Total Balance", ignoreCase = true).assertIsDisplayed()
 
-        // 2. Open drawer and navigate to settings
-        // Open drawer via menu icon click (contentDescription is "Menu")
-        composeTestRule.onNodeWithContentDescription("Menu").performClick()
-        composeTestRule.waitForIdle()
-        ShadowLooper.idleMainLooper()
-        
-        // Click Settings drawer item
+        // 2. Navigate to settings using the bottom bar
         composeTestRule.onNodeWithContentDescription("Settings").performClick()
         composeTestRule.waitForIdle()
         ShadowLooper.idleMainLooper()
@@ -148,7 +144,7 @@ class FinanceAppNavigationTest {
         // 3. Verify Admin Console and Cloud Backup are hidden for Guest
         composeTestRule.onNodeWithText("Administrative Access").assertDoesNotExist()
         composeTestRule.onNodeWithText("Admin Console").assertDoesNotExist()
-        composeTestRule.onNodeWithText("Backup to Cloud (Firebase)").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Backup to Cloud").assertDoesNotExist()
     }
 
     @Test
@@ -166,26 +162,16 @@ class FinanceAppNavigationTest {
         }
         bypassSplash()
 
-        // 1. Verify dashboard shows greeting
-        composeTestRule.onNodeWithText("Hello, Normal").assertIsDisplayed()
+        // 1. Verify dashboard shows first-name badge
+        composeTestRule.onNodeWithText("Normal").assertIsDisplayed()
 
-        // 2. Navigate to Settings
-        composeTestRule.onNodeWithContentDescription("Menu").performClick()
-        composeTestRule.waitForIdle()
-        ShadowLooper.idleMainLooper()
-        
-        // Click Settings drawer item
+        // 2. Navigate to Settings using the bottom bar
         composeTestRule.onNodeWithContentDescription("Settings").performClick()
         composeTestRule.waitForIdle()
         ShadowLooper.idleMainLooper()
 
-        composeTestRule.onRoot().printToLog("NAVIGATION_TEST")
-        printSemanticsTreeText()
-
-        // 3. Verify normal user has Cloud Backup but NO Admin Console
-        composeTestRule.onNodeWithText("Backup to Cloud (Firebase)").performScrollTo().assertIsDisplayed()
-        
-        // Admin console should be hidden
+        // 3. Verify User has access to Cloud Backup but not Admin Console
+        composeTestRule.onNodeWithText("Backup to Cloud").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Administrative Access").assertDoesNotExist()
         composeTestRule.onNodeWithText("Admin Console").assertDoesNotExist()
     }
@@ -231,26 +217,24 @@ class FinanceAppNavigationTest {
         }
         bypassSplash()
 
-        // 1. Navigate to Settings
-        composeTestRule.onNodeWithContentDescription("Menu").performClick()
-        composeTestRule.waitForIdle()
-        ShadowLooper.idleMainLooper()
-        
-        // Click Settings drawer item
+        // 1. Navigate to Settings using bottom bar
         composeTestRule.onNodeWithContentDescription("Settings").performClick()
         composeTestRule.waitForIdle()
         ShadowLooper.idleMainLooper()
 
         // 2. Verify Admin has access to both Cloud Backup and Admin Console
-        composeTestRule.onNodeWithText("Backup to Cloud (Firebase)").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Backup to Cloud").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Administrative Access").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Admin Console").performScrollTo().assertIsDisplayed()
 
         // 3. Click Admin Console and verify navigation
         composeTestRule.onNodeWithText("Admin Console").performScrollTo().performClick()
         composeTestRule.waitForIdle()
+        testDispatcher.scheduler.advanceUntilIdle()
         ShadowLooper.idleMainLooper()
+        composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithText("System Diagnostics & Privacy Guard").assertIsDisplayed()
+        composeTestRule.onRoot().printToLog("TAG_ADMIN_NAV")
+        composeTestRule.onNodeWithText("System Diagnostics & Privacy Guard").performScrollTo().assertIsDisplayed()
     }
 }
