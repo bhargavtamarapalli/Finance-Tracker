@@ -1,5 +1,6 @@
 package com.example.ui
 
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -13,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -43,6 +45,7 @@ import androidx.compose.material.icons.filled.Logout
 import androidx.compose.ui.platform.LocalContext
 import com.example.ui.components.FinanceButton
 import com.example.ui.components.FinanceTextButton
+import com.example.ui.components.ProfileAvatar
 import kotlinx.coroutines.launch
 
 data class NavigationDrawerItemData(
@@ -111,7 +114,7 @@ fun FinanceApp(
     }
 
     // High security lock overlay blocking access to financial data
-    if (biometricLockEnabled && !isAppUnlocked && userSession != null) {
+    if (biometricLockEnabled && !isAppUnlocked && userSession != null && userSession?.isGuest == false) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -209,27 +212,11 @@ fun FinanceApp(
                         .fillMaxWidth()
                         .padding(horizontal = 28.dp, vertical = 20.dp)
                 ) {
-                    val initials = userSession?.name
-                        ?.split(" ")
-                        ?.mapNotNull { it.firstOrNull() }
-                        ?.take(2)
-                        ?.joinToString("")
-                        ?.uppercase() ?: "GU"
-
-                    Box(
-                        modifier = Modifier
-                            .size(60.dp)
-                            .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
-                            .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = initials,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                    }
+                    ProfileAvatar(
+                        name = userSession?.name,
+                        isGuest = userSession?.isGuest == true,
+                        size = 60.dp
+                    )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = userSession?.name ?: "Guest User",
@@ -311,53 +298,46 @@ fun FinanceApp(
         }
     ) {
         Scaffold(
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
                 if (currentRoute in listOf("dashboard", "transactions", "analytics", "settings")) {
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        NavigationBar(
-                            modifier = Modifier.align(Alignment.BottomCenter)
-                        ) {
+                    NavigationBar(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 0.dp,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+                            .border(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+                    ) {
+                        val items = listOf(
+                            Triple("dashboard", "Home", Icons.Default.Home),
+                            Triple("transactions", "History", Icons.AutoMirrored.Filled.List),
+                            Triple("analytics", "Analytics", Icons.Default.PieChart),
+                            Triple("settings", "Settings", Icons.Default.Settings)
+                        )
+                        items.forEach { (route, label, icon) ->
+                            val isSelected = currentRoute == route
                             NavigationBarItem(
-                                selected = currentRoute == "dashboard",
-                                onClick = { navController.navigate("dashboard") { launchSingleTop = true; restoreState = true } },
-                                icon = { Icon(Icons.Default.Home, contentDescription = "Dashboard") },
-                                label = { Text("Home", style = MaterialTheme.typography.labelSmall) }
-                            )
-                            NavigationBarItem(
-                                selected = currentRoute == "transactions",
-                                onClick = { navController.navigate("transactions") { launchSingleTop = true; restoreState = true } },
-                                icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "History") },
-                                label = { Text("History", style = MaterialTheme.typography.labelSmall) }
-                            )
-                            
-                            NavigationBarItem(
-                                selected = false,
-                                onClick = { navController.navigate("add_transaction/EXPENSE") },
+                                selected = isSelected,
+                                onClick = { navController.navigate(route) { launchSingleTop = true; restoreState = true } },
                                 icon = { 
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(48.dp)
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Icon(Icons.Default.Add, contentDescription = "Add", tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
-                                        }
-                                    }
+                                    Icon(
+                                        icon, 
+                                        contentDescription = label
+                                    ) 
                                 },
-                                label = { Text("Add", style = MaterialTheme.typography.labelSmall) }
-                            )
-                            
-                            NavigationBarItem(
-                                selected = currentRoute == "analytics",
-                                onClick = { navController.navigate("analytics") { launchSingleTop = true; restoreState = true } },
-                                icon = { Icon(Icons.Default.PieChart, contentDescription = "Analytics") },
-                                label = { Text("Analytics", style = MaterialTheme.typography.labelSmall) }
-                            )
-                            NavigationBarItem(
-                                selected = currentRoute == "settings",
-                                onClick = { navController.navigate("settings") { launchSingleTop = true; restoreState = true } },
-                                icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
-                                label = { Text("Settings", style = MaterialTheme.typography.labelSmall) }
+                                label = { 
+                                    Text(
+                                        label, 
+                                        style = MaterialTheme.typography.labelSmall
+                                    ) 
+                                },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    indicatorColor = Color.Transparent
+                                )
                             )
                         }
                     }
@@ -367,16 +347,48 @@ fun FinanceApp(
             NavHost(
                 navController = navController,
                 startDestination = "dashboard",
-                modifier = Modifier.padding(innerPadding)
+                modifier = Modifier.padding(
+                    top = innerPadding.calculateTopPadding(),
+                    bottom = 0.dp
+                )
             ) {
                 composable("dashboard") { 
-                    DashboardScreen(viewModel, navController, userSession = userSession, onMenuClick = { scope.launch { drawerState.open() } }) 
+                    DashboardScreen(
+                        viewModel = viewModel,
+                        navController = navController,
+                        userSession = userSession,
+                        onMenuClick = { scope.launch { drawerState.open() } },
+                        onSignOut = { authViewModel.logout() },
+                        onSignIn = { authViewModel.logout() }
+                    ) 
                 }
                 composable("transactions") { 
                     TransactionHistoryScreen(viewModel, navController, onMenuClick = { scope.launch { drawerState.open() } }) 
                 }
                 composable("analytics") { 
-                    AnalyticsScreen(viewModel, onMenuClick = { scope.launch { drawerState.open() } }) 
+                    AnalyticsScreen(
+                        viewModel = viewModel, 
+                        onMenuClick = { scope.launch { drawerState.open() } },
+                        onChartClick = { chartType ->
+                            navController.navigate("analytics_details?initialChartType=$chartType")
+                        }
+                    ) 
+                }
+                composable(
+                    route = "analytics_details?initialChartType={initialChartType}",
+                    arguments = listOf(
+                        navArgument("initialChartType") {
+                            type = NavType.StringType
+                            defaultValue = "CATEGORY"
+                        }
+                    )
+                ) { backStackEntry ->
+                    val initialChartType = backStackEntry.arguments?.getString("initialChartType") ?: "CATEGORY"
+                    AnalyticsDetailScreen(
+                        viewModel = viewModel,
+                        initialChartType = initialChartType,
+                        onBackClick = { navController.popBackStack() }
+                    )
                 }
                 composable("settings") { 
                     SettingsScreen(

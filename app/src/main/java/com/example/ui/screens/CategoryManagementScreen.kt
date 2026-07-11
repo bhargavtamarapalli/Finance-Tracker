@@ -3,11 +3,11 @@ package com.example.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -151,20 +151,62 @@ fun CategoryManagementContent(
                     )
                 }
             } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(AppDimens.paddingNormal),
-                    verticalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)
+                // Track which category has its context menu open
+                var expandedMenuCategoryId by remember { mutableStateOf<Int?>(null) }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(AppDimens.paddingNormal)
                 ) {
-                    items(filteredCategories, key = { it.id }) { category ->
-                        CategoryRowItem(
-                            category = category,
-                            onEditClick = { showEditDialog = category },
-                            onArchiveToggle = { updateCategory(category.copy(isArchived = !category.isArchived)) }
+                    Box {
+                        CategoryChipGrid(
+                            categories = filteredCategories,
+                            selectedIds = emptySet(),
+                            onToggle = { /* no selection in management screen */ },
+                            onLongPress = { categoryId -> expandedMenuCategoryId = categoryId },
+                            modifier = Modifier.fillMaxWidth()
                         )
+
+                        // Render a DropdownMenu anchored near the long-pressed chip
+                        val targetCategory = filteredCategories.firstOrNull { it.id == expandedMenuCategoryId }
+                        if (targetCategory != null) {
+                            DropdownMenu(
+                                expanded = expandedMenuCategoryId != null,
+                                onDismissRequest = { expandedMenuCategoryId = null }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Rename") },
+                                    leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                                    onClick = {
+                                        showEditDialog = targetCategory
+                                        expandedMenuCategoryId = null
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            if (targetCategory.isArchived) "Unarchive" else "Archive"
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            if (targetCategory.isArchived) Icons.Default.Unarchive else Icons.Default.Archive,
+                                            contentDescription = null
+                                        )
+                                    },
+                                    onClick = {
+                                        updateCategory(targetCategory.copy(isArchived = !targetCategory.isArchived))
+                                        expandedMenuCategoryId = null
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
+
         }
     }
 

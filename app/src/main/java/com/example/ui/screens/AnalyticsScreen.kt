@@ -15,12 +15,17 @@ import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PieChart
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.geometry.Offset
@@ -62,7 +67,8 @@ import java.util.Date
 @Composable
 fun AnalyticsScreen(
     viewModel: FinanceViewModel,
-    onMenuClick: () -> Unit
+    onMenuClick: () -> Unit,
+    onChartClick: (String) -> Unit = {}
 ) {
     val periodTransactions by viewModel.periodTransactions.collectAsStateWithLifecycle()
     val selectedTimePeriod by viewModel.selectedTimePeriod.collectAsStateWithLifecycle()
@@ -82,11 +88,12 @@ fun AnalyticsScreen(
         setTimePeriod = { viewModel.setTimePeriod(it) },
         moveToPreviousPeriod = { viewModel.moveToPreviousPeriod() },
         moveToNextPeriod = { viewModel.moveToNextPeriod() },
-        setDateDirectly = { viewModel.setDateDirectly(it) }
+        setDateDirectly = { viewModel.setDateDirectly(it) },
+        onChartClick = onChartClick
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun AnalyticsScreenContent(
     periodTransactions: List<com.example.data.model.TransactionWithCategory>,
@@ -99,7 +106,8 @@ fun AnalyticsScreenContent(
     setTimePeriod: (com.example.ui.viewmodel.TimePeriod) -> Unit,
     moveToPreviousPeriod: () -> Unit,
     moveToNextPeriod: () -> Unit,
-    setDateDirectly: (Long) -> Unit
+    setDateDirectly: (Long) -> Unit,
+    onChartClick: (String) -> Unit = {}
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
     
@@ -234,129 +242,253 @@ fun AnalyticsScreenContent(
                 .fillMaxSize()
                 .padding(padding)
                 .testTag("analytics_scroll_container"),
-            contentPadding = PaddingValues(AppDimens.paddingNormal),
+            contentPadding = PaddingValues(
+                start = AppDimens.paddingNormal,
+                top = 4.dp,
+                end = AppDimens.paddingNormal,
+                bottom = 80.dp
+            ),
             verticalArrangement = Arrangement.spacedBy(AppDimens.paddingNormal)
         ) {
-            // Tab Toggler
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .background(
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            shape = androidx.compose.foundation.shape.CircleShape
-                        )
-                        .padding(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Expenses Tab Option
-                    val isExpenseSelected = selectedType == TransactionType.EXPENSE
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .background(
-                                color = if (isExpenseSelected) ExpenseRed.copy(alpha = 0.15f) else Color.Transparent,
-                                shape = androidx.compose.foundation.shape.CircleShape
-                            )
-                            .border(
-                                width = if (isExpenseSelected) 1.5.dp else 0.dp,
-                                color = if (isExpenseSelected) ExpenseRed.copy(alpha = 0.3f) else Color.Transparent,
-                                shape = androidx.compose.foundation.shape.CircleShape
-                            )
-                            .clickable { selectedType = TransactionType.EXPENSE }
-                            .testTag("chip_expense"),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.TrendingDown,
-                                contentDescription = null,
-                                tint = if (isExpenseSelected) ExpenseRed else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Text(
-                                text = "Expenses",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = if (isExpenseSelected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isExpenseSelected) ExpenseRed else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    // Income Tab Option
-                    val isIncomeSelected = selectedType == TransactionType.INCOME
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .background(
-                                color = if (isIncomeSelected) IncomeGreen.copy(alpha = 0.15f) else Color.Transparent,
-                                shape = androidx.compose.foundation.shape.CircleShape
-                            )
-                            .border(
-                                width = if (isIncomeSelected) 1.5.dp else 0.dp,
-                                color = if (isIncomeSelected) IncomeGreen.copy(alpha = 0.3f) else Color.Transparent,
-                                shape = androidx.compose.foundation.shape.CircleShape
-                            )
-                            .clickable { selectedType = TransactionType.INCOME }
-                            .testTag("chip_income"),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.TrendingUp,
-                                contentDescription = null,
-                                tint = if (isIncomeSelected) IncomeGreen else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Text(
-                                text = "Income",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = if (isIncomeSelected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isIncomeSelected) IncomeGreen else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Time Horizon Selector
-            item {
+            stickyHeader {
+                var showPeriodDropdown by remember { mutableStateOf(false) }
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = AppDimens.paddingSmall)
+                        .background(MaterialTheme.colorScheme.background)
+                        .padding(top = 4.dp, bottom = 0.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    TimePeriodSelector(
-                        selectedPeriod = selectedTimePeriod,
-                        onPeriodSelected = { setTimePeriod(it) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
-                    PeriodNavigator(
-                        periodLabel = periodLabel,
-                        onPreviousClick = { moveToPreviousPeriod() },
-                        onNextClick = { moveToNextPeriod() },
-                        modifier = Modifier.fillMaxWidth(),
-                        onLabelClick = { showDatePicker = true },
-                        isNextEnabled = isNextPeriodEnabled
-                    )
-                    if (showDatePicker) {
-                        CustomPeriodPickerDialog(
-                            timePeriod = selectedTimePeriod,
-                            activeDate = activeDate,
-                            onDateSelected = { setDateDirectly(it) },
-                            onDismiss = { showDatePicker = false }
-                        )
+                    // Expenses/Income Switcher
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                shape = androidx.compose.foundation.shape.CircleShape
+                            )
+                            .padding(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val isExpenseSelected = selectedType == TransactionType.EXPENSE
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .background(
+                                    color = if (isExpenseSelected) ExpenseRed.copy(alpha = 0.15f) else Color.Transparent,
+                                    shape = androidx.compose.foundation.shape.CircleShape
+                                )
+                                .border(
+                                    width = if (isExpenseSelected) 1.5.dp else 0.dp,
+                                    color = if (isExpenseSelected) ExpenseRed.copy(alpha = 0.3f) else Color.Transparent,
+                                    shape = androidx.compose.foundation.shape.CircleShape
+                                )
+                                .clickable { selectedType = TransactionType.EXPENSE }
+                                .testTag("chip_expense"),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.TrendingDown,
+                                    contentDescription = null,
+                                    tint = if (isExpenseSelected) ExpenseRed else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = "Expenses",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = if (isExpenseSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isExpenseSelected) ExpenseRed else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        val isIncomeSelected = selectedType == TransactionType.INCOME
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .background(
+                                    color = if (isIncomeSelected) IncomeGreen.copy(alpha = 0.15f) else Color.Transparent,
+                                    shape = androidx.compose.foundation.shape.CircleShape
+                                )
+                                .border(
+                                    width = if (isIncomeSelected) 1.5.dp else 0.dp,
+                                    color = if (isIncomeSelected) IncomeGreen.copy(alpha = 0.3f) else Color.Transparent,
+                                    shape = androidx.compose.foundation.shape.CircleShape
+                                )
+                                .clickable { selectedType = TransactionType.INCOME }
+                                .testTag("chip_income"),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.TrendingUp,
+                                    contentDescription = null,
+                                    tint = if (isIncomeSelected) IncomeGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = "Income",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = if (isIncomeSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isIncomeSelected) IncomeGreen else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
+
+                    // Combined Date and Period Dropdown Navigation Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Surface(
+                                onClick = { showDatePicker = true },
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = periodLabel,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+
+                            Box {
+                                Surface(
+                                    onClick = { showPeriodDropdown = true },
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = when (selectedTimePeriod) {
+                                                com.example.ui.viewmodel.TimePeriod.DAY -> "Day"
+                                                com.example.ui.viewmodel.TimePeriod.WEEK -> "Week"
+                                                com.example.ui.viewmodel.TimePeriod.MONTH -> "Month"
+                                                com.example.ui.viewmodel.TimePeriod.YEAR -> "Year"
+                                            },
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Icon(
+                                            imageVector = Icons.Default.ArrowDropDown,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+
+                                DropdownMenu(
+                                    expanded = showPeriodDropdown,
+                                    onDismissRequest = { showPeriodDropdown = false }
+                                ) {
+                                    com.example.ui.viewmodel.TimePeriod.values().forEach { period ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    text = when (period) {
+                                                        com.example.ui.viewmodel.TimePeriod.DAY -> "Day"
+                                                        com.example.ui.viewmodel.TimePeriod.WEEK -> "Week"
+                                                        com.example.ui.viewmodel.TimePeriod.MONTH -> "Month"
+                                                        com.example.ui.viewmodel.TimePeriod.YEAR -> "Year"
+                                                    }
+                                                )
+                                            },
+                                            onClick = {
+                                                setTimePeriod(period)
+                                                showPeriodDropdown = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            IconButton(
+                                onClick = moveToPreviousPeriod,
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .background(
+                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                        shape = CircleShape
+                                    )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ChevronLeft,
+                                    contentDescription = "Previous Period",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+
+                            IconButton(
+                                onClick = moveToNextPeriod,
+                                enabled = isNextPeriodEnabled,
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .background(
+                                        color = if (isNextPeriodEnabled) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f),
+                                        shape = CircleShape
+                                    )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ChevronRight,
+                                    contentDescription = "Next Period",
+                                    tint = if (isNextPeriodEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (showDatePicker) {
+                    CustomPeriodPickerDialog(
+                        timePeriod = selectedTimePeriod,
+                        activeDate = activeDate,
+                        onDateSelected = { setDateDirectly(it) },
+                        onDismiss = { showDatePicker = false }
+                    )
                 }
             }
 
@@ -411,21 +543,18 @@ fun AnalyticsScreenContent(
             if (!isLoading && filteredTransactions.isNotEmpty()) {
                 // Overview Total Amount Card
                 item {
-                    OutlinedCard(
+                    Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = AppShapes.roundedCardLarge,
-                        colors = CardDefaults.outlinedCardColors(
-                            containerColor = Color.Transparent
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
                         ),
-                        border = BorderStroke(
-                            width = 1.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
-                        )
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
                     ) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(AppDimens.paddingLarge)
+                                .padding(horizontal = AppDimens.paddingNormal, vertical = AppDimens.paddingNormal)
                         ) {
                             Text(
                                 text = if (selectedType == TransactionType.EXPENSE) "Monthly Expenses" else "Monthly Income",
@@ -460,7 +589,9 @@ fun AnalyticsScreenContent(
                     IncomeExpenseComparisonChart(
                         income = totalIncome,
                         expense = totalExpense,
-                        modifier = Modifier.testTag("income_expense_comparison_chart")
+                        modifier = Modifier
+                            .clickable { onChartClick("COMPARISON") }
+                            .testTag("income_expense_comparison_chart")
                     )
                 }
 
@@ -469,7 +600,9 @@ fun AnalyticsScreenContent(
                     SpendingTrendChart(
                         dailyExpenses = dailyExpenses,
                         timePeriod = selectedTimePeriod,
-                        modifier = Modifier.testTag("spending_trend_chart")
+                        modifier = Modifier
+                            .clickable { onChartClick("TREND") }
+                            .testTag("spending_trend_chart")
                     )
                 }
 
@@ -510,7 +643,7 @@ fun AnalyticsScreenContent(
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { listVisible = !listVisible }
+                                .clickable { onChartClick("CATEGORY") }
                                 .testTag("donut_chart_card"),
                             shape = AppShapes.roundedCardLarge,
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -570,13 +703,13 @@ fun AnalyticsScreenContent(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(vertical = AppDimens.paddingSmall),
-                                verticalArrangement = Arrangement.spacedBy(AppDimens.paddingNormal)
+                                verticalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)
                             ) {
                                 Text(
                                     text = "Category Breakdown",
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(top = AppDimens.paddingSmall)
+                                    modifier = Modifier
                                 )
 
                                 breakdown.forEachIndexed { index, item ->
@@ -824,8 +957,8 @@ fun DonutChart(
                 portions.forEachIndexed { index, portion ->
                     val sweepAngle = ((portion.second / total) * 360f).toFloat() * animateSweep
                     
-                    // Only draw a label if the portion is at least 4% of total to avoid cluttering
-                    if (portion.second / total >= 0.04 && sweepAngle > 0f) {
+                    // Only draw a label if the portion is at least 1% of total to avoid cluttering
+                    if (portion.second / total >= 0.01 && sweepAngle > 0f) {
                         val middleAngle = startAngle + sweepAngle / 2f
                         val angleRad = Math.toRadians(middleAngle.toDouble())
                         val dispPx = displacements.getOrNull(index)?.value?.dp?.toPx() ?: 0f
@@ -893,7 +1026,7 @@ fun DonutChart(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(AppDimens.paddingNormal))
 
         // Selected slice details below the filled pie chart
         val hasSelection = selectedIndex in portions.indices
@@ -1083,7 +1216,7 @@ fun CategoryBreakdownRow(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(AppDimens.paddingNormal)
+                .padding(horizontal = AppDimens.paddingNormal, vertical = 10.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1110,7 +1243,7 @@ fun CategoryBreakdownRow(
                     fontWeight = FontWeight.Bold
                 )
             }
-            Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
+            Spacer(modifier = Modifier.height(6.dp))
             
             // Percentage indicator & progress track
             Row(
@@ -1122,7 +1255,7 @@ fun CategoryBreakdownRow(
                     progress = { animatedProgress },
                     modifier = Modifier
                         .weight(1f)
-                        .height(8.dp),
+                        .height(6.dp),
                     color = barColor,
                     trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                     strokeCap = StrokeCap.Round
@@ -1146,16 +1279,13 @@ fun MonthlySummaryRow(
     savings: Double,
     modifier: Modifier = Modifier
 ) {
-    OutlinedCard(
+    Card(
         modifier = modifier.fillMaxWidth(),
         shape = AppShapes.roundedCardLarge,
-        colors = CardDefaults.outlinedCardColors(
-            containerColor = Color.Transparent
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
         ),
-        border = BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
-        )
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
     ) {
         Column(
             modifier = Modifier
@@ -1212,7 +1342,7 @@ fun SummaryItem(
 ) {
     Column(
         modifier = modifier
-            .padding(vertical = AppDimens.paddingSmall, horizontal = 4.dp),
+            .padding(horizontal = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(

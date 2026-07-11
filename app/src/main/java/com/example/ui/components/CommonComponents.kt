@@ -2,7 +2,10 @@ package com.example.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -35,6 +38,9 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.window.Dialog
+import com.example.ui.theme.*
+import com.example.data.model.Category
+import com.example.ui.utils.getIconByName
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -983,55 +989,228 @@ fun DayOrWeekPickerContent(
 }
 
 
+/**
+ * A reusable flow-layout grid of category chips that can be used in both the
+ * Manage Categories screen and the Filter sheet.
+ *
+ * @param categories The full list of [Category] objects to display as chips.
+ * @param selectedIds The set of category [Category.id] values that are currently selected
+ *   (highlighted). Pass an empty set when no selection state is needed.
+ * @param onToggle Callback invoked with the [Category.id] of the chip the user tapped.
+ * @param onLongPress Optional callback invoked with the [Category.id] of the chip the user
+ *   long-pressed. When non-null, each chip becomes long-pressable (used by
+ *   CategoryManagementScreen to surface an Edit / Delete menu).
+ * @param modifier Optional [Modifier] applied to the root [FlowRow].
+ */
+@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
+@Composable
+fun CategoryChipGrid(
+    categories: List<Category>,
+    selectedIds: Set<Int>,
+    onToggle: (Int) -> Unit,
+    onLongPress: ((Int) -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
+    FlowRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        categories.forEach { category ->
+            val isSelected = selectedIds.contains(category.id)
+            FilterChip(
+                selected = isSelected,
+                onClick = { onToggle(category.id) },
+                label = { Text(category.name) },
+                leadingIcon = {
+                    Icon(
+                        imageVector = getIconByName(category.iconName),
+                        contentDescription = category.name,
+                        modifier = Modifier.size(18.dp)
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                    selectedLabelColor = MaterialTheme.colorScheme.primary,
+                    selectedLeadingIconColor = MaterialTheme.colorScheme.primary,
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    iconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                border = FilterChipDefaults.filterChipBorder(
+                    enabled = true,
+                    selected = isSelected,
+                    borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                    selectedBorderColor = MaterialTheme.colorScheme.primary
+                ),
+                modifier = if (onLongPress != null) {
+                    Modifier.combinedClickable(
+                        onClick = { onToggle(category.id) },
+                        onLongClick = { onLongPress(category.id) }
+                    )
+                } else Modifier
+            )
+        }
+    }
+}
+
+
+/**
+ * A unified profile avatar that consistently renders user initials or guest identifiers.
+ * Follows core theme guidelines and supports scale adjustments and tap actions.
+ *
+ * @param name The display name of the user (e.g. "Alex Mitchell" or "Guest User").
+ * @param isGuest Indicates if the active session is a guest session.
+ * @param size The physical diameter size of the circular avatar.
+ * @param modifier Additional modifiers to apply to the avatar layout.
+ * @param onClick Optional click action. If provided, the avatar behaves as a button.
+ */
+@Composable
+fun ProfileAvatar(
+    name: String?,
+    isGuest: Boolean,
+    size: Dp,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
+) {
+    // 1. Unify Initials Generation Logic
+    val initials = remember(name, isGuest) {
+        if (name.isNullOrBlank()) {
+            if (isGuest) "GU" else "U"
+        } else {
+            val parts = name.trim().split("\\s+".toRegex())
+            val rawInitials = if (parts.size >= 2) {
+                (parts[0].firstOrNull()?.toString() ?: "") + (parts[1].firstOrNull()?.toString() ?: "")
+            } else {
+                parts[0].firstOrNull()?.toString() ?: ""
+            }
+            rawInitials.uppercase().take(2).ifEmpty { if (isGuest) "GU" else "U" }
+        }
+    }
+
+    // 2. Unify Color Styling Tokens
+    val backgroundColor = if (isGuest) {
+        MaterialTheme.colorScheme.secondaryContainer
+    } else {
+        MaterialTheme.colorScheme.primaryContainer
+    }
+    
+    val textColor = if (isGuest) {
+        MaterialTheme.colorScheme.onSecondaryContainer
+    } else {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    }
+    
+    val borderColor = if (isGuest) {
+        MaterialTheme.colorScheme.secondary.copy(alpha = 0.4f)
+    } else {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+    }
+
+    // 3. Define the Core Circular Composable
+    val avatarContent = @Composable {
+        Box(
+            modifier = Modifier
+                .size(size)
+                .background(backgroundColor, CircleShape)
+                .border(1.5.dp, borderColor, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = initials,
+                color = textColor,
+                fontWeight = FontWeight.Bold,
+                style = when {
+                    size < 40.dp -> MaterialTheme.typography.labelMedium
+                    size < 55.dp -> MaterialTheme.typography.titleMedium
+                    else -> MaterialTheme.typography.titleLarge
+                }
+            )
+        }
+    }
+
+    // 4. Handle Click Actions Consistent with M3 Targets
+    if (onClick != null) {
+        IconButton(
+            onClick = onClick,
+            modifier = modifier.size(size)
+        ) {
+            avatarContent()
+        }
+    } else {
+        Box(modifier = modifier) {
+            avatarContent()
+        }
+    }
+}
+
+
+
 @Composable
 fun TransactionItem(
     transaction: com.example.data.model.TransactionWithCategory,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    verticalPadding: androidx.compose.ui.unit.Dp = 4.dp,
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(20.dp),
+    containerColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.surface,
+    border: BorderStroke? = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
 ) {
     val tx = transaction.transaction
     val category = transaction.category
-    val formatter = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
+    val dateFormat = SimpleDateFormat("dd MMM", Locale.getDefault())
+    val timeFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
     val isExpense = tx.type == com.example.data.model.TransactionType.EXPENSE
     
-    Row(
+    Card(
         modifier = modifier
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .fillMaxWidth()
+            .padding(vertical = verticalPadding),
+        shape = shape,
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = border
     ) {
-        Surface(
-            shape = androidx.compose.foundation.shape.CircleShape,
-            color = if (isExpense) com.example.ui.theme.ExpenseRed.copy(alpha = 0.15f) else com.example.ui.theme.IncomeGreen.copy(alpha = 0.15f),
-            modifier = Modifier.size(40.dp)
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = com.example.ui.utils.getIconByName(category?.iconName ?: "category"),
-                contentDescription = null,
-                tint = if (isExpense) com.example.ui.theme.ExpenseRed else com.example.ui.theme.IncomeGreen,
-                modifier = Modifier.padding(8.dp)
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = if (isExpense) ExpenseRed.copy(alpha = 0.8f) else IncomeGreen.copy(alpha = 0.8f),
+                modifier = Modifier.size(48.dp)
+            ) {
+                Icon(
+                    imageVector = com.example.ui.utils.getIconByName(category?.iconName ?: "category"),
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = tx.source.ifBlank { category?.name ?: "Unknown" },
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "${category?.name ?: "Unknown"} • ${dateFormat.format(Date(tx.date))} ${timeFormat.format(Date(tx.date))}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+            }
+            Text(
+                text = "${if (isExpense) "-₹" else "+₹"}${com.example.ui.utils.CurrencyUtils.formatRupees(tx.amount).replace("₹", "").trim()}",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = if (isExpense) ExpenseRed else IncomeGreen
             )
         }
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = tx.source.ifBlank { category?.name ?: "Unknown" },
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-            )
-            Text(
-                text = formatter.format(java.util.Date(tx.date)),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Text(
-            text = "${if (isExpense) "-" else "+"}${com.example.ui.utils.CurrencyUtils.formatRupees(tx.amount)}",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-            color = if (isExpense) com.example.ui.theme.ExpenseRed else com.example.ui.theme.IncomeGreen
-        )
     }
 }
 

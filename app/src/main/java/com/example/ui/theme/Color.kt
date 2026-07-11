@@ -11,23 +11,29 @@ val PurpleGrey40 = Color(0xFF625B71)
 val Pink40 = Color(0xFF7D5260)
 
 // Finance Tracker Centered Branding & Status Colors
-val BrandPrimary = Color(0xFF1976D2)
-val BrandSecondary = Color(0xFF455A64)
-val BrandTertiary = Color(0xFF0288D1)
+val BrandPrimary = Color(0xFFA084E8) // Redesigned purple
+val BrandSecondary = Color(0xFF6F61EF)
+val BrandTertiary = Color(0xFF39D2C0)
 
-val IncomeGreen = Color(0xFF2E7D32)
-val ExpenseRed = Color(0xFFB3261E)
+val IncomeGreen = Color(0xFF24D193)
+val ExpenseRed = Color(0xFFFF5963)
 val LightIncomeGreen = Color(0xFFE8F5E9)
 val LightExpenseRed = Color(0xFFFFEBEE)
 
 // Neutral & Secondary Tokens for M3 Compatibility
-val NeutralDark = Color(0xFF1D1B20)
-val NeutralMedium = Color(0xFF49454F)
-val NeutralLight = Color(0xFFF3EDF7)
-val NeutralBorder = Color(0xFFE6E0E9)
-val SurfaceColor = Color(0xFFF3EDF7)
-val SurfaceVariantColor = Color(0xFFE7E0EC)
-val CardBorderColor = Color(0xFFCAC4D0)
+val NeutralDark = Color(0xFF14181B)
+val NeutralMedium = Color(0xFF57636C)
+val NeutralLight = Color(0xFFF1F4F8)
+val NeutralBorder = Color(0xFFE0E3E7)
+val SurfaceColor = Color(0xFF14181B)
+val SurfaceVariantColor = Color(0xFF1D2428)
+val CardBorderColor = Color(0xFF22282F)
+
+val DeepBlack = Color(0xFF0E0E0F)
+val DarkGrey = Color(0xFF1D1D1F)
+val BorderColor = Color(0xFF262629)
+val TextPrimary = Color(0xFFFFFFFF)
+val TextSecondary = Color(0xFF95A1AC)
 
 // Accent and Gradient Elements
 val GradientStart = Color(0xFF1976D2)

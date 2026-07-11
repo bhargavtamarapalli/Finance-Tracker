@@ -388,6 +388,43 @@ class FinanceViewModel(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val predictedSpending = currentMonthTransactions.map { transactions ->
+        val expense = transactions.filter { it.transaction.type == TransactionType.EXPENSE }.sumOf { it.transaction.amount }
+        // Simple prediction logic: if today is 15th, and we spent X, then predict X * (days_in_month / 15)
+        val today = Calendar.getInstance()
+        val dayOfMonth = today.get(Calendar.DAY_OF_MONTH)
+        val maxDays = today.getActualMaximum(Calendar.DAY_OF_MONTH)
+        if (dayOfMonth > 0) expense * (maxDays.toDouble() / dayOfMonth) else 0.0
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
+
+    val spendingChangePercentage = repository.allTransactions.map { transactions ->
+        val now = Calendar.getInstance()
+        val currentMonth = now.get(Calendar.MONTH)
+        val currentYear = now.get(Calendar.YEAR)
+        
+        val prevMonthCal = Calendar.getInstance().apply {
+            add(Calendar.MONTH, -1)
+        }
+        val prevMonth = prevMonthCal.get(Calendar.MONTH)
+        val prevYear = prevMonthCal.get(Calendar.YEAR)
+        
+        val currentMonthExpense = transactions.filter {
+            val cal = Calendar.getInstance().apply { timeInMillis = it.transaction.date }
+            cal.get(Calendar.MONTH) == currentMonth && cal.get(Calendar.YEAR) == currentYear && it.transaction.type == TransactionType.EXPENSE
+        }.sumOf { it.transaction.amount }
+        
+        val prevMonthExpense = transactions.filter {
+            val cal = Calendar.getInstance().apply { timeInMillis = it.transaction.date }
+            cal.get(Calendar.MONTH) == prevMonth && cal.get(Calendar.YEAR) == prevYear && it.transaction.type == TransactionType.EXPENSE
+        }.sumOf { it.transaction.amount }
+        
+        if (prevMonthExpense > 0.0) {
+            ((currentMonthExpense - prevMonthExpense) / prevMonthExpense) * 100.0
+        } else {
+            0.0
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
+
 
     init {
         CurrencyUtils.selectedCurrency = getSavedCurrency()

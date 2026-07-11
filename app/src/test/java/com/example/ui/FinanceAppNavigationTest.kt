@@ -131,6 +131,7 @@ class FinanceAppNavigationTest {
         bypassSplash()
 
         // 1. Check we are on Dashboard greeting
+        composeTestRule.onRoot().printToLog("TAG_UNIT_TEST")
         composeTestRule.onNodeWithText("Hello, Guest").assertIsDisplayed()
 
         // 2. Open drawer and navigate to settings

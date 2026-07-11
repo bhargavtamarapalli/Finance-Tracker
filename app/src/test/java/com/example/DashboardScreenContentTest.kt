@@ -24,24 +24,14 @@ class DashboardScreenContentTest {
             FinanceTrackerTheme {
                 DashboardContent(
                     periodTransactions = emptyList(),
-                    selectedTimePeriod = TimePeriod.MONTH,
-                    periodLabel = "July 2026",
-                    activeDate = System.currentTimeMillis(),
-                    isNextPeriodEnabled = false,
                     allTransactions = emptyList(),
-                    isLoading = false,
-                    isOnline = true,
-                    pendingSync = false,
+                    monthlyBudgetGoal = 100000.0,
                     userSession = null,
                     onMenuClick = {},
                     onAddTransactionClick = {},
                     onViewAllTransactionsClick = {},
                     onEditTransactionClick = {},
                     onDuplicateTransactionClick = {},
-                    onPeriodSelected = {},
-                    onPreviousClick = {},
-                    onNextClick = {},
-                    onDateSelected = {},
                     onDeleteTransaction = {}
                 )
             }
