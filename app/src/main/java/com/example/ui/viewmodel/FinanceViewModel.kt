@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 import java.util.Calendar
 import java.util.UUID
 import java.text.SimpleDateFormat
@@ -660,6 +661,27 @@ class FinanceViewModel(
             prefs.edit().putString("admin_announcements", json).apply()
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+    }
+
+    fun seedDemoTransactions() {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.seedDemoTransactionsOnly()
+        }
+    }
+
+    fun clearAllData() {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.clearAllData()
+        }
+    }
+
+    private fun isTestingEnvironment(): Boolean {
+        return try {
+            Class.forName("org.junit.Test")
+            true
+        } catch (e: ClassNotFoundException) {
+            false
         }
     }
 }

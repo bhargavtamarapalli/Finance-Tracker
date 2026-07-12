@@ -45,7 +45,10 @@ class SettingsScreenContentTest {
                     onRestoreCloud = {},
                     onRestoreLocal = {},
                     onUpdateProfile = { _, _, _, _ -> },
-                    onSignOut = {}
+                    onSignOut = {},
+                    onSeedDemoTransactions = {},
+                    onClearAllData = {},
+                    isDevMode = false
                 )
             }
         }

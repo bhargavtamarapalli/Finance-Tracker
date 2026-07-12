@@ -104,6 +104,18 @@ class FinanceRepository(
         }
     }
 
+    suspend fun seedDemoTransactionsOnly() {
+        val seededCategories = jsonDataManager.loadCategories()
+        dao.insertCategories(seededCategories)
+        val seededTransactions = jsonDataManager.loadTransactions()
+        dao.insertTransactions(seededTransactions)
+    }
+
+    suspend fun clearAllData() {
+        dao.deleteAllTransactions()
+        dao.deleteAllCategories()
+    }
+
     suspend fun backupToFirebase(userId: String): Result<Unit> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try {
             val categories = dao.getAllCategoriesOnce()

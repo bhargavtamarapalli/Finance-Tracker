@@ -56,6 +56,15 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var isSyncing by remember { mutableStateOf(false) }
+    val isDevMode = remember {
+        (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0 ||
+        try {
+            Class.forName("org.junit.Test")
+            true
+        } catch (e: ClassNotFoundException) {
+            false
+        }
+    }
 
     // CSV Document Creator Launcher
     val createCsvLauncher = rememberLauncherForActivityResult(
@@ -137,7 +146,10 @@ fun SettingsScreen(
         },
         onSignOut = {
             authViewModel.logout()
-        }
+        },
+        onSeedDemoTransactions = { viewModel.seedDemoTransactions() },
+        onClearAllData = { viewModel.clearAllData() },
+        isDevMode = isDevMode
     )
 }
 
@@ -167,7 +179,10 @@ fun SettingsContent(
     onRestoreCloud: () -> Unit,
     onRestoreLocal: () -> Unit,
     onUpdateProfile: (name: String, email: String, onSuccess: () -> Unit, onError: (String) -> Unit) -> Unit,
-    onSignOut: () -> Unit
+    onSignOut: () -> Unit,
+    onSeedDemoTransactions: () -> Unit,
+    onClearAllData: () -> Unit,
+    isDevMode: Boolean
 ) {
     val scrollState = rememberScrollState()
     val context = LocalContext.current
@@ -177,6 +192,7 @@ fun SettingsContent(
     var showRestoreWarning by remember { mutableStateOf(false) }
     var restoreActionType by remember { mutableStateOf<RestoreType?>(null) }
     var showCurrencyDialog by remember { mutableStateOf(false) }
+    var showClearAllWarning by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -553,6 +569,35 @@ fun SettingsContent(
                     trailingText = "v1.1"
                 )
             }
+
+            // Developer Settings Section
+            if (isDevMode) {
+                Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
+                SettingsSectionHeader("Developer Settings")
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = AppShapes.roundedCardMedium,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        SettingsItem(
+                            icon = Icons.Default.PlayArrow,
+                            title = "Seed Demo Transactions",
+                            onClick = onSeedDemoTransactions
+                        )
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f),
+                            modifier = Modifier.padding(horizontal = AppDimens.paddingNormal)
+                        )
+                        SettingsItem(
+                            icon = Icons.Default.Delete,
+                            title = "Clear All Data",
+                            onClick = { showClearAllWarning = true }
+                        )
+                    }
+                }
+            }
  
             Spacer(modifier = Modifier.height(AppDimens.paddingLarge))
             
@@ -593,6 +638,29 @@ fun SettingsContent(
             },
             dismissButton = {
                 TextButton(onClick = { showRestoreWarning = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showClearAllWarning) {
+        AlertDialog(
+            onDismissRequest = { showClearAllWarning = false },
+            title = { Text("Confirm Clear All Data", fontWeight = FontWeight.Bold) },
+            text = { Text("Are you sure you want to permanently clear all categories and transaction data? This action cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showClearAllWarning = false
+                        onClearAllData()
+                    }
+                ) {
+                    Text("Clear Data", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearAllWarning = false }) {
                     Text("Cancel")
                 }
             }
