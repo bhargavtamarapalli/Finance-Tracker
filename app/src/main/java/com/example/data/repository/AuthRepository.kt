@@ -56,6 +56,8 @@ class AuthRepository(private val context: Context) {
         checkCurrentUser()
     }
 
+    fun getContext(): Context = context
+
     private fun initializeFirebase() {
         try {
             var isPlaceholder = false

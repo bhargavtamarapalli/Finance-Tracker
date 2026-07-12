@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -376,98 +377,106 @@ fun FinanceApp(
                 }
             }
         ) { innerPadding ->
-            NavHost(
-                navController = navController,
-                startDestination = "dashboard",
-                modifier = Modifier.padding(
-                    top = innerPadding.calculateTopPadding(),
-                    bottom = 0.dp
-                )
-            ) {
-                composable("dashboard") { 
-                    DashboardScreen(
-                        viewModel = viewModel,
-                        navController = navController,
-                        userSession = userSession,
-                        onMenuClick = { scope.launch { drawerState.open() } },
-                        onSignOut = { authViewModel.logout() },
-                        onSignIn = { authViewModel.logout() }
-                    ) 
-                }
-                composable("transactions") { 
-                    TransactionHistoryScreen(viewModel, navController, onMenuClick = { scope.launch { drawerState.open() } }) 
-                }
-                composable("analytics") { 
-                    AnalyticsScreen(
-                        viewModel = viewModel, 
-                        onMenuClick = { scope.launch { drawerState.open() } },
-                        onChartClick = { chartType ->
-                            navController.navigate("analytics_details?initialChartType=$chartType")
-                        }
-                    ) 
-                }
-                composable(
-                    route = "analytics_details?initialChartType={initialChartType}",
-                    arguments = listOf(
-                        navArgument("initialChartType") {
-                            type = NavType.StringType
-                            defaultValue = "CATEGORY"
-                        }
+            val notifications by viewModel.notificationManager.activeInAppNotifications.collectAsState()
+            Box(modifier = Modifier.fillMaxSize()) {
+                NavHost(
+                    navController = navController,
+                    startDestination = "dashboard",
+                    modifier = Modifier.padding(
+                        top = innerPadding.calculateTopPadding(),
+                        bottom = 0.dp
                     )
-                ) { backStackEntry ->
-                    val initialChartType = backStackEntry.arguments?.getString("initialChartType") ?: "CATEGORY"
-                    AnalyticsDetailScreen(
-                        viewModel = viewModel,
-                        initialChartType = initialChartType,
-                        onBackClick = { navController.popBackStack() }
-                    )
-                }
-                composable("settings") { 
-                    SettingsScreen(
-                        viewModel = viewModel,
-                        authViewModel = authViewModel,
-                        onManageCategoriesClick = { navController.navigate("categories_management") },
-                        onAdminConsoleClick = { navController.navigate("admin_console") },
-                        onMenuClick = { scope.launch { drawerState.open() } }
-                    ) 
-                }
-                composable("admin_console") {
-                    if (userSession?.role == "ADMIN") {
-                        AdminConsoleScreen(
+                ) {
+                    composable("dashboard") { 
+                        DashboardScreen(
                             viewModel = viewModel,
+                            navController = navController,
+                            userSession = userSession,
+                            onMenuClick = { scope.launch { drawerState.open() } },
+                            onSignOut = { authViewModel.logout() },
+                            onSignIn = { authViewModel.logout() }
+                        ) 
+                    }
+                    composable("transactions") { 
+                        TransactionHistoryScreen(viewModel, navController, onMenuClick = { scope.launch { drawerState.open() } }) 
+                    }
+                    composable("analytics") { 
+                        AnalyticsScreen(
+                            viewModel = viewModel, 
+                            onMenuClick = { scope.launch { drawerState.open() } },
+                            onChartClick = { chartType ->
+                                navController.navigate("analytics_details?initialChartType=$chartType")
+                            }
+                        ) 
+                    }
+                    composable(
+                        route = "analytics_details?initialChartType={initialChartType}",
+                        arguments = listOf(
+                            navArgument("initialChartType") {
+                                type = NavType.StringType
+                                defaultValue = "CATEGORY"
+                            }
+                        )
+                    ) { backStackEntry ->
+                        val initialChartType = backStackEntry.arguments?.getString("initialChartType") ?: "CATEGORY"
+                        AnalyticsDetailScreen(
+                            viewModel = viewModel,
+                            initialChartType = initialChartType,
                             onBackClick = { navController.popBackStack() }
                         )
-                    } else {
-                        LaunchedEffect(Unit) {
-                            navController.navigate("dashboard") {
-                                popUpTo("admin_console") { inclusive = true }
+                    }
+                    composable("settings") { 
+                        SettingsScreen(
+                            viewModel = viewModel,
+                            authViewModel = authViewModel,
+                            onManageCategoriesClick = { navController.navigate("categories_management") },
+                            onAdminConsoleClick = { navController.navigate("admin_console") },
+                            onMenuClick = { scope.launch { drawerState.open() } }
+                        ) 
+                    }
+                    composable("admin_console") {
+                        if (userSession?.role == "ADMIN") {
+                            AdminConsoleScreen(
+                                viewModel = viewModel,
+                                onBackClick = { navController.popBackStack() }
+                            )
+                        } else {
+                            LaunchedEffect(Unit) {
+                                navController.navigate("dashboard") {
+                                    popUpTo("admin_console") { inclusive = true }
+                                }
                             }
                         }
                     }
+                    composable("categories_management") {
+                        CategoryManagementScreen(viewModel, navController)
+                    }
+                    composable(
+                        route = "add_transaction/{type}?transactionId={transactionId}&duplicate={duplicate}",
+                        arguments = listOf(
+                            navArgument("transactionId") { 
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = null
+                            },
+                            navArgument("duplicate") { 
+                                type = NavType.BoolType
+                                defaultValue = false
+                            }
+                        )
+                    ) { backStackEntry -> 
+                        val type = backStackEntry.arguments?.getString("type") ?: "EXPENSE"
+                        val transactionIdString = backStackEntry.arguments?.getString("transactionId")
+                        val transactionId = transactionIdString?.toIntOrNull()
+                        val duplicate = backStackEntry.arguments?.getBoolean("duplicate") ?: false
+                        AddTransactionScreen(viewModel, navController, type, transactionId, duplicate) 
+                    }
                 }
-                composable("categories_management") {
-                    CategoryManagementScreen(viewModel, navController)
-                }
-                composable(
-                    route = "add_transaction/{type}?transactionId={transactionId}&duplicate={duplicate}",
-                    arguments = listOf(
-                        navArgument("transactionId") { 
-                            type = NavType.StringType
-                            nullable = true
-                            defaultValue = null
-                        },
-                        navArgument("duplicate") { 
-                            type = NavType.BoolType
-                            defaultValue = false
-                        }
-                    )
-                ) { backStackEntry -> 
-                    val type = backStackEntry.arguments?.getString("type") ?: "EXPENSE"
-                    val transactionIdString = backStackEntry.arguments?.getString("transactionId")
-                    val transactionId = transactionIdString?.toIntOrNull()
-                    val duplicate = backStackEntry.arguments?.getBoolean("duplicate") ?: false
-                    AddTransactionScreen(viewModel, navController, type, transactionId, duplicate) 
-                }
+                
+                com.example.ui.components.InAppNotificationHost(
+                    notifications = notifications,
+                    onDismiss = { id -> viewModel.notificationManager.dismissInApp(id) }
+                )
             }
         }
     }

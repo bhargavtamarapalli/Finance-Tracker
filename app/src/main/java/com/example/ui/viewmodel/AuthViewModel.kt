@@ -17,7 +17,10 @@ sealed class AuthState {
     data class Error(val message: String) : AuthState()
 }
 
-class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
+class AuthViewModel(
+    private val repository: AuthRepository,
+    val notificationManager: com.example.data.repository.NotificationManager = com.example.data.repository.NoOpNotificationManager
+) : ViewModel() {
     
     val currentUserSession: StateFlow<UserSession?> = repository.currentUserSession
     
@@ -48,6 +51,7 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
             try {
                 val session = repository.signInWithEmail(trimmedEmail, password)
                 _authState.value = AuthState.Success(session)
+                notificationManager.postInApp("Welcome back, ${session.name}!")
             } catch (e: Exception) {
                 _authState.value = AuthState.Error(e.message ?: "Sign in failed. Check your connection or email/password.")
             }
@@ -74,6 +78,7 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
             try {
                 val session = repository.signUpWithEmail(trimmedEmail, password, trimmedName)
                 _authState.value = AuthState.Success(session)
+                notificationManager.postInApp("Account created successfully. Welcome, ${session.name}!")
             } catch (e: Exception) {
                 _authState.value = AuthState.Error(e.message ?: "Sign up failed. Please try again.")
             }
@@ -95,6 +100,7 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
             try {
                 repository.sendPasswordResetEmail(trimmedEmail)
                 _authState.value = AuthState.Idle
+                notificationManager.postInApp("Password reset link sent to $trimmedEmail.")
                 onSuccess()
             } catch (e: Exception) {
                 _authState.value = AuthState.Error(e.message ?: "Reset email failed. Ensure the email is registered.")
@@ -104,6 +110,7 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
 
     fun loginAsGuest() {
         repository.loginAsGuest()
+        notificationManager.postInApp("Logged in as Guest. Local features active.", com.example.data.model.NotificationType.INFO)
     }
 
     fun signInWithBiometrics() {
@@ -112,6 +119,7 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
             try {
                 val session = repository.signInWithBiometrics()
                 _authState.value = AuthState.Success(session)
+                notificationManager.postInApp("Welcome back, ${session.name}!")
             } catch (e: Exception) {
                 _authState.value = AuthState.Error(e.message ?: "Biometric login failed.")
             }
@@ -121,6 +129,7 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
     fun logout() {
         repository.logout()
         _authState.value = AuthState.Idle
+        notificationManager.postInApp("Logged out successfully.", com.example.data.model.NotificationType.INFO)
     }
 
     fun updateProfile(name: String, email: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
@@ -148,6 +157,7 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
                 } else {
                     _authState.value = AuthState.Idle
                 }
+                notificationManager.postInApp("Profile updated successfully.")
                 onSuccess()
             } catch (e: Exception) {
                 _authState.value = AuthState.Error(e.message ?: "Failed to update profile")
@@ -163,11 +173,15 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
     }
 }
 
-class AuthViewModelFactory(private val repository: AuthRepository) : ViewModelProvider.Factory {
+class AuthViewModelFactory(
+    private val repository: AuthRepository,
+    private val notificationManager: com.example.data.repository.NotificationManager? = null
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(AuthViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return AuthViewModel(repository) as T
+            val nm = notificationManager ?: com.example.data.repository.NotificationManagerImpl(repository.getContext())
+            return AuthViewModel(repository, nm) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

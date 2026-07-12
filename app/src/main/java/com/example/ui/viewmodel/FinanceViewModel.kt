@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.Calendar
 import java.util.UUID
 import java.text.SimpleDateFormat
@@ -42,7 +43,8 @@ enum class TimePeriod(val displayName: String) {
 
 class FinanceViewModel(
     private val repository: FinanceRepository,
-    networkMonitor: com.example.ui.utils.NetworkMonitor? = null
+    networkMonitor: com.example.ui.utils.NetworkMonitor? = null,
+    val notificationManager: com.example.data.repository.NotificationManager = com.example.data.repository.NoOpNotificationManager
 ) : ViewModel() {
     private val prefs = repository.getSettingsPreferences()
 
@@ -434,9 +436,22 @@ class FinanceViewModel(
             _isLoading.value = false
         }
         viewModelScope.launch {
+            var firstCollect = true
             isOnline.collect { online ->
-                if (online && pendingSync.value) {
-                    triggerAutoSync()
+                if (firstCollect) {
+                    firstCollect = false
+                    if (!online) {
+                        notificationManager.postInApp("You are offline. Operations will sync when back online.", com.example.data.model.NotificationType.WARNING)
+                    }
+                } else {
+                    if (online) {
+                        notificationManager.postInApp("Back online. Syncing pending data...")
+                        if (pendingSync.value) {
+                            triggerAutoSync()
+                        }
+                    } else {
+                        notificationManager.postInApp("You are offline. Operations will sync when back online.", com.example.data.model.NotificationType.WARNING)
+                    }
                 }
             }
         }
@@ -533,6 +548,8 @@ class FinanceViewModel(
             repository.insertTransaction(
                 TransactionEntity(amount = amount, source = source, date = date, categoryId = categoryId, type = type, notes = notes, paymentMethod = paymentMethod)
             )
+            notificationManager.postInApp("Transaction of ₹${String.format("%.2f", amount)} saved successfully.")
+            checkBudgetLimit()
             setPendingSync(true)
             triggerAutoSync()
         }
@@ -541,6 +558,8 @@ class FinanceViewModel(
     fun updateTransaction(transaction: TransactionEntity) {
         viewModelScope.launch {
             repository.updateTransaction(transaction)
+            notificationManager.postInApp("Transaction updated.")
+            checkBudgetLimit()
             setPendingSync(true)
             triggerAutoSync()
         }
@@ -549,6 +568,7 @@ class FinanceViewModel(
     fun deleteTransaction(transaction: TransactionEntity) {
         viewModelScope.launch {
             repository.deleteTransaction(transaction)
+            notificationManager.postInApp("Transaction deleted.")
             setPendingSync(true)
             triggerAutoSync()
         }
@@ -556,9 +576,16 @@ class FinanceViewModel(
 
     fun addCategory(name: String, type: TransactionType, iconName: String) {
         viewModelScope.launch {
+            val all = allCategories.value
+            val duplicate = all.any { it.name.equals(name, ignoreCase = true) && it.type == type }
+            if (duplicate) {
+                notificationManager.postInApp("Category '$name' already exists.", com.example.data.model.NotificationType.ERROR)
+                return@launch
+            }
             repository.insertCategory(
                 Category(name = name, type = type, iconName = iconName)
             )
+            notificationManager.postInApp("Category '$name' created.")
             setPendingSync(true)
             triggerAutoSync()
         }
@@ -567,6 +594,7 @@ class FinanceViewModel(
     fun updateCategory(category: Category) {
         viewModelScope.launch {
             repository.updateCategory(category)
+            notificationManager.postInApp("Category renamed to '${category.name}'.")
             setPendingSync(true)
             triggerAutoSync()
         }
@@ -575,17 +603,34 @@ class FinanceViewModel(
     fun deleteCategory(category: Category) {
         viewModelScope.launch {
             repository.deleteCategory(category)
+            notificationManager.postInApp("Category deleted.")
             setPendingSync(true)
             triggerAutoSync()
         }
     }
 
     suspend fun backupToFirebase(userId: String): Result<Unit> {
-        return repository.backupToFirebase(userId)
+        val result = repository.backupToFirebase(userId)
+        withContext(Dispatchers.Main) {
+            if (result.isSuccess) {
+                notificationManager.postInApp("Database backed up to cloud successfully.")
+            } else {
+                notificationManager.postInApp("Backup failed: ${result.exceptionOrNull()?.message ?: "check network connection"}", com.example.data.model.NotificationType.ERROR)
+            }
+        }
+        return result
     }
 
     suspend fun restoreFromFirebase(userId: String): Result<Unit> {
-        return repository.restoreFromFirebase(userId)
+        val result = repository.restoreFromFirebase(userId)
+        withContext(Dispatchers.Main) {
+            if (result.isSuccess) {
+                notificationManager.postInApp("Cloud data restored and merged successfully.")
+            } else {
+                notificationManager.postInApp("Restore failed: ${result.exceptionOrNull()?.message ?: "check network connection"}", com.example.data.model.NotificationType.ERROR)
+            }
+        }
+        return result
     }
 
     suspend fun backupLocally(): Result<Unit> {
@@ -667,12 +712,18 @@ class FinanceViewModel(
     fun seedDemoTransactions() {
         viewModelScope.launch(Dispatchers.IO) {
             repository.seedDemoTransactionsOnly()
+            withContext(Dispatchers.Main) {
+                notificationManager.postInApp("Mock transaction logs seeded.")
+            }
         }
     }
 
     fun clearAllData() {
         viewModelScope.launch(Dispatchers.IO) {
             repository.clearAllData()
+            withContext(Dispatchers.Main) {
+                notificationManager.postInApp("All local transactions and categories cleared.", com.example.data.model.NotificationType.INFO)
+            }
         }
     }
 
@@ -684,16 +735,46 @@ class FinanceViewModel(
             false
         }
     }
+
+    private fun checkBudgetLimit() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val budgetLimit = _monthlyBudgetGoal.value
+            val currentMonth = Calendar.getInstance().get(Calendar.MONTH)
+            val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+            val allTx = repository.getAllTransactionsOnce()
+            val currentMonthExpense = allTx.filter {
+                val cal = Calendar.getInstance().apply { timeInMillis = it.date }
+                cal.get(Calendar.MONTH) == currentMonth && cal.get(Calendar.YEAR) == currentYear && it.type == TransactionType.EXPENSE
+            }.sumOf { it.amount }
+
+            if (currentMonthExpense > budgetLimit) {
+                val overAmount = currentMonthExpense - budgetLimit
+                withContext(Dispatchers.Main) {
+                    notificationManager.postInApp(
+                        message = "Warning: Monthly budget limit exceeded by ₹${String.format("%.2f", overAmount)}!",
+                        type = com.example.data.model.NotificationType.WARNING
+                    )
+                    notificationManager.postSystemNotification(
+                        title = "Budget Alert!",
+                        content = "Monthly spending has exceeded your ₹${String.format("%.2f", budgetLimit)} limit.",
+                        channel = com.example.data.model.NotificationChannelType.ALERTS
+                    )
+                }
+            }
+        }
+    }
 }
 
 class FinanceViewModelFactory(
     private val repository: FinanceRepository,
-    private val networkMonitor: com.example.ui.utils.NetworkMonitor? = null
+    private val networkMonitor: com.example.ui.utils.NetworkMonitor? = null,
+    private val notificationManager: com.example.data.repository.NotificationManager? = null
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(FinanceViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return FinanceViewModel(repository, networkMonitor) as T
+            val nm = notificationManager ?: com.example.data.repository.NotificationManagerImpl(repository.getContext())
+            return FinanceViewModel(repository, networkMonitor, nm) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
