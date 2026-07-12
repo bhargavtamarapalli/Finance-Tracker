@@ -11,6 +11,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -141,5 +142,28 @@ class FinanceViewModelTest {
             add(Calendar.DATE, 1)
         }
         assertEquals(expectedCal.timeInMillis, viewModel.activeDate.value)
+    }
+
+    @Test
+    fun testSeedDemoTransactions_launchesJob() = runTest {
+        viewModel.seedDemoTransactions()
+        testDispatcher.scheduler.advanceUntilIdle()
+        db.invalidationTracker.refreshVersionsSync()
+        val dbTx = db.financeDao().getAllTransactionsOnce()
+        assertTrue(dbTx.isNotEmpty())
+    }
+
+    @Test
+    fun testClearAllData_deletesAllData() = runTest {
+        viewModel.seedDemoTransactions()
+        testDispatcher.scheduler.advanceUntilIdle()
+        db.invalidationTracker.refreshVersionsSync()
+        assertTrue(db.financeDao().getAllTransactionsOnce().isNotEmpty())
+
+        viewModel.clearAllData()
+        testDispatcher.scheduler.advanceUntilIdle()
+        db.invalidationTracker.refreshVersionsSync()
+        assertTrue(db.financeDao().getAllTransactionsOnce().isEmpty())
+        assertTrue(db.financeDao().getAllCategoriesOnce().isEmpty())
     }
 }
