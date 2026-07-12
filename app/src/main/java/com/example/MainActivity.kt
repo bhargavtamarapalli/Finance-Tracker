@@ -41,7 +41,7 @@ class MainActivity : FragmentActivity() {
         val viewModelFactory = FinanceViewModelFactory(repository)
         val viewModel = ViewModelProvider(this, viewModelFactory)[FinanceViewModel::class.java]
 
-        val authRepository = AuthRepository(this)
+        val authRepository = AuthRepository(this, database)
         val authViewModelFactory = AuthViewModelFactory(authRepository)
         val authViewModel = ViewModelProvider(this, authViewModelFactory)[AuthViewModel::class.java]
 

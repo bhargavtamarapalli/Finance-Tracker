@@ -118,11 +118,13 @@ class AuthRepositoryTest {
 
     @Test
     fun testSignInWithBiometrics_createsSession() = runBlocking {
-        // Setup some saved preferences first
+        // Phase 3 fix: signInWithBiometrics() now reads biometric_user_* keys that are
+        // persisted during a real login. Seed them here to simulate a prior login.
         val prefs = EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
         prefs.edit()
-            .putString("demo_user_email", "bio@example.com")
-            .putString("demo_user_name", "Bio User")
+            .putString("biometric_user_id", "demo_user")
+            .putString("biometric_user_email", "bio@example.com")
+            .putString("biometric_user_name", "Bio User")
             .apply()
 
         val session = authRepository.signInWithBiometrics()

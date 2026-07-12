@@ -162,7 +162,11 @@ class FinanceRepository(
                 val payload = backupAdapter.fromJson(json)
                     ?: return@withContext Result.failure(Exception("Failed to parse cloud backup data."))
                 
-                // Clear existing and overwrite/update database
+                // Phase 2: Clear existing data first to prevent cross-user contamination.
+                // Without this, a previous user's local records would be merged with the
+                // newly-logged-in user's Firebase backup, exposing private financial data.
+                dao.deleteAllCategories()
+                dao.deleteAllTransactions()
                 dao.insertCategories(payload.categories)
                 dao.insertTransactions(payload.transactions)
                 

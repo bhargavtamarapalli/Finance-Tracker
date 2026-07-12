@@ -370,38 +370,22 @@ class AuthViewModelTest {
     // --- Continue with Google ---
 
     @Test
-    fun testContinueWithGoogle_userExists_signsInSuccessfully() = runTest {
+    fun testContinueWithGoogle_successfulAuth_setsAuthStateSuccess() = runTest {
         val dummySession = UserSession("google-uid", "Bhargav T", "bhargav1999.t@gmail.com", false)
-        coEvery { mockRepository.signInWithEmail("bhargav1999.t@gmail.com", "googlePassword123") } returns dummySession
+        coEvery { mockRepository.signInWithGoogleCredential("valid_token") } returns dummySession
 
-        viewModel.continueWithGoogle("bhargav1999.t@gmail.com", "Bhargav T")
+        viewModel.continueWithGoogle("valid_token")
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(AuthState.Success(dummySession), viewModel.authState.value)
-        coVerify(exactly = 1) { mockRepository.signInWithEmail("bhargav1999.t@gmail.com", "googlePassword123") }
-        coVerify(exactly = 0) { mockRepository.signUpWithEmail(any(), any(), any()) }
+        coVerify(exactly = 1) { mockRepository.signInWithGoogleCredential("valid_token") }
     }
 
     @Test
-    fun testContinueWithGoogle_userDoesNotExist_signsUpSuccessfully() = runTest {
-        val dummySession = UserSession("google-uid", "Bhargav T", "bhargav1999.t@gmail.com", false)
-        coEvery { mockRepository.signInWithEmail("bhargav1999.t@gmail.com", "googlePassword123") } throws Exception("USER_NOT_FOUND")
-        coEvery { mockRepository.signUpWithEmail("bhargav1999.t@gmail.com", "googlePassword123", "Bhargav T") } returns dummySession
+    fun testContinueWithGoogle_failedAuth_setsAuthStateErrorWithFriendlyMapping() = runTest {
+        coEvery { mockRepository.signInWithGoogleCredential("invalid_token") } throws Exception("network error")
 
-        viewModel.continueWithGoogle("bhargav1999.t@gmail.com", "Bhargav T")
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        assertEquals(AuthState.Success(dummySession), viewModel.authState.value)
-        coVerify(exactly = 1) { mockRepository.signInWithEmail("bhargav1999.t@gmail.com", "googlePassword123") }
-        coVerify(exactly = 1) { mockRepository.signUpWithEmail("bhargav1999.t@gmail.com", "googlePassword123", "Bhargav T") }
-    }
-
-    @Test
-    fun testContinueWithGoogle_bothFail_setsMappedError() = runTest {
-        coEvery { mockRepository.signInWithEmail("bhargav1999.t@gmail.com", "googlePassword123") } throws Exception("USER_NOT_FOUND")
-        coEvery { mockRepository.signUpWithEmail("bhargav1999.t@gmail.com", "googlePassword123", "Bhargav T") } throws Exception("NETWORK_ERROR")
-
-        viewModel.continueWithGoogle("bhargav1999.t@gmail.com", "Bhargav T")
+        viewModel.continueWithGoogle("invalid_token")
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertTrue(viewModel.authState.value is AuthState.Error)

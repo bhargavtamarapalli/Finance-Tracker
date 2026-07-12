@@ -173,23 +173,15 @@ class AuthViewModel(
         }
     }
 
-    fun continueWithGoogle(email: String, name: String) {
+    fun continueWithGoogle(idToken: String) {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             try {
-                // First attempt to sign in to existing account
-                val session = repository.signInWithEmail(email, "googlePassword123")
+                val session = repository.signInWithGoogleCredential(idToken)
                 _authState.value = AuthState.Success(session)
                 notificationManager.postInApp("Welcome back, ${session.name}!")
             } catch (e: Exception) {
-                // If sign in fails (likely user does not exist yet), perform sign up
-                try {
-                    val session = repository.signUpWithEmail(email, "googlePassword123", name)
-                    _authState.value = AuthState.Success(session)
-                    notificationManager.postInApp("Account created successfully. Welcome, ${session.name}!")
-                } catch (signUpEx: Exception) {
-                    _authState.value = AuthState.Error(mapAuthError(signUpEx))
-                }
+                _authState.value = AuthState.Error(mapAuthError(e))
             }
         }
     }

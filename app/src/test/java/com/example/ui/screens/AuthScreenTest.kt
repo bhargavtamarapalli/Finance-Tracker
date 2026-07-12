@@ -251,13 +251,20 @@ class AuthScreenTest {
         composeTestRule.waitForIdle()
 
         // Click Google Login
+        // In Robolectric, CredentialManager throws SecurityException (no real Google Play Services),
+        // so the fallback in AuthScreen fires: viewModel.continueWithGoogle("simulated_id_token_123").
+        // decodeGoogleIdTokenClaims() returns safe defaults when given an invalid JWT payload.
         composeTestRule.onNodeWithTag("google_login_button").performScrollTo().performClick()
         composeTestRule.waitForIdle()
 
-        // Verify user logged in as google user session
+        // Verify that a valid user session was created (not null, not guest)
         val session = viewModel.currentUserSession.value
         org.junit.Assert.assertNotNull(session)
-        assertEquals("bhargav1999.t@gmail.com", session!!.email)
-        assertEquals("Bhargav T", session.name)
+        org.junit.Assert.assertFalse("Session should not be a guest session", session!!.isGuest)
+        // In the test environment, decodeGoogleIdTokenClaims returns the safe-default email
+        // because "simulated_id_token_123" carries no real JWT payload.
+        // On a real device, Google Credential Manager provides a valid token with the user's email.
+        assertEquals("user@gmail.com", session.email)
+        assertEquals("Google User", session.name)
     }
 }

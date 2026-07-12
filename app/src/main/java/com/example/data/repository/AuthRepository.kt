@@ -44,7 +44,10 @@ suspend fun <T> Task<T>.await(): T {
     }
 }
 
-class AuthRepository(private val context: Context) {
+class AuthRepository(
+    private val context: Context,
+    private val database: com.example.data.local.AppDatabase? = null
+) {
     private var auth: FirebaseAuth? = null
     private var useDemoFallback = false
     
@@ -123,6 +126,23 @@ class AuthRepository(private val context: Context) {
         }
     }
 
+    /**
+     * Persists the user's identity into EncryptedSharedPreferences so that biometric
+     * sign-in can restore the correct session on the next launch.
+     *
+     * @param userId The Firebase UID (or "demo_user" in offline mode)
+     * @param email  The user's email address
+     * @param name   The user's display name
+     */
+    private fun saveBiometricSession(userId: String, email: String, name: String) {
+        com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+            .edit()
+            .putString("biometric_user_id", userId)
+            .putString("biometric_user_email", email)
+            .putString("biometric_user_name", name)
+            .apply()
+    }
+
     suspend fun signUpWithEmail(email: String, password: String, name: String): UserSession {
         if (useDemoFallback || auth == null) {
             // Simulated local Firebase fallback
@@ -146,6 +166,8 @@ class AuthRepository(private val context: Context) {
                 isGuest = false
             )
             _currentUserSession.value = session
+            // Phase 3: persist for biometric sign-in
+            saveBiometricSession(session.userId, session.email, session.name)
             return session
         }
 
@@ -165,6 +187,8 @@ class AuthRepository(private val context: Context) {
                 isGuest = false
             )
             _currentUserSession.value = session
+            // Phase 3: persist for biometric sign-in
+            saveBiometricSession(session.userId, session.email, session.name)
             return session
         } catch (e: Exception) {
             Log.e("AuthRepository", "Sign up failed")
@@ -200,6 +224,8 @@ class AuthRepository(private val context: Context) {
                     isGuest = false
                 )
                 _currentUserSession.value = session
+                // Phase 3: persist for biometric sign-in
+                saveBiometricSession(session.userId, session.email, session.name)
                 return session
             } else {
                 throw Exception("Invalid email or password.")
@@ -217,6 +243,8 @@ class AuthRepository(private val context: Context) {
                 isGuest = false
             )
             _currentUserSession.value = session
+            // Phase 3: persist for biometric sign-in
+            saveBiometricSession(session.userId, session.email, session.name)
             return session
         } catch (e: Exception) {
             Log.e("AuthRepository", "Sign in failed")
@@ -238,19 +266,129 @@ class AuthRepository(private val context: Context) {
         }
     }
 
+    suspend fun signInWithGoogleCredential(idToken: String): UserSession {
+        if (useDemoFallback || auth == null) {
+            // Simulated local Google auth fallback (offline/test mode only)
+            // NOTE: In online mode the idToken comes from Google Credential Manager and
+            // carries the real account's display name and email inside the JWT payload.
+            // We decode it here so the fallback session reflects the actual selected account.
+            val (email, name) = decodeGoogleIdTokenClaims(idToken)
+            val prefs = com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+            prefs.edit()
+                .putString("demo_user_email", email)
+                .putString("demo_user_name", name)
+                .putBoolean("is_guest", false)
+                .putBoolean("demo_session_active", true)
+                .apply()
+            val session = UserSession(
+                userId = "demo_user",
+                name = name,
+                email = email,
+                isGuest = false
+            )
+            _currentUserSession.value = session
+            // Phase 3: persist for biometric sign-in
+            saveBiometricSession(session.userId, session.email, session.name)
+            return session
+        }
+
+        try {
+            val credential = com.google.firebase.auth.GoogleAuthProvider.getCredential(idToken, null)
+            val result = auth!!.signInWithCredential(credential).await()
+            val user = result.user ?: throw Exception("Google login returned an empty user profile")
+            val session = UserSession(
+                userId = user.uid,
+                name = user.displayName ?: user.email?.substringBefore("@") ?: "Google User",
+                email = user.email ?: "",
+                isGuest = false
+            )
+            _currentUserSession.value = session
+            // Phase 3: persist for biometric sign-in
+            saveBiometricSession(session.userId, session.email, session.name)
+            return session
+        } catch (e: Exception) {
+            Log.e("AuthRepository", "Google sign in failed")
+            throw e
+        }
+    }
+
+    /**
+     * Decodes the email and name claims from a Google ID Token JWT without verifying
+     * the signature (signature verification is performed server-side by Firebase Auth).
+     * Used only in offline/demo fallback mode.
+     *
+     * @param idToken A compact JWT string from Google Credential Manager.
+     * @return A [Pair] of (email, displayName) extracted from the token payload,
+     *         or safe defaults if decoding fails.
+     */
+    private fun decodeGoogleIdTokenClaims(idToken: String): Pair<String, String> {
+        return try {
+            val parts = idToken.split(".")
+            if (parts.size < 2) return Pair("user@gmail.com", "Google User")
+            val paddedPayload = parts[1].let {
+                val mod = it.length % 4
+                if (mod == 0) it else it + "=".repeat(4 - mod)
+            }
+            val decoded = String(
+                android.util.Base64.decode(paddedPayload, android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP),
+                Charsets.UTF_8
+            )
+            val email = Regex("\"email\":\"([^\"]+)\"").find(decoded)?.groupValues?.get(1) ?: "user@gmail.com"
+            val name = Regex("\"name\":\"([^\"]+)\"").find(decoded)?.groupValues?.get(1)
+                ?: email.substringBefore("@")
+            Pair(email, name)
+        } catch (e: Exception) {
+            Log.w("AuthRepository", "Could not decode id_token claims, using defaults")
+            Pair("user@gmail.com", "Google User")
+        }
+    }
+
+    /**
+     * Restores the user session after a successful biometric authentication.
+     *
+     * Phase 3 fix: instead of always returning a hardcoded `"demo_user"` session,
+     * this method reads the identity that was persisted during the last successful
+     * login (email, Google, or sign-up) and reconstructs the correct [UserSession].
+     *
+     * If a real Firebase session is still active for the stored UID it is reused;
+     * otherwise the locally-cached credentials are used (offline mode).
+     */
     suspend fun signInWithBiometrics(): UserSession {
         val prefs = com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
-        val savedEmail = prefs.getString("demo_user_email", "demo@example.com")
-        val savedName = prefs.getString("demo_user_name", "Alex Mitchell")
-        
+
+        // Read the identity saved during the last successful login (Phase 3)
+        val savedUserId = prefs.getString("biometric_user_id", null)
+        val savedEmail  = prefs.getString("biometric_user_email", null)
+        val savedName   = prefs.getString("biometric_user_name", null)
+
+        if (savedUserId == null || savedEmail == null) {
+            throw Exception("No saved account found. Please log in with your password first to enable biometric login.")
+        }
+
+        // If Firebase is active and the persisted UID matches the current Firebase user,
+        // return a session based on the live Firebase profile.
+        val firebaseUser = auth?.currentUser
+        if (!useDemoFallback && firebaseUser != null && firebaseUser.uid == savedUserId) {
+            val session = UserSession(
+                userId = firebaseUser.uid,
+                name = firebaseUser.displayName ?: savedName ?: savedEmail.substringBefore("@"),
+                email = firebaseUser.email ?: savedEmail,
+                isGuest = false
+            )
+            _currentUserSession.value = session
+            return session
+        }
+
+        // Offline / demo fallback — use the locally persisted credentials
         prefs.edit()
             .putBoolean("is_guest", false)
+            .putBoolean("demo_session_active", true)
             .apply()
-            
+
         val session = UserSession(
-            userId = "demo_user",
-            name = savedName ?: "Alex Mitchell",
-            email = savedEmail ?: "demo@example.com",
+            userId = savedUserId,
+            name = savedName ?: savedEmail.substringBefore("@"),
+            email = savedEmail,
             isGuest = false
         )
         _currentUserSession.value = session
@@ -308,12 +446,31 @@ class AuthRepository(private val context: Context) {
         }
     }
 
+    /**
+     * Signs the current user out and **clears all locally-cached financial data**
+     * from the Room database.
+     *
+     * Phase 2 fix: without this wipe, the next user who logs in on the same device
+     * would immediately see the previous user's transactions and categories.
+     *
+     * The biometric_* keys are intentionally kept so that biometric login can still
+     * prompt the correct account name on the lock screen.  They are overwritten the
+     * moment a different account logs in successfully.
+     */
     fun logout() {
         try {
             auth?.signOut()
         } catch (e: Exception) {
             e.printStackTrace()
         }
+
+        // Phase 2: wipe all local financial data so it cannot leak to the next user
+        try {
+            database?.clearAllTables()
+        } catch (e: Exception) {
+            Log.e("AuthRepository", "Failed to clear local database on logout", e)
+        }
+
         com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
             .edit()
             .putBoolean("is_guest", false)
