@@ -190,7 +190,7 @@ fun AddTransactionContent(
                     onDone = { focusManager.clearFocus() }
                 ),
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag("amount_input"),
                 isError = amountError != null,
                 supportingText = amountError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } }
             )
@@ -204,7 +204,7 @@ fun AddTransactionContent(
                     onNext = { focusManager.moveFocus(FocusDirection.Down) }
                 ),
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().testTag("payee_input")
             )
 
             // Date Picker Row
@@ -305,7 +305,7 @@ fun AddTransactionContent(
                 keyboardActions = KeyboardActions(
                     onDone = { focusManager.clearFocus() }
                 ),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag("notes_input"),
                 minLines = 3
             )
 
@@ -354,6 +354,7 @@ fun AddTransactionContent(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
+                    .testTag("save_button")
                     .padding(bottom = AppDimens.paddingLarge),
                 height = AppDimens.heightButton
             )

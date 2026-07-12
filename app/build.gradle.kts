@@ -5,6 +5,7 @@ plugins {
   alias(libs.plugins.roborazzi)
   alias(libs.plugins.secrets)
   alias(libs.plugins.kover)
+  alias(libs.plugins.google.services)
   jacoco
 }
 
@@ -13,7 +14,7 @@ android {
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.example"
+    applicationId = "com.Finance.Tracker"
     minSdk = 24
     targetSdk = 36
 
@@ -55,6 +56,9 @@ android {
       isIncludeAndroidResources = true
       all {
         it.systemProperty("robolectric.enabledSdks", "33")
+        it.testLogging {
+          showStandardStreams = true
+        }
       }
     }
   }

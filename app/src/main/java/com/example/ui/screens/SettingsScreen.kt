@@ -21,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -135,9 +136,7 @@ fun SettingsScreen(
             authViewModel.updateProfile(name, email, onSuccess, onError)
         },
         onSignOut = {
-            scope.launch {
-                authViewModel.logout()
-            }
+            authViewModel.logout()
         }
     )
 }
@@ -403,6 +402,7 @@ fun SettingsContent(
                             Switch(
                                 checked = reminderEnabled,
                                 onCheckedChange = onReminderToggle,
+                                modifier = Modifier.testTag("settings_reminder_switch"),
                                 colors = SwitchDefaults.colors(
                                     checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                                     checkedTrackColor = MaterialTheme.colorScheme.primary,
@@ -564,7 +564,8 @@ fun SettingsContent(
                 contentColor = if (isGuest) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer,
                 icon = if (isGuest) Icons.Default.Login else Icons.Default.Logout,
                 modifier = Modifier.fillMaxWidth(),
-                shape = AppShapes.roundedCardMedium
+                shape = AppShapes.roundedCardMedium,
+                testTag = "settings_logout_button"
             )
 
             Spacer(modifier = Modifier.height(60.dp))
@@ -646,13 +647,13 @@ fun SettingsContent(
                         value = editName,
                         onValueChange = { editName = it },
                         label = { Text("Name") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().testTag("profile_name_input")
                     )
                     OutlinedTextField(
                         value = editEmail,
                         onValueChange = { editEmail = it },
                         label = { Text("Email") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().testTag("profile_email_input")
                     )
                 }
             },

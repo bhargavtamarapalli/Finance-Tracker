@@ -1,4 +1,0 @@
-Calculating task graph as no cached configuration is available for tasks: :FinanceManager-tests:connectedAndroidTest
-
-> Configure project :FinanceManager-tests:app
-Configuration cache entry stored.

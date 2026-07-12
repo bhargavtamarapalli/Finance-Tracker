@@ -307,7 +307,11 @@ class AuthRepository(private val context: Context) {
     }
 
     fun logout() {
-        auth?.signOut()
+        try {
+            auth?.signOut()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
         com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
             .edit()
             .putBoolean("is_guest", false)
