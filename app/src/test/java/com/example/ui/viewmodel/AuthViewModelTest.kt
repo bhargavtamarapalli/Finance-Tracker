@@ -28,6 +28,12 @@ class AuthViewModelTest {
     fun setUp() {
         MockKAnnotations.init(this)
         Dispatchers.setMain(testDispatcher)
+
+        val dummyContext = mockk<android.content.Context>(relaxed = true)
+        val dummyNm = mockk<android.app.NotificationManager>(relaxed = true)
+        every { dummyContext.getSystemService(android.content.Context.NOTIFICATION_SERVICE) } returns dummyNm
+        every { mockRepository.getContext() } returns dummyContext
+
         every { mockRepository.currentUserSession } returns sessionFlow
         viewModel = AuthViewModel(mockRepository)
     }

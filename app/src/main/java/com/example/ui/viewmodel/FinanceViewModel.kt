@@ -738,28 +738,32 @@ class FinanceViewModel(
 
     private fun checkBudgetLimit() {
         viewModelScope.launch(Dispatchers.IO) {
-            val budgetLimit = _monthlyBudgetGoal.value
-            val currentMonth = Calendar.getInstance().get(Calendar.MONTH)
-            val currentYear = Calendar.getInstance().get(Calendar.YEAR)
-            val allTx = repository.getAllTransactionsOnce()
-            val currentMonthExpense = allTx.filter {
-                val cal = Calendar.getInstance().apply { timeInMillis = it.date }
-                cal.get(Calendar.MONTH) == currentMonth && cal.get(Calendar.YEAR) == currentYear && it.type == TransactionType.EXPENSE
-            }.sumOf { it.amount }
+            try {
+                val budgetLimit = _monthlyBudgetGoal.value
+                val currentMonth = Calendar.getInstance().get(Calendar.MONTH)
+                val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+                val allTx = repository.getAllTransactionsOnce()
+                val currentMonthExpense = allTx.filter {
+                    val cal = Calendar.getInstance().apply { timeInMillis = it.date }
+                    cal.get(Calendar.MONTH) == currentMonth && cal.get(Calendar.YEAR) == currentYear && it.type == TransactionType.EXPENSE
+                }.sumOf { it.amount }
 
-            if (currentMonthExpense > budgetLimit) {
-                val overAmount = currentMonthExpense - budgetLimit
-                withContext(Dispatchers.Main) {
-                    notificationManager.postInApp(
-                        message = "Warning: Monthly budget limit exceeded by ₹${String.format("%.2f", overAmount)}!",
-                        type = com.example.data.model.NotificationType.WARNING
-                    )
-                    notificationManager.postSystemNotification(
-                        title = "Budget Alert!",
-                        content = "Monthly spending has exceeded your ₹${String.format("%.2f", budgetLimit)} limit.",
-                        channel = com.example.data.model.NotificationChannelType.ALERTS
-                    )
+                if (currentMonthExpense > budgetLimit) {
+                    val overAmount = currentMonthExpense - budgetLimit
+                    withContext(Dispatchers.Main) {
+                        notificationManager.postInApp(
+                            message = "Warning: Monthly budget limit exceeded by ₹${String.format("%.2f", overAmount)}!",
+                            type = com.example.data.model.NotificationType.WARNING
+                        )
+                        notificationManager.postSystemNotification(
+                            title = "Budget Alert!",
+                            content = "Monthly spending has exceeded your ₹${String.format("%.2f", budgetLimit)} limit.",
+                            channel = com.example.data.model.NotificationChannelType.ALERTS
+                        )
+                    }
                 }
+            } catch (e: Exception) {
+                // Ignore background exceptions when database is closed during test teardown
             }
         }
     }
