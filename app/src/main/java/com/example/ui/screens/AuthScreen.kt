@@ -521,7 +521,7 @@ fun AuthScreen(
                 text = "Continue with Google",
                 onClick = {
                     // Triggers mock google auth logic using standard flow
-                    viewModel.signUp("bhargav1999.t@gmail.com", "googlePassword123", "Bhargav T")
+                    viewModel.continueWithGoogle("bhargav1999.t@gmail.com", "Bhargav T")
                 },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = authState != AuthState.Loading,

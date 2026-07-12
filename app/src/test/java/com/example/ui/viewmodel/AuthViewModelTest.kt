@@ -125,7 +125,7 @@ class AuthViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertTrue(viewModel.authState.value is AuthState.Error)
-        assertEquals("Email already in use", (viewModel.authState.value as AuthState.Error).message)
+        assertEquals("This email address is already registered. Please sign in instead.", (viewModel.authState.value as AuthState.Error).message)
     }
 
     // --- sendPasswordReset ---
@@ -365,6 +365,60 @@ class AuthViewModelTest {
         assertFalse(successCalled)
         assertEquals("Database timeout", errorMsg)
         assertEquals(AuthState.Error("Database timeout"), viewModel.authState.value)
+    }
+
+    // --- Continue with Google ---
+
+    @Test
+    fun testContinueWithGoogle_userExists_signsInSuccessfully() = runTest {
+        val dummySession = UserSession("google-uid", "Bhargav T", "bhargav1999.t@gmail.com", false)
+        coEvery { mockRepository.signInWithEmail("bhargav1999.t@gmail.com", "googlePassword123") } returns dummySession
+
+        viewModel.continueWithGoogle("bhargav1999.t@gmail.com", "Bhargav T")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(AuthState.Success(dummySession), viewModel.authState.value)
+        coVerify(exactly = 1) { mockRepository.signInWithEmail("bhargav1999.t@gmail.com", "googlePassword123") }
+        coVerify(exactly = 0) { mockRepository.signUpWithEmail(any(), any(), any()) }
+    }
+
+    @Test
+    fun testContinueWithGoogle_userDoesNotExist_signsUpSuccessfully() = runTest {
+        val dummySession = UserSession("google-uid", "Bhargav T", "bhargav1999.t@gmail.com", false)
+        coEvery { mockRepository.signInWithEmail("bhargav1999.t@gmail.com", "googlePassword123") } throws Exception("USER_NOT_FOUND")
+        coEvery { mockRepository.signUpWithEmail("bhargav1999.t@gmail.com", "googlePassword123", "Bhargav T") } returns dummySession
+
+        viewModel.continueWithGoogle("bhargav1999.t@gmail.com", "Bhargav T")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(AuthState.Success(dummySession), viewModel.authState.value)
+        coVerify(exactly = 1) { mockRepository.signInWithEmail("bhargav1999.t@gmail.com", "googlePassword123") }
+        coVerify(exactly = 1) { mockRepository.signUpWithEmail("bhargav1999.t@gmail.com", "googlePassword123", "Bhargav T") }
+    }
+
+    @Test
+    fun testContinueWithGoogle_bothFail_setsMappedError() = runTest {
+        coEvery { mockRepository.signInWithEmail("bhargav1999.t@gmail.com", "googlePassword123") } throws Exception("USER_NOT_FOUND")
+        coEvery { mockRepository.signUpWithEmail("bhargav1999.t@gmail.com", "googlePassword123", "Bhargav T") } throws Exception("NETWORK_ERROR")
+
+        viewModel.continueWithGoogle("bhargav1999.t@gmail.com", "Bhargav T")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(viewModel.authState.value is AuthState.Error)
+        val errorMsg = (viewModel.authState.value as AuthState.Error).message
+        assertEquals("Network connection failure. Please check your internet connection and try again.", errorMsg)
+    }
+
+    @Test
+    fun testSignIn_emailAlreadyInUse_showsUserFriendlyError() = runTest {
+        coEvery { mockRepository.signInWithEmail(any(), any()) } throws Exception("The email address is already in use by another account.")
+
+        viewModel.signIn("existing@example.com", "password")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(viewModel.authState.value is AuthState.Error)
+        val errorMsg = (viewModel.authState.value as AuthState.Error).message
+        assertEquals("This email address is already registered. Please sign in instead.", errorMsg)
     }
 
     // --- AuthViewModelFactory ---
