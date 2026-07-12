@@ -430,7 +430,7 @@ class FinanceViewModel(
     init {
         CurrencyUtils.selectedCurrency = getSavedCurrency()
         viewModelScope.launch {
-            repository.seedDataIfNeeded()
+            repository.seedDataIfNeeded(isTestingEnvironment())
             _isLoading.value = false
         }
         viewModelScope.launch {

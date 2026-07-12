@@ -97,7 +97,7 @@ case "$SUITE" in
   ledger)        run_tests "com.example.ui.FinanceLedgerUserFlowTest"       "Ledger Flow Tests" ;;
   analytics)     run_tests "com.example.AnalyticsScreenTest"                "Analytics Tests" ;;
   history)       run_tests "com.example.TransactionHistoryScreenTest"       "History Tests" ;;
-  unit)          run_tests "com.example.ui.viewmodel.FinanceViewModelTest"  "ViewModel Unit Tests" ;;
+  unit)          run_tests "com.example.ui.viewmodel.*"                     "ViewModel Unit Tests" ;;
   existing)
     JAVA_HOME="$JAVA_HOME_PATH" ./gradlew testDebugUnitTest \
       --tests "com.example.ui.FinanceAppNavigationTest" \
@@ -108,7 +108,7 @@ case "$SUITE" in
       --tests "com.example.AnalyticsScreenTest" \
       --tests "com.example.TransactionHistoryScreenTest" \
       --tests "com.example.SettingsScreenTest" \
-      --tests "com.example.ui.viewmodel.FinanceViewModelTest"
+      --tests "com.example.ui.viewmodel.*"
     ;;
 
   # ── All ---------------------------------------------------------------------

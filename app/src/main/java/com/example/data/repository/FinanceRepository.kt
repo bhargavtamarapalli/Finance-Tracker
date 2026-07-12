@@ -89,18 +89,19 @@ class FinanceRepository(
         return dao.getAllTransactionsOnce()
     }
 
-    suspend fun seedDataIfNeeded() {
+    suspend fun seedDataIfNeeded(isTestEnv: Boolean = false) {
         val categories = dao.getAllCategoriesOnce()
         if (categories.isEmpty()) {
             val seededCategories = jsonDataManager.loadCategories()
             dao.insertCategories(seededCategories)
         }
-        val transactions = dao.getAllTransactionsOnce()
-        if (transactions.size <= 7) {
-            // Delete existing skeleton transactions
-            dao.deleteTransactions(transactions)
-            val seededTransactions = jsonDataManager.loadTransactions()
-            dao.insertTransactions(seededTransactions)
+        if (isTestEnv) {
+            val transactions = dao.getAllTransactionsOnce()
+            if (transactions.size <= 7) {
+                dao.deleteTransactions(transactions)
+                val seededTransactions = jsonDataManager.loadTransactions()
+                dao.insertTransactions(seededTransactions)
+            }
         }
     }
 
