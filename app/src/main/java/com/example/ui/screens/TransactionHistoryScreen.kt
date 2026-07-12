@@ -49,6 +49,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import kotlin.math.roundToInt
 
 enum class SortOption(val displayName: String) {
@@ -277,7 +278,7 @@ fun TransactionHistoryContent(
                 .nestedScroll(nestedScrollConnection)
         ) {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().testTag("history_transaction_list"),
                 verticalArrangement = Arrangement.spacedBy(AppDimens.paddingMedium),
                 contentPadding = PaddingValues(
                     top = with(LocalDensity.current) { headerHeightPx.toDp() } + AppDimens.paddingExtraSmall,

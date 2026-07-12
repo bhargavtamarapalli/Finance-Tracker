@@ -93,6 +93,7 @@ fun AdminConsoleScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .verticalScroll(scrollState)
+                .testTag("admin_console_scroll")
                 .padding(AppDimens.paddingLarge),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {

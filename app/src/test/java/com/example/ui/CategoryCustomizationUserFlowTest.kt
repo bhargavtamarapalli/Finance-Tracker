@@ -2,6 +2,7 @@ package com.example.ui
 
 import android.content.Context
 import androidx.compose.ui.test.*
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.room.Room
@@ -148,7 +149,7 @@ class CategoryCustomizationUserFlowTest {
         composeTestRule.waitForIdle()
 
         // 7. Click Add Transaction FAB and verify the custom category "Organic Tea" is selectable
-        composeTestRule.onNodeWithContentDescription("Add Transaction").performClick()
+        composeTestRule.onNodeWithContentDescription("Add Transaction").performSemanticsAction(SemanticsActions.OnClick)
         composeTestRule.waitForIdle()
         testDispatcher.scheduler.advanceUntilIdle()
         db.invalidationTracker.refreshVersionsSync()
