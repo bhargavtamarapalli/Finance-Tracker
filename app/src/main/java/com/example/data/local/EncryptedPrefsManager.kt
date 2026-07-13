@@ -6,9 +6,24 @@ import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
+/**
+ * Manages access to [EncryptedSharedPreferences] backed by an AES-256 master key
+ * stored in the Android Keystore.
+ *
+ * This object is production-only. Test doubles must implement or mock
+ * [android.content.SharedPreferences] directly; no test-environment detection is performed here.
+ */
 object EncryptedPrefsManager {
     private const val TAG = "EncryptedPrefsManager"
 
+    /**
+     * Returns an [EncryptedSharedPreferences] instance for the given [name].
+     *
+     * @param context Application or Activity context used to create the preferences store.
+     * @param name    The preferences file name (must be unique per use-case).
+     * @throws SecureStorageUnavailableException if the Keystore or encrypted prefs
+     *         cannot be initialized (e.g., device credential reset, hardware failure).
+     */
     fun getEncryptedPrefs(context: Context, name: String): SharedPreferences {
         return try {
             val masterKey = MasterKey.Builder(context)
@@ -24,23 +39,10 @@ object EncryptedPrefsManager {
             )
         } catch (e: Exception) {
             Log.e(TAG, "Failed to create EncryptedSharedPreferences for $name", e)
-            if (isTestEnvironment()) {
-                Log.d(TAG, "Test environment detected; falling back to plaintext SharedPreferences")
-                context.getSharedPreferences(name, Context.MODE_PRIVATE)
-            } else {
-                throw SecureStorageUnavailableException("Secure storage is unavailable. Please restart the app or reset device credentials.", e)
-            }
-        }
-    }
-
-    fun isTestEnvironment(): Boolean {
-        return try {
-            Class.forName("org.robolectric.Robolectric") != null
-        } catch (e: ClassNotFoundException) {
-            Thread.currentThread().stackTrace.any {
-                it.className.startsWith("org.junit.") ||
-                it.className.startsWith("androidx.test.")
-            }
+            throw SecureStorageUnavailableException(
+                "Secure storage is unavailable. Please restart the app or reset device credentials.",
+                e
+            )
         }
     }
 }

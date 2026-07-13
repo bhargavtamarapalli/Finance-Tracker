@@ -39,7 +39,7 @@ class FinanceRepositoryTest {
             .setQueryExecutor { it.run() }
             .setTransactionExecutor { it.run() }
             .build()
-        jsonDataManager = JsonDataManager(context)
+        jsonDataManager = JsonDataManager(context, com.example.fakes.PlainFileStorage())
         repository = FinanceRepository(db.financeDao(), jsonDataManager)
         
         localBackupFile = File(context.filesDir, "local_backup.json")

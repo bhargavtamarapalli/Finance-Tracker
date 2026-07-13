@@ -36,8 +36,20 @@ import org.robolectric.annotation.GraphicsMode
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(qualifiers = RobolectricDeviceQualifiers.Pixel8, sdk = [33])
+@Config(qualifiers = "w1000dp-h2000dp-xhdpi", sdk = [33])
 class SettingsScreenTest {
+
+    private fun buildTreeString(node: androidx.compose.ui.semantics.SemanticsNode, sb: java.lang.StringBuilder, depth: Int) {
+        val indent = "  ".repeat(depth)
+        val textList = node.config.getOrElseNullable(androidx.compose.ui.semantics.SemanticsProperties.Text) { null }
+        val editableText = node.config.getOrElseNullable(androidx.compose.ui.semantics.SemanticsProperties.EditableText) { null }
+        val testTag = node.config.getOrElseNullable(androidx.compose.ui.semantics.SemanticsProperties.TestTag) { null }
+        val contentDesc = node.config.getOrElseNullable(androidx.compose.ui.semantics.SemanticsProperties.ContentDescription) { null }
+        sb.append("${indent}- Node: tag=$testTag, text=$textList, editableText=$editableText, desc=$contentDesc\n")
+        node.children.forEach { child ->
+            buildTreeString(child, sb, depth + 1)
+        }
+    }
 
     @get:Rule
     val composeTestRule = createComposeRule()
@@ -67,11 +79,11 @@ class SettingsScreenTest {
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        val jsonDataManager = JsonDataManager(context)
+        val jsonDataManager = JsonDataManager(context, com.example.fakes.PlainFileStorage())
         repository = FinanceRepository(db.financeDao(), jsonDataManager)
-        viewModel = FinanceViewModel(repository)
+        viewModel = FinanceViewModel(repository, injectedPrefs = com.example.fakes.FakeSharedPreferences())
 
-        authRepository = AuthRepository(context)
+        authRepository = AuthRepository(context, injectedAuthPrefs = com.example.fakes.FakeSharedPreferences(), forceDemoFallback = true)
         authViewModel = AuthViewModel(authRepository)
 
         // Seed basic categories and transactions to allow backup content
@@ -99,62 +111,78 @@ class SettingsScreenTest {
 
     @Test
     fun settingsScreen_displaysOptionsAndDetails() {
-        // Force guest mode user session for testing
-        authViewModel.loginAsGuest()
+        try {
+            // Force guest mode user session for testing
+            authViewModel.loginAsGuest()
+            composeTestRule.waitForIdle()
+            org.robolectric.shadows.ShadowLooper.idleMainLooper()
 
-        composeTestRule.setContent {
-            FinanceTrackerTheme {
-                CompositionLocalProvider(
-                    LocalActivityResultRegistryOwner provides fakeRegistryOwner
-                ) {
-                    SettingsScreen(
-                        viewModel = viewModel,
-                        authViewModel = authViewModel,
-                        onManageCategoriesClick = {},
-                        onAdminConsoleClick = {},
-                        onMenuClick = {}
-                    )
+            composeTestRule.setContent {
+                FinanceTrackerTheme {
+                    CompositionLocalProvider(
+                        LocalActivityResultRegistryOwner provides fakeRegistryOwner
+                    ) {
+                        SettingsScreen(
+                            viewModel = viewModel,
+                            authViewModel = authViewModel,
+                            onManageCategoriesClick = {},
+                            onAdminConsoleClick = {},
+                            onMenuClick = {}
+                        )
+                    }
                 }
             }
+
+            composeTestRule.waitForIdle()
+
+            // Assert Theme Section
+            composeTestRule.onNodeWithText("Theme").assertIsDisplayed()
+
+            // Assert Currency Section
+            composeTestRule.onNodeWithText("Currency").assertIsDisplayed()
+
+            // Assert Account Section
+            composeTestRule.onNodeWithText("Account").assertIsDisplayed()
+            composeTestRule.onNodeWithText("Guest User").assertIsDisplayed()
+            composeTestRule.onNodeWithText("Using Guest Session").assertIsDisplayed()
+
+            // Assert Notifications Section
+            composeTestRule.onNodeWithText("Notifications").performScrollTo().assertIsDisplayed()
+
+            // Assert that Preferences section is present (using performScrollTo as it's below the fold)
+            composeTestRule.onNodeWithText("Preferences").performScrollTo().assertIsDisplayed()
+            composeTestRule.onNodeWithText("Manage Categories").performScrollTo().assertIsDisplayed()
+
+            // Assert that Data & Backup section is present
+            composeTestRule.onNodeWithText("Data & Backup").performScrollTo().assertIsDisplayed()
+            composeTestRule.onNodeWithText("Backup to Local Storage").performScrollTo().assertIsDisplayed()
+            composeTestRule.onNodeWithText("Restore from Local Storage").performScrollTo().assertIsDisplayed()
+
+            // Assert App Info section is present
+            composeTestRule.onNodeWithText("App Info").performScrollTo().assertIsDisplayed()
+            composeTestRule.onNodeWithText("About").performScrollTo().assertIsDisplayed()
+            composeTestRule.onNodeWithText("v1.1").performScrollTo().assertIsDisplayed()
+
+            // Assert Sign In / Register exists
+            composeTestRule.onNodeWithTag("settings_logout_button").performScrollTo().assertIsDisplayed()
+        } catch (t: Throwable) {
+            val sb = java.lang.StringBuilder()
+            try {
+                val root = composeTestRule.onRoot().fetchSemanticsNode()
+                buildTreeString(root, sb, 0)
+            } catch (ex: Exception) {
+                sb.append("Failed to fetch root: ${ex.message}")
+            }
+            java.io.File("tree_settings_test_failed.txt").writeText(sb.toString())
+            throw t
         }
-
-        composeTestRule.waitForIdle()
-
-        // Assert Theme Section
-        composeTestRule.onNodeWithText("Theme").assertIsDisplayed()
-
-        // Assert Currency Section
-        composeTestRule.onNodeWithText("Currency").assertIsDisplayed()
-
-        // Assert Account Section
-        composeTestRule.onNodeWithText("Account").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Guest User").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Guest Session").assertIsDisplayed()
-
-        // Assert Notifications Section
-        composeTestRule.onNodeWithText("Notifications").performScrollTo().assertIsDisplayed()
-
-        // Assert that Preferences section is present (using performScrollTo as it's below the fold)
-        composeTestRule.onNodeWithText("Preferences").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Manage Categories").performScrollTo().assertIsDisplayed()
-
-        // Assert that Data & Backup section is present
-        composeTestRule.onNodeWithText("Data & Backup").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Backup to Local Storage").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Restore from Local Storage").performScrollTo().assertIsDisplayed()
-
-        // Assert App Info section is present
-        composeTestRule.onNodeWithText("App Info").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("About").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("v1.1").performScrollTo().assertIsDisplayed()
-
-        // Assert Sign In / Register exists
-        composeTestRule.onNodeWithText("Sign In / Register").performScrollTo().assertIsDisplayed()
     }
 
     @Test
     fun settingsScreen_localBackupAndRestoreFlow() {
         authViewModel.loginAsGuest()
+        composeTestRule.waitForIdle()
+        org.robolectric.shadows.ShadowLooper.idleMainLooper()
 
         composeTestRule.setContent {
             FinanceTrackerTheme {
@@ -214,6 +242,8 @@ class SettingsScreenTest {
     @Test
     fun settingsScreen_screenshot() {
         authViewModel.loginAsGuest()
+        composeTestRule.waitForIdle()
+        org.robolectric.shadows.ShadowLooper.idleMainLooper()
 
         composeTestRule.setContent {
             FinanceTrackerTheme {

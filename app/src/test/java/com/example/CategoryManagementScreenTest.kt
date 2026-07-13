@@ -55,7 +55,7 @@ class CategoryManagementScreenTest {
             .setQueryExecutor(directExecutor)
             .setTransactionExecutor(directExecutor)
             .build()
-        val jsonDataManager = JsonDataManager(context)
+        val jsonDataManager = JsonDataManager(context, com.example.fakes.PlainFileStorage())
         repository = FinanceRepository(db.financeDao(), jsonDataManager)
 
         // Seed initial categories
@@ -63,7 +63,7 @@ class CategoryManagementScreenTest {
         val expenseCat = Category(id = 2, name = "Groceries", type = TransactionType.EXPENSE, iconName = "shopping_cart", isDefault = true)
         db.financeDao().insertCategories(listOf(incomeCat, expenseCat))
 
-        viewModel = FinanceViewModel(repository)
+        viewModel = FinanceViewModel(repository, injectedPrefs = com.example.fakes.FakeSharedPreferences())
     }
 
     @After

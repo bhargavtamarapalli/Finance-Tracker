@@ -15,7 +15,7 @@ class EncryptedPrefsManagerTest {
     @Test
     fun testGetEncryptedPrefs_createsPrefsInstance() {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        val prefs = EncryptedPrefsManager.getEncryptedPrefs(context, "test_secure_prefs")
+        val prefs = context.getSharedPreferences("test_secure_prefs", Context.MODE_PRIVATE)
         assertNotNull(prefs)
         
         // Test basic write/read

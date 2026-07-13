@@ -1,6 +1,8 @@
 package com.example.ui.viewmodel
 
 import android.content.Context
+import android.content.SharedPreferences
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -44,9 +46,10 @@ enum class TimePeriod(val displayName: String) {
 class FinanceViewModel(
     private val repository: FinanceRepository,
     networkMonitor: com.example.ui.utils.NetworkMonitor? = null,
-    val notificationManager: com.example.data.repository.NotificationManager = com.example.data.repository.NoOpNotificationManager
+    val notificationManager: com.example.data.repository.NotificationManager = com.example.data.repository.NoOpNotificationManager,
+    injectedPrefs: SharedPreferences? = null
 ) : ViewModel() {
-    private val prefs = repository.getSettingsPreferences()
+    private val prefs: SharedPreferences = injectedPrefs ?: repository.getSettingsPreferences()
 
     private val _appTheme = MutableStateFlow(getSavedTheme())
     val appTheme: StateFlow<AppTheme> = _appTheme.asStateFlow()
@@ -432,7 +435,7 @@ class FinanceViewModel(
     init {
         CurrencyUtils.selectedCurrency = getSavedCurrency()
         viewModelScope.launch {
-            repository.seedDataIfNeeded(isTestingEnvironment())
+            repository.seedDataIfNeeded()
             _isLoading.value = false
         }
         viewModelScope.launch {
@@ -727,14 +730,6 @@ class FinanceViewModel(
         }
     }
 
-    private fun isTestingEnvironment(): Boolean {
-        return try {
-            Class.forName("org.junit.Test")
-            true
-        } catch (e: ClassNotFoundException) {
-            false
-        }
-    }
 
     private fun checkBudgetLimit() {
         viewModelScope.launch(Dispatchers.IO) {
@@ -763,7 +758,7 @@ class FinanceViewModel(
                     }
                 }
             } catch (e: Exception) {
-                // Ignore background exceptions when database is closed during test teardown
+                Log.e("FinanceViewModel", "Budget limit check failed", e)
             }
         }
     }

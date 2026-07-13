@@ -46,10 +46,10 @@ class AuthScreenTest {
         android.provider.Settings.Global.putFloat(context.contentResolver, android.provider.Settings.Global.TRANSITION_ANIMATION_SCALE, 0f)
         android.provider.Settings.Global.putFloat(context.contentResolver, android.provider.Settings.Global.WINDOW_ANIMATION_SCALE, 0f)
         
-        val prefs = EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+        val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
         prefs.edit().clear().commit()
 
-        repository = AuthRepository(context)
+        repository = AuthRepository(context, injectedAuthPrefs = com.example.fakes.FakeSharedPreferences(), forceDemoFallback = true)
         // Seed a user for login/forgot password tests to succeed
         kotlinx.coroutines.runBlocking {
             repository.signUpWithEmail("test@example.com", "Password123", "Test User")

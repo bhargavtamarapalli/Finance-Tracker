@@ -46,7 +46,7 @@ class FinanceViewModelTest {
         every { repository.allCategories } returns mockCategoriesFlow
         every { repository.allTransactions } returns mockTransactionsFlow
 
-        viewModel = FinanceViewModel(repository)
+        viewModel = FinanceViewModel(repository, injectedPrefs = com.example.fakes.FakeSharedPreferences())
     }
 
     @After

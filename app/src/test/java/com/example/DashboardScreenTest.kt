@@ -59,7 +59,7 @@ class DashboardScreenTest {
             .setQueryExecutor(directExecutor)
             .setTransactionExecutor(directExecutor)
             .build()
-        val jsonDataManager = JsonDataManager(context)
+        val jsonDataManager = JsonDataManager(context, com.example.fakes.PlainFileStorage())
         repository = FinanceRepository(db.financeDao(), jsonDataManager)
 
         // Seed FIRST before creating ViewModel to prevent background seeding crashes/races
@@ -90,7 +90,7 @@ class DashboardScreenTest {
             )
         )
 
-        viewModel = FinanceViewModel(repository)
+        viewModel = FinanceViewModel(repository, injectedPrefs = com.example.fakes.FakeSharedPreferences())
     }
 
     @After

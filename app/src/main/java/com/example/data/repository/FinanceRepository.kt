@@ -84,21 +84,20 @@ class FinanceRepository(
         return dao.getAllTransactionsOnce()
     }
 
-    suspend fun seedDataIfNeeded(isTestEnv: Boolean = false) {
+    /**
+     * Seeds the initial categories from the JSON asset cache if the database is empty.
+     * This is a safe, idempotent operation — it does nothing if categories already exist.
+     * Tests should pre-populate their in-memory database directly rather than relying
+     * on this method to accept a test-specific flag.
+     */
+    suspend fun seedDataIfNeeded() {
         val categories = dao.getAllCategoriesOnce()
         if (categories.isEmpty()) {
             val seededCategories = jsonDataManager.loadCategories()
             dao.insertCategories(seededCategories)
         }
-        if (isTestEnv) {
-            val transactions = dao.getAllTransactionsOnce()
-            if (transactions.size <= 7) {
-                dao.deleteTransactions(transactions)
-                val seededTransactions = jsonDataManager.loadTransactions()
-                dao.insertTransactions(seededTransactions)
-            }
-        }
     }
+
 
     suspend fun seedDemoTransactionsOnly() {
         val seededCategories = jsonDataManager.loadCategories()

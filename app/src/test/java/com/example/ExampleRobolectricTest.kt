@@ -35,9 +35,9 @@ class ExampleRobolectricTest {
         val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        val jsonDataManager = JsonDataManager(context)
+        val jsonDataManager = JsonDataManager(context, com.example.fakes.PlainFileStorage())
         val repository = FinanceRepository(db.financeDao(), jsonDataManager)
-        val viewModel = FinanceViewModel(repository)
+        val viewModel = FinanceViewModel(repository, injectedPrefs = com.example.fakes.FakeSharedPreferences())
 
         // Ensure active date is initialized to around now
         val initialDate = viewModel.activeDate.value

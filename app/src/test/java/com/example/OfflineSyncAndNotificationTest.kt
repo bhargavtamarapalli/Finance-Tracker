@@ -53,15 +53,15 @@ class OfflineSyncAndNotificationTest {
         context = ApplicationProvider.getApplicationContext()
         
         // Clear shared preferences to ensure a clean slate for each test method
-        com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "settings_prefs").edit().clear().commit()
-        com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs").edit().clear().commit()
+        context.getSharedPreferences("settings_prefs", Context.MODE_PRIVATE).edit().clear().commit()
+        context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE).edit().clear().commit()
 
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        val jsonDataManager = JsonDataManager(context)
+        val jsonDataManager = JsonDataManager(context, com.example.fakes.PlainFileStorage())
         repository = FinanceRepository(db.financeDao(), jsonDataManager)
-        viewModel = FinanceViewModel(repository)
+        viewModel = FinanceViewModel(repository, injectedPrefs = com.example.fakes.FakeSharedPreferences())
     }
 
     @After

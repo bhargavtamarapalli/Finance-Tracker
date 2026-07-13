@@ -70,8 +70,8 @@ class SettingsExtendedUserFlowTest {
         context = ApplicationProvider.getApplicationContext()
 
         // Clear any persisted auth / settings state between tests
-        EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs").edit().clear().commit()
-        EncryptedPrefsManager.getEncryptedPrefs(context, "settings_prefs").edit().clear().commit()
+        context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE).edit().clear().commit()
+        context.getSharedPreferences("settings_prefs", Context.MODE_PRIVATE).edit().clear().commit()
 
         val directExecutor = java.util.concurrent.Executor { it.run() }
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
@@ -80,7 +80,7 @@ class SettingsExtendedUserFlowTest {
             .setTransactionExecutor(directExecutor)
             .build()
 
-        val jsonDataManager = JsonDataManager(context)
+        val jsonDataManager = JsonDataManager(context, com.example.fakes.PlainFileStorage())
         repository = FinanceRepository(db.financeDao(), jsonDataManager)
 
         // Seed categories before ViewModel initialises to avoid background seeding races
@@ -122,8 +122,8 @@ class SettingsExtendedUserFlowTest {
             )
         )
 
-        viewModel = FinanceViewModel(repository)
-        authRepository = AuthRepository(context)
+        viewModel = FinanceViewModel(repository, injectedPrefs = com.example.fakes.FakeSharedPreferences())
+        authRepository = AuthRepository(context, injectedAuthPrefs = com.example.fakes.FakeSharedPreferences(), forceDemoFallback = true)
         authViewModel = AuthViewModel(authRepository)
     }
 
@@ -473,7 +473,7 @@ class SettingsExtendedUserFlowTest {
         composeTestRule.onAllNodesWithText("Original Name").onFirst().assertIsDisplayed()
 
         // Tap the "Edit" button next to the profile row (only visible for non-guest users)
-        composeTestRule.onNodeWithText("Edit").performClick()
+        composeTestRule.onNodeWithText("Edit Profile Details").performClick()
         advanceAndIdle()
 
         // "Edit Profile" dialog should appear

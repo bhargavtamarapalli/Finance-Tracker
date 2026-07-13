@@ -53,10 +53,23 @@ suspend fun <T> Task<T>.await(): T {
 
 class AuthRepository(
     private val context: Context,
-    private val database: com.example.data.local.AppDatabase? = null
+    private val database: com.example.data.local.AppDatabase? = null,
+    injectedAuthPrefs: android.content.SharedPreferences? = null,
+    private val forceDemoFallback: Boolean? = null
 ) {
     private var auth: FirebaseAuth? = null
     private var useDemoFallback = false
+
+    /**
+     * Lazily-resolved SharedPreferences for auth session state.
+     * In production: backed by [com.example.data.local.EncryptedPrefsManager] (Keystore).
+     * In tests: injected as [injectedAuthPrefs] to avoid requiring the Keystore.
+     */
+    private val authPrefs: android.content.SharedPreferences by lazy {
+        injectedAuthPrefs
+            ?: com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+    }
+
     
     private val _currentUserSession = MutableStateFlow<UserSession?>(null)
     val currentUserSession: StateFlow<UserSession?> = _currentUserSession
@@ -68,22 +81,11 @@ class AuthRepository(
 
     fun getContext(): Context = context
 
-    private fun isTestEnvironment(): Boolean {
-        return try {
-            Class.forName("org.robolectric.Robolectric") != null
-        } catch (e: ClassNotFoundException) {
-            Thread.currentThread().stackTrace.any {
-                it.className.startsWith("org.junit.") ||
-                it.className.startsWith("androidx.test.")
-            }
-        }
-    }
-
     private fun initializeFirebase() {
-        if (isTestEnvironment()) {
+        if (forceDemoFallback == true) {
             auth = null
             useDemoFallback = true
-            Log.d("AuthRepository", "Running in test environment; forcing demo fallback")
+            Log.d("AuthRepository", "Forced local demo fallback")
             return
         }
         try {
@@ -94,7 +96,7 @@ class AuthRepository(
             auth = FirebaseAuth.getInstance(app)
         } catch (e: Exception) {
             auth = null
-            useDemoFallback = BuildConfig.DEBUG
+            useDemoFallback = forceDemoFallback ?: BuildConfig.DEBUG
             Log.e(
                 "AuthRepository",
                 if (useDemoFallback) "Firebase unavailable; using debug-only demo authentication" else "Firebase unavailable; authentication is disabled",
@@ -113,13 +115,7 @@ class AuthRepository(
                 isGuest = false
             )
         } else {
-            val prefs = try {
-                com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
-            } catch (e: IllegalStateException) {
-                Log.e("AuthRepository", "Secure storage unavailable; session restoration blocked", e)
-                _currentUserSession.value = null
-                return
-            }
+            val prefs = authPrefs
             val isGuest = prefs.getBoolean("is_guest", false)
             if (isGuest) {
                 _currentUserSession.value = UserSession(
@@ -155,7 +151,7 @@ class AuthRepository(
      * @param name   The user's display name
      */
     private fun saveBiometricSession(userId: String, email: String, name: String) {
-        com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+        authPrefs
             .edit()
             .putString("biometric_user_id", userId)
             .putString("biometric_user_email", email)
@@ -171,7 +167,7 @@ class AuthRepository(
     suspend fun signUpWithEmail(email: String, password: String, name: String): UserSession {
         if (useDemoFallback || auth == null) {
             // Simulated local Firebase fallback
-            val prefs = com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+            val prefs = authPrefs
             val salt = PasswordHasher.generateSalt()
             val passwordHash = PasswordHasher.hashPassword(password, salt)
             
@@ -226,7 +222,7 @@ class AuthRepository(
     suspend fun signInWithEmail(email: String, password: String): UserSession {
         if (useDemoFallback || auth == null) {
             // Simulated local Firebase fallback
-            val prefs = com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+            val prefs = authPrefs
             val savedEmail = prefs.getString("demo_user_email", "demo@example.com")
             val savedSalt = prefs.getString("demo_user_salt", null)
             val savedHash = prefs.getString("demo_user_password_hash", null)
@@ -310,7 +306,7 @@ class AuthRepository(
             // carries the real account's display name and email inside the JWT payload.
             // We decode it here so the fallback session reflects the actual selected account.
             val (email, name) = decodeGoogleIdTokenClaims(idToken)
-            val prefs = com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+            val prefs = authPrefs
             prefs.edit()
                 .putString("demo_user_email", email)
                 .putString("demo_user_name", name)
@@ -377,8 +373,8 @@ class AuthRepository(
                 ?: email.substringBefore("@")
             Pair(email, name)
         } catch (e: Exception) {
-            Log.w("AuthRepository", "Could not decode id_token claims, using defaults")
-            Pair("user@gmail.com", "Google User")
+            Log.e("AuthRepository", "Failed to decode Google id_token claims", e)
+            throw IllegalArgumentException("Could not decode the Google ID token payload. The token may be malformed.", e)
         }
     }
 
@@ -393,7 +389,7 @@ class AuthRepository(
      * otherwise the locally-cached credentials are used (offline mode).
      */
     suspend fun signInWithBiometrics(): UserSession {
-        val prefs = com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+        val prefs = authPrefs
 
         // Read the identity saved during the last successful login (Phase 3)
         val savedUserId = prefs.getString("biometric_user_id", null)
@@ -442,7 +438,7 @@ class AuthRepository(
             isGuest = true
         )
         clearLocalData()
-        com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+        authPrefs
             .edit()
             .putBoolean("is_guest", true)
             .apply()
@@ -451,7 +447,7 @@ class AuthRepository(
 
     suspend fun updateProfileName(newName: String) {
         if (useDemoFallback || auth == null) {
-            val prefs = com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+            val prefs = authPrefs
             prefs.edit().putString("demo_user_name", newName).apply()
             _currentUserSession.value = _currentUserSession.value?.copy(name = newName)
             return
@@ -471,7 +467,7 @@ class AuthRepository(
 
     suspend fun updateProfileEmail(newEmail: String) {
         if (useDemoFallback || auth == null) {
-            val prefs = com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+            val prefs = authPrefs
             prefs.edit().putString("demo_user_email", newEmail).apply()
             _currentUserSession.value = _currentUserSession.value?.copy(email = newEmail)
             return
@@ -499,11 +495,11 @@ class AuthRepository(
      * moment a different account logs in successfully.
      */
     suspend fun logout() {
-        val block = suspend {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 auth?.signOut()
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("AuthRepository", "Firebase sign-out failed; local session will still be cleared", e)
             }
 
             // Phase 2: wipe all local financial data so it cannot leak to the next user
@@ -514,7 +510,7 @@ class AuthRepository(
                 Log.e("AuthRepository", "Failed to clear local database on logout", e)
             }
 
-            com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+            authPrefs
                 .edit()
                 .putBoolean("is_guest", false)
                 .putBoolean("demo_session_active", false)
@@ -523,14 +519,6 @@ class AuthRepository(
                 .remove("biometric_user_name")
                 .apply()
             _currentUserSession.value = null
-        }
-
-        if (com.example.data.local.EncryptedPrefsManager.isTestEnvironment()) {
-            block()
-        } else {
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                block()
-            }
         }
     }
 }

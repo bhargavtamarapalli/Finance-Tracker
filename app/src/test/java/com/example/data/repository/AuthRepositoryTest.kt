@@ -2,7 +2,7 @@ package com.example.data.repository
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import com.example.data.local.EncryptedPrefsManager
+import com.example.fakes.FakeSharedPreferences
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -22,21 +22,19 @@ import org.robolectric.shadows.ShadowLooper
 class AuthRepositoryTest {
 
     private lateinit var context: Context
+    private lateinit var fakePrefs: FakeSharedPreferences
     private lateinit var authRepository: AuthRepository
 
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
-        // Clear prefs before each test
-        val prefs = EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
-        prefs.edit().clear().commit()
-        
-        authRepository = AuthRepository(context)
+        // Use FakeSharedPreferences — no Keystore / EncryptedSharedPreferences needed
+        fakePrefs = FakeSharedPreferences()
+        authRepository = AuthRepository(context, injectedAuthPrefs = fakePrefs, forceDemoFallback = true)
     }
 
     @Test
     fun testInitialSession_isNull() = runBlocking {
-        // Since we cleared auth_prefs, the initial session should be null
         authRepository.checkCurrentUser()
         val session = authRepository.currentUserSession.value
         assertNull(session)
@@ -45,7 +43,7 @@ class AuthRepositoryTest {
     @Test
     fun testLoginAsGuest_createsGuestSessionWithGuestRole() = runBlocking {
         authRepository.loginAsGuest()
-        
+
         val session = authRepository.currentUserSession.first()
         assertNotNull(session)
         assertTrue(session!!.isGuest)
@@ -59,7 +57,6 @@ class AuthRepositoryTest {
         val password = "Password123"
         val name = "Normal User"
 
-        // Sign Up
         val registeredSession = authRepository.signUpWithEmail(email, password, name)
         ShadowLooper.idleMainLooper()
         assertNotNull(registeredSession)
@@ -68,7 +65,6 @@ class AuthRepositoryTest {
         assertFalse(registeredSession.isGuest)
         assertEquals("USER", registeredSession.role)
 
-        // Reset memory session and login again
         authRepository.logout()
         ShadowLooper.idleMainLooper()
         assertNull(authRepository.currentUserSession.value)
@@ -84,13 +80,11 @@ class AuthRepositoryTest {
         val password = "AdminPassword123"
         val name = "Admin User"
 
-        // Sign Up
         val registeredSession = authRepository.signUpWithEmail(email, password, name)
         ShadowLooper.idleMainLooper()
         assertNotNull(registeredSession)
         assertEquals("ADMIN", registeredSession.role)
 
-        // Reset memory session and login again
         authRepository.logout()
         ShadowLooper.idleMainLooper()
         val loggedInSession = authRepository.signInWithEmail(email, password)
@@ -106,7 +100,7 @@ class AuthRepositoryTest {
 
         authRepository.signUpWithEmail(email, password, name)
         ShadowLooper.idleMainLooper()
-        
+
         var threwException = false
         try {
             authRepository.signInWithEmail(email, "WrongPassword123")
@@ -118,10 +112,8 @@ class AuthRepositoryTest {
 
     @Test
     fun testSignInWithBiometrics_createsSession() = runBlocking {
-        // Phase 3 fix: signInWithBiometrics() now reads biometric_user_* keys that are
-        // persisted during a real login. Seed them here to simulate a prior login.
-        val prefs = EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
-        prefs.edit()
+        // Seed biometric identity into the shared fake prefs (simulates a prior login)
+        fakePrefs.edit()
             .putString("biometric_user_id", "demo_user")
             .putString("biometric_user_email", "bio@example.com")
             .putString("biometric_user_name", "Bio User")
@@ -136,7 +128,6 @@ class AuthRepositoryTest {
 
     @Test
     fun testSendPasswordResetEmail_doesNotCrash() = runBlocking {
-        // In local demo fallback, it just logs and returns Unit without throwing
         authRepository.sendPasswordResetEmail("reset@example.com")
     }
 
@@ -144,25 +135,21 @@ class AuthRepositoryTest {
     fun testUpdateProfileName_updatesSessionAndPrefs() = runBlocking {
         authRepository.signUpWithEmail("user@example.com", "Pass123", "Old Name")
         authRepository.updateProfileName("New Name")
-        
+
         val session = authRepository.currentUserSession.value
         assertNotNull(session)
         assertEquals("New Name", session!!.name)
-        
-        val prefs = EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
-        assertEquals("New Name", prefs.getString("demo_user_name", null))
+        assertEquals("New Name", fakePrefs.getString("demo_user_name", null))
     }
 
     @Test
     fun testUpdateProfileEmail_updatesSessionAndPrefs() = runBlocking {
         authRepository.signUpWithEmail("user@example.com", "Pass123", "Old Name")
         authRepository.updateProfileEmail("new@example.com")
-        
+
         val session = authRepository.currentUserSession.value
         assertNotNull(session)
         assertEquals("new@example.com", session!!.email)
-        
-        val prefs = EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
-        assertEquals("new@example.com", prefs.getString("demo_user_email", null))
+        assertEquals("new@example.com", fakePrefs.getString("demo_user_email", null))
     }
 }

@@ -42,11 +42,20 @@ import org.robolectric.shadows.ShadowLooper
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
-@Config(
-    sdk = [33],
-    qualifiers = RobolectricDeviceQualifiers.MediumPhone,
-)
+@Config(qualifiers = "w1000dp-h2000dp-xhdpi", sdk = [33])
 class DashboardUserFlowTest {
+
+    private fun buildTreeString(node: androidx.compose.ui.semantics.SemanticsNode, sb: java.lang.StringBuilder, depth: Int) {
+        val indent = "  ".repeat(depth)
+        val textList = node.config.getOrElseNullable(androidx.compose.ui.semantics.SemanticsProperties.Text) { null }
+        val editableText = node.config.getOrElseNullable(androidx.compose.ui.semantics.SemanticsProperties.EditableText) { null }
+        val testTag = node.config.getOrElseNullable(androidx.compose.ui.semantics.SemanticsProperties.TestTag) { null }
+        val contentDesc = node.config.getOrElseNullable(androidx.compose.ui.semantics.SemanticsProperties.ContentDescription) { null }
+        sb.append("${indent}- Node: tag=$testTag, text=$textList, editableText=$editableText, desc=$contentDesc\n")
+        node.children.forEach { child ->
+            buildTreeString(child, sb, depth + 1)
+        }
+    }
 
     @get:Rule
     val composeTestRule = createComposeRule()
@@ -70,7 +79,7 @@ class DashboardUserFlowTest {
         context = ApplicationProvider.getApplicationContext()
 
         // Clear auth state
-        val prefs = EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+        val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
         prefs.edit().clear().commit()
 
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
@@ -79,9 +88,9 @@ class DashboardUserFlowTest {
             .setTransactionExecutor { it.run() }
             .build()
 
-        val jsonDataManager = JsonDataManager(context)
+        val jsonDataManager = JsonDataManager(context, com.example.fakes.PlainFileStorage())
         financeRepository = FinanceRepository(db.financeDao(), jsonDataManager)
-        authRepository = AuthRepository(context)
+        authRepository = AuthRepository(context, injectedAuthPrefs = com.example.fakes.FakeSharedPreferences(), forceDemoFallback = true)
 
         try {
             val field = AuthRepository::class.java.getDeclaredField("useDemoFallback")
@@ -91,7 +100,7 @@ class DashboardUserFlowTest {
             e.printStackTrace()
         }
 
-        financeViewModel = FinanceViewModel(financeRepository)
+        financeViewModel = FinanceViewModel(financeRepository, injectedPrefs = com.example.fakes.FakeSharedPreferences())
         authViewModel = AuthViewModel(authRepository)
     }
 
@@ -156,24 +165,37 @@ class DashboardUserFlowTest {
      */
     @Test
     fun dashboard_displaysCorrectBalance_withSeededData() {
-        // Sign up seeds demo data: Income ₹92,000 | Expenses ₹33,400 | Balance ₹58,600
-        authViewModel.signUp("dash@example.com", "password123", "Dash User")
-        advanceAndIdle()
+        try {
+            // Sign up seeds demo data: Income ₹92,000 | Expenses ₹33,400 | Balance ₹58,600
+            authViewModel.signUp("dash@example.com", "password123", "Dash User")
+            financeViewModel.seedDemoTransactions()
+            advanceAndIdle()
 
-        launchApp()
+            launchApp()
+            composeTestRule.onRoot().printToLog("SEMANTICS")
+            composeTestRule
+                .onNodeWithText("TOTAL BALANCE")
+                .assertIsDisplayed()
 
-        composeTestRule
-            .onNodeWithText("TOTAL BALANCE")
-            .assertIsDisplayed()
+            composeTestRule
+                .onNodeWithText(com.example.ui.utils.CurrencyUtils.formatRupees(58600.0))
+                .assertIsDisplayed()
 
-        composeTestRule
-            .onNodeWithText("₹58,600.00")
-            .assertIsDisplayed()
-
-        // User first name should appear as a greeting / badge
-        composeTestRule
-            .onNodeWithText("Dash")
-            .assertIsDisplayed()
+            // User first name should appear as a greeting / badge
+            composeTestRule
+                .onNodeWithText("Dash")
+                .assertIsDisplayed()
+        } catch (t: Throwable) {
+            val sb = java.lang.StringBuilder()
+            try {
+                val root = composeTestRule.onRoot().fetchSemanticsNode()
+                buildTreeString(root, sb, 0)
+            } catch (ex: Exception) {
+                sb.append("Failed to fetch root: ${ex.message}")
+            }
+            java.io.File("tree_dashboard_failed.txt").writeText(sb.toString())
+            throw t
+        }
     }
 
     /**
@@ -296,6 +318,7 @@ class DashboardUserFlowTest {
     @Test
     fun dashboard_budgetExceeded_showsNegativeBudgetLeft() {
         authViewModel.signUp("budget@example.com", "Password123", "Budget User")
+        financeViewModel.seedDemoTransactions()
         testDispatcher.scheduler.advanceUntilIdle()
         db.invalidationTracker.refreshVersionsSync()
         ShadowLooper.idleMainLooper(1000, java.util.concurrent.TimeUnit.MILLISECONDS)
@@ -307,10 +330,10 @@ class DashboardUserFlowTest {
         launchApp()
 
         // The "Left" label must be visible
-        composeTestRule.onNodeWithText("Left", substring = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Left", substring = true).performScrollTo().assertIsDisplayed()
 
         // The adjacent amount text must contain the correct formatted negative value
-        composeTestRule.onNodeWithText(com.example.ui.utils.CurrencyUtils.formatRupees(-23400.0)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(com.example.ui.utils.CurrencyUtils.formatRupees(-23400.0)).performScrollTo().assertIsDisplayed()
     }
 }
 
