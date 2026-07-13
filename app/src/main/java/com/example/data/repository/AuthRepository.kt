@@ -283,8 +283,16 @@ class AuthRepository(
 
     suspend fun sendPasswordResetEmail(email: String) {
         if (useDemoFallback || auth == null) {
-            // Simulated local password reset
-            Log.d("AuthRepository", "Password reset link sent to $email")
+            val maskedEmail = if (email.contains("@")) {
+                val parts = email.split("@")
+                val name = parts[0]
+                val domain = parts[1]
+                val maskedName = if (name.length > 2) name.take(2) + "***" else "***"
+                "$maskedName@$domain"
+            } else {
+                "***"
+            }
+            Log.d("AuthRepository", "Password reset link sent to $maskedEmail")
             return
         }
         try {
@@ -470,7 +478,8 @@ class AuthRepository(
         }
         try {
             val user = auth?.currentUser ?: throw Exception("No authenticated user found")
-            user.updateEmail(newEmail).await()
+            user.verifyBeforeUpdateEmail(newEmail).await()
+            // The local session is updated to reflect the change request; Firebase requires link verification
             _currentUserSession.value = _currentUserSession.value?.copy(email = newEmail)
         } catch (e: Exception) {
             Log.e("AuthRepository", "Failed to update profile email")
@@ -489,29 +498,39 @@ class AuthRepository(
      * prompt the correct account name on the lock screen.  They are overwritten the
      * moment a different account logs in successfully.
      */
-    fun logout() {
-        try {
-            auth?.signOut()
-        } catch (e: Exception) {
-            e.printStackTrace()
+    suspend fun logout() {
+        val block = suspend {
+            try {
+                auth?.signOut()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
+            // Phase 2: wipe all local financial data so it cannot leak to the next user
+            try {
+                database?.clearAllTables()
+                JsonDataManager(context).clearLocalFiles()
+            } catch (e: Exception) {
+                Log.e("AuthRepository", "Failed to clear local database on logout", e)
+            }
+
+            com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+                .edit()
+                .putBoolean("is_guest", false)
+                .putBoolean("demo_session_active", false)
+                .remove("biometric_user_id")
+                .remove("biometric_user_email")
+                .remove("biometric_user_name")
+                .apply()
+            _currentUserSession.value = null
         }
 
-        // Phase 2: wipe all local financial data so it cannot leak to the next user
-        try {
-            database?.clearAllTables()
-            JsonDataManager(context).clearLocalFiles()
-        } catch (e: Exception) {
-            Log.e("AuthRepository", "Failed to clear local database on logout", e)
+        if (com.example.data.local.EncryptedPrefsManager.isTestEnvironment()) {
+            block()
+        } else {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                block()
+            }
         }
-
-        com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
-            .edit()
-            .putBoolean("is_guest", false)
-            .putBoolean("demo_session_active", false)
-            .remove("biometric_user_id")
-            .remove("biometric_user_email")
-            .remove("biometric_user_name")
-            .apply()
-        _currentUserSession.value = null
     }
 }

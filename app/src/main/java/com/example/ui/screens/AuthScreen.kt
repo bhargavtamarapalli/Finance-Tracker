@@ -287,10 +287,22 @@ fun AuthScreen(
                                         OutlinedIconButton(
                                             onClick = {
                                                 if (activity != null) {
+                                                    val prefs = com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(activity, "auth_prefs")
+                                                    val ivBase64 = prefs.getString("biometric_challenge_iv", null)
+                                                    val iv = if (ivBase64 != null) android.util.Base64.decode(ivBase64, android.util.Base64.NO_WRAP) else null
+                                                    val cipher = BiometricHelper.getInitializedCipher(javax.crypto.Cipher.DECRYPT_MODE, iv)
+                                                    val cryptoObject = if (cipher != null) androidx.biometric.BiometricPrompt.CryptoObject(cipher) else null
+
                                                     BiometricHelper.showBiometricPrompt(
                                                         activity = activity,
-                                                        onSuccess = {
-                                                            viewModel.signInWithBiometrics()
+                                                        cryptoObject = cryptoObject,
+                                                        onSuccess = { result ->
+                                                            val unlockedCipher = result.cryptoObject?.cipher
+                                                            if (unlockedCipher != null && BiometricHelper.decryptAndVerifyChallenge(activity, unlockedCipher)) {
+                                                                viewModel.signInWithBiometrics()
+                                                            } else {
+                                                                viewModel.setError("Biometric verification failed. Please use password login.")
+                                                            }
                                                         },
                                                         onError = { error ->
                                                             if (error != "Cancelled") {

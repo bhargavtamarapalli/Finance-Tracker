@@ -39,6 +39,8 @@ fun CustomSplashScreen(
                 settings.useWideViewPort = true
                 settings.loadWithOverviewMode = true
                 settings.domStorageEnabled = false
+                settings.allowFileAccess = false
+                settings.allowContentAccess = false
                 
                 // Prevent scrolling and user interaction
                 isVerticalScrollBarEnabled = false

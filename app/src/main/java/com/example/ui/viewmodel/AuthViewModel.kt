@@ -133,9 +133,16 @@ class AuthViewModel(
     }
 
     fun logout() {
-        repository.logout()
-        _authState.value = AuthState.Idle
-        notificationManager.postInApp("Logged out successfully.", com.example.data.model.NotificationType.INFO)
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            try {
+                repository.logout()
+                _authState.value = AuthState.Idle
+                notificationManager.postInApp("Logged out successfully.", com.example.data.model.NotificationType.INFO)
+            } catch (e: Exception) {
+                _authState.value = AuthState.Error(e.message ?: "Failed to log out safely.")
+            }
+        }
     }
 
     fun updateProfile(name: String, email: String, onSuccess: () -> Unit, onError: (String) -> Unit) {

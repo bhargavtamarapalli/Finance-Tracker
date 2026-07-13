@@ -90,14 +90,36 @@ fun FinanceApp(
     val context = LocalContext.current
     val activity = context as? androidx.fragment.app.FragmentActivity
 
-    // Trigger biometric unlock prompt on launch or theme change if enabled
-    LaunchedEffect(biometricLockEnabled, userSession) {
+    // Lock the app when it goes to the background (ON_STOP)
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.addObserver(
+            androidx.lifecycle.LifecycleEventObserver { _, event ->
+                if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) {
+                    isAppUnlocked = false
+                }
+            }
+        )
+    }
+
+    // Trigger biometric unlock prompt on launch, resume, or theme change if enabled
+    LaunchedEffect(biometricLockEnabled, userSession, isAppUnlocked) {
         if (biometricLockEnabled && userSession != null && !isAppUnlocked) {
             if (activity != null) {
+                val prefs = com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(activity, "auth_prefs")
+                val ivBase64 = prefs.getString("biometric_challenge_iv", null)
+                val iv = if (ivBase64 != null) android.util.Base64.decode(ivBase64, android.util.Base64.NO_WRAP) else null
+                val cipher = com.example.ui.utils.BiometricHelper.getInitializedCipher(javax.crypto.Cipher.DECRYPT_MODE, iv)
+                val cryptoObject = if (cipher != null) androidx.biometric.BiometricPrompt.CryptoObject(cipher) else null
+
                 com.example.ui.utils.BiometricHelper.showBiometricPrompt(
                     activity = activity,
-                    onSuccess = {
-                        isAppUnlocked = true
+                    cryptoObject = cryptoObject,
+                    onSuccess = { result ->
+                        val unlockedCipher = result.cryptoObject?.cipher
+                        if (unlockedCipher != null && com.example.ui.utils.BiometricHelper.decryptAndVerifyChallenge(activity, unlockedCipher)) {
+                            isAppUnlocked = true
+                        }
                     },
                     onError = {
                         // User canceled or failed; they can retry manually using the unlock button
@@ -161,10 +183,20 @@ fun FinanceApp(
                     text = "Unlock with Biometrics",
                     onClick = {
                         if (activity != null) {
+                            val prefs = com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(activity, "auth_prefs")
+                            val ivBase64 = prefs.getString("biometric_challenge_iv", null)
+                            val iv = if (ivBase64 != null) android.util.Base64.decode(ivBase64, android.util.Base64.NO_WRAP) else null
+                            val cipher = com.example.ui.utils.BiometricHelper.getInitializedCipher(javax.crypto.Cipher.DECRYPT_MODE, iv)
+                            val cryptoObject = if (cipher != null) androidx.biometric.BiometricPrompt.CryptoObject(cipher) else null
+
                             com.example.ui.utils.BiometricHelper.showBiometricPrompt(
                                 activity = activity,
-                                onSuccess = {
-                                    isAppUnlocked = true
+                                cryptoObject = cryptoObject,
+                                onSuccess = { result ->
+                                    val unlockedCipher = result.cryptoObject?.cipher
+                                    if (unlockedCipher != null && com.example.ui.utils.BiometricHelper.decryptAndVerifyChallenge(activity, unlockedCipher)) {
+                                        isAppUnlocked = true
+                                    }
                                 },
                                 onError = {
                                     // Handle retry

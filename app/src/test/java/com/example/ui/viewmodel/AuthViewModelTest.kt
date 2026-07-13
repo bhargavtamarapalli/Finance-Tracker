@@ -202,10 +202,11 @@ class AuthViewModelTest {
     // --- logout ---
 
     @Test
-    fun testLogout_delegatesToRepositoryAndResetsStateToIdle() {
-        every { mockRepository.logout() } just Runs
+    fun testLogout_delegatesToRepositoryAndResetsStateToIdle() = runTest {
+        coEvery { mockRepository.logout() } just Runs
         viewModel.logout()
-        verify(exactly = 1) { mockRepository.logout() }
+        testDispatcher.scheduler.advanceUntilIdle()
+        coVerify(exactly = 1) { mockRepository.logout() }
         assertEquals(AuthState.Idle, viewModel.authState.value)
     }
 

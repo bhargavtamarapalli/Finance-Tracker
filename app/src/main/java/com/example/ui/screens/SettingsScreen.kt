@@ -55,6 +55,7 @@ fun SettingsScreen(
 
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val activity = context as? androidx.fragment.app.FragmentActivity
     var isSyncing by remember { mutableStateOf(false) }
     val isDevMode = remember {
         (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0 ||
@@ -98,7 +99,64 @@ fun SettingsScreen(
         monthlyBudgetGoal = monthlyBudgetGoal,
         onBudgetGoalChange = { goal -> viewModel.updateMonthlyBudgetGoal(goal) },
         onReminderToggle = { enabled -> viewModel.setReminderEnabled(enabled, context) },
-        onBiometricToggle = { enabled -> viewModel.setBiometricLockEnabled(enabled) },
+        onBiometricToggle = { enabled ->
+            if (enabled) {
+                if (activity != null) {
+                    val cipher = com.example.ui.utils.BiometricHelper.getInitializedCipher(javax.crypto.Cipher.ENCRYPT_MODE)
+                    val cryptoObject = if (cipher != null) androidx.biometric.BiometricPrompt.CryptoObject(cipher) else null
+                    com.example.ui.utils.BiometricHelper.showBiometricPrompt(
+                        activity = activity,
+                        title = "Enable Secure Lock",
+                        subtitle = "Verify identity to enable biometric authentication",
+                        cryptoObject = cryptoObject,
+                        onSuccess = { result ->
+                            val unlockedCipher = result.cryptoObject?.cipher
+                            if (unlockedCipher != null && com.example.ui.utils.BiometricHelper.encryptAndSaveChallenge(context, unlockedCipher)) {
+                                viewModel.setBiometricLockEnabled(true)
+                            } else {
+                                showToast(context, "Failed to initialize biometric cryptography keys.")
+                            }
+                        },
+                        onError = { error ->
+                            if (error != "Cancelled") {
+                                showToast(context, "Biometric setup failed: $error")
+                            }
+                        }
+                    )
+                } else {
+                    showToast(context, "Biometric setup requires an active activity.")
+                }
+            } else {
+                if (activity != null) {
+                    val prefs = com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+                    val ivBase64 = prefs.getString("biometric_challenge_iv", null)
+                    val iv = if (ivBase64 != null) android.util.Base64.decode(ivBase64, android.util.Base64.NO_WRAP) else null
+                    val cipher = com.example.ui.utils.BiometricHelper.getInitializedCipher(javax.crypto.Cipher.DECRYPT_MODE, iv)
+                    val cryptoObject = if (cipher != null) androidx.biometric.BiometricPrompt.CryptoObject(cipher) else null
+                    com.example.ui.utils.BiometricHelper.showBiometricPrompt(
+                        activity = activity,
+                        title = "Disable Secure Lock",
+                        subtitle = "Confirm identity to disable biometric app lock",
+                        cryptoObject = cryptoObject,
+                        onSuccess = { result ->
+                            val unlockedCipher = result.cryptoObject?.cipher
+                            if (unlockedCipher != null && com.example.ui.utils.BiometricHelper.decryptAndVerifyChallenge(context, unlockedCipher)) {
+                                viewModel.setBiometricLockEnabled(false)
+                            } else {
+                                showToast(context, "Verification failed.")
+                            }
+                        },
+                        onError = { error ->
+                            if (error != "Cancelled") {
+                                showToast(context, "Verification failed: $error")
+                            }
+                        }
+                    )
+                } else {
+                    viewModel.setBiometricLockEnabled(false)
+                }
+            }
+        },
         onThemeChange = { theme -> viewModel.setTheme(theme) },
         onCurrencyChange = { currency -> viewModel.setCurrency(currency) },
         onManageCategoriesClick = onManageCategoriesClick,
@@ -803,11 +861,32 @@ fun SettingsItem(
     }
 }
 
+private fun escapeCsvField(value: String?): String {
+    if (value == null) return ""
+    var sanitized = value
+    // Formula Injection prevention: prepend single quote to trigger characters
+    if (sanitized.startsWith("=") || sanitized.startsWith("+") || sanitized.startsWith("-") || sanitized.startsWith("@")) {
+        sanitized = "'$sanitized"
+    }
+    // Layout corruption prevention: escape quotes and wrap in double quotes if commas or newlines present
+    if (sanitized.contains(",") || sanitized.contains("\"") || sanitized.contains("\n") || sanitized.contains("\r")) {
+        sanitized = "\"" + sanitized.replace("\"", "\"\"") + "\""
+    }
+    return sanitized
+}
+
 private fun generateCsvContent(transactions: List<com.example.data.model.TransactionWithCategory>): String {
     val sb = StringBuilder()
     sb.append("ID,Date,Amount,Source,Category,Type,Notes\n")
     transactions.forEach {
-        sb.append("${it.transaction.id},${it.transaction.date},${it.transaction.amount},${it.transaction.source},${it.category?.name},${it.transaction.type},${it.transaction.notes}\n")
+        val id = it.transaction.id
+        val date = it.transaction.date
+        val amount = it.transaction.amount
+        val source = escapeCsvField(it.transaction.source)
+        val category = escapeCsvField(it.category?.name)
+        val type = it.transaction.type
+        val notes = escapeCsvField(it.transaction.notes)
+        sb.append("$id,$date,$amount,$source,$category,$type,$notes\n")
     }
     return sb.toString()
 }

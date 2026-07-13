@@ -59,6 +59,8 @@ class AuthScreenUserFlowTest {
         android.provider.Settings.Global.putFloat(context.contentResolver, android.provider.Settings.Global.WINDOW_ANIMATION_SCALE, 0f)
         val prefs = EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
         prefs.edit().clear().commit()
+        val settingsPrefs = context.getSharedPreferences("settings_prefs", Context.MODE_PRIVATE)
+        settingsPrefs.edit().clear().commit()
         try {
             com.google.firebase.auth.FirebaseAuth.getInstance().signOut()
         } catch (ignored: Exception) {}

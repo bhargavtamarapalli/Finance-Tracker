@@ -33,7 +33,7 @@ object EncryptedPrefsManager {
         }
     }
 
-    private fun isTestEnvironment(): Boolean {
+    fun isTestEnvironment(): Boolean {
         return try {
             Class.forName("org.robolectric.Robolectric") != null
         } catch (e: ClassNotFoundException) {
