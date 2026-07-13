@@ -1,0 +1,18 @@
+- Node: tag=null, text=null, editableText=null, desc=null
+  - Node: tag=null, text=null, editableText=null, desc=null
+    - Node: tag=null, text=null, editableText=null, desc=[Finance Logo]
+    - Node: tag=null, text=[Finance Tracker], editableText=null, desc=null
+    - Node: tag=null, text=[Manage your wealth beautifully], editableText=null, desc=null
+    - Node: tag=auth_form_card, text=null, editableText=null, desc=null
+      - Node: tag=null, text=[Welcome Back], editableText=null, desc=null
+      - Node: tag=email_input, text=[Email Address], editableText=, desc=null
+      - Node: tag=password_input, text=[Password], editableText=, desc=null
+        - Node: tag=null, text=null, editableText=null, desc=[Show Password]
+      - Node: tag=forgot_password_button, text=[Forgot Password?], editableText=null, desc=null
+      - Node: tag=login_submit_button, text=[Log In], editableText=null, desc=null
+      - Node: tag=biometric_login_button, text=null, editableText=null, desc=[Biometric Login]
+      - Node: tag=null, text=[Don't have an account? ], editableText=null, desc=null
+      - Node: tag=go_to_register_button, text=[Sign Up], editableText=null, desc=null
+    - Node: tag=null, text=[OR], editableText=null, desc=null
+    - Node: tag=google_login_button, text=[Continue with Google], editableText=null, desc=null
+    - Node: tag=guest_login_button, text=[Continue as Guest], editableText=null, desc=null

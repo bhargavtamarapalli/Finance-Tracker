@@ -104,7 +104,7 @@ fun FinanceApp(
                     }
                 )
             } else {
-                isAppUnlocked = true
+                android.util.Log.w("FinanceApp", "FragmentActivity is null; biometric prompt cannot be shown. Lock screen remains active.")
             }
         }
     }
@@ -117,7 +117,7 @@ fun FinanceApp(
     }
 
     // High security lock overlay blocking access to financial data
-    if (biometricLockEnabled && !isAppUnlocked && userSession != null && userSession?.isGuest == false) {
+    if (biometricLockEnabled && !isAppUnlocked && userSession != null) {
         Box(
             modifier = Modifier
                 .fillMaxSize()

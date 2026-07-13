@@ -109,8 +109,14 @@ class AuthViewModel(
     }
 
     fun loginAsGuest() {
-        repository.loginAsGuest()
-        notificationManager.postInApp("Logged in as Guest. Local features active.", com.example.data.model.NotificationType.INFO)
+        viewModelScope.launch {
+            try {
+                repository.loginAsGuest()
+                notificationManager.postInApp("Logged in as Guest. Local features active.", com.example.data.model.NotificationType.INFO)
+            } catch (e: Exception) {
+                _authState.value = AuthState.Error(e.message ?: "Secure storage is unavailable.")
+            }
+        }
     }
 
     fun signInWithBiometrics() {

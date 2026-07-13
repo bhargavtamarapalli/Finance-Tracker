@@ -68,17 +68,19 @@ class PasswordHasherTest {
     }
 
     @Test
-    fun testHashPassword_fallbackToSha256Stretching_onException() {
+    fun testHashPassword_failsClosed_onException() {
         mockkStatic(SecretKeyFactory::class)
         every { SecretKeyFactory.getInstance(any()) } throws RuntimeException("Algorithm not found")
 
-        val password = "SecurePassword123"
-        val salt = PasswordHasher.generateSalt()
-        val hash = PasswordHasher.hashPassword(password, salt)
-
-        // Verify that the verification still works even with the fallback hash
-        assertTrue(PasswordHasher.verifyPassword(password, salt, hash))
-
-        unmockkStatic(SecretKeyFactory::class)
+        try {
+            val password = "SecurePassword123"
+            val salt = PasswordHasher.generateSalt()
+            PasswordHasher.hashPassword(password, salt)
+            org.junit.Assert.fail("Expected hashPassword to throw an exception when PBKDF2 is unavailable")
+        } catch (e: Exception) {
+            org.junit.Assert.assertEquals("Algorithm not found", e.message)
+        } finally {
+            unmockkStatic(SecretKeyFactory::class)
+        }
     }
 }

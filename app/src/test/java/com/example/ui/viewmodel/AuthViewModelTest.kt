@@ -168,10 +168,11 @@ class AuthViewModelTest {
     // --- loginAsGuest ---
 
     @Test
-    fun testLoginAsGuest_delegatesToRepository() {
-        every { mockRepository.loginAsGuest() } just Runs
+    fun testLoginAsGuest_delegatesToRepository() = runTest {
+        coEvery { mockRepository.loginAsGuest() } just Runs
         viewModel.loginAsGuest()
-        verify(exactly = 1) { mockRepository.loginAsGuest() }
+        testDispatcher.scheduler.advanceUntilIdle()
+        coVerify(exactly = 1) { mockRepository.loginAsGuest() }
     }
 
     // --- signInWithBiometrics ---

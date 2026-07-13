@@ -17,6 +17,8 @@ import com.example.ui.viewmodel.FinanceViewModel
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.test.resetMain
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -36,6 +38,7 @@ class FinanceAppNavigationTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
+    private val testDispatcher = kotlinx.coroutines.test.UnconfinedTestDispatcher()
     private lateinit var context: Context
     private lateinit var db: AppDatabase
     private lateinit var financeRepository: FinanceRepository
@@ -45,14 +48,17 @@ class FinanceAppNavigationTest {
 
     @Before
     fun setUp() {
+        Dispatchers.setMain(testDispatcher)
         context = ApplicationProvider.getApplicationContext()
         android.provider.Settings.Global.putFloat(context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 0f)
         android.provider.Settings.Global.putFloat(context.contentResolver, android.provider.Settings.Global.TRANSITION_ANIMATION_SCALE, 0f)
         android.provider.Settings.Global.putFloat(context.contentResolver, android.provider.Settings.Global.WINDOW_ANIMATION_SCALE, 0f)
         
-        // Clear auth prefs
+        // Clear auth and settings prefs to isolate each test run
         val prefs = EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
         prefs.edit().clear().commit()
+        val settingsPrefs = EncryptedPrefsManager.getEncryptedPrefs(context, "settings_prefs")
+        settingsPrefs.edit().clear().commit()
 
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
@@ -81,9 +87,11 @@ class FinanceAppNavigationTest {
     fun tearDown() {
         clearViewModel(financeViewModel)
         clearViewModel(authViewModel)
+        testDispatcher.scheduler.advanceUntilIdle()
         db.invalidationTracker.refreshVersionsSync()
         ShadowLooper.idleMainLooper()
         db.close()
+        Dispatchers.resetMain()
     }
 
     private fun bypassSplash() {

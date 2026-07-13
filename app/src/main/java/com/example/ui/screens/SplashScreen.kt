@@ -35,10 +35,10 @@ fun CustomSplashScreen(
                     ViewGroup.LayoutParams.MATCH_PARENT
                 )
                 webViewClient = WebViewClient()
-                settings.javaScriptEnabled = true
+                settings.javaScriptEnabled = false
                 settings.useWideViewPort = true
                 settings.loadWithOverviewMode = true
-                settings.domStorageEnabled = true
+                settings.domStorageEnabled = false
                 
                 // Prevent scrolling and user interaction
                 isVerticalScrollBarEnabled = false

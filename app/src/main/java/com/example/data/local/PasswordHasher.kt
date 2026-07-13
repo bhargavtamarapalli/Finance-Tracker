@@ -1,12 +1,13 @@
 package com.example.data.local
 
 import java.security.SecureRandom
+import java.security.MessageDigest
 import java.util.Base64
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 
 object PasswordHasher {
-    private const val ITERATIONS = 10000
+    private const val ITERATIONS = 310_000
     private const val KEY_LENGTH = 256 // in bits
     private const val ALGORITHM = "PBKDF2WithHmacSHA256"
 
@@ -30,25 +31,18 @@ object PasswordHasher {
             val skf = SecretKeyFactory.getInstance(ALGORITHM)
             val hash = skf.generateSecret(spec).encoded
             Base64.getEncoder().encodeToString(hash)
-        } catch (e: Exception) {
-            // Fallback to SHA-256 stretching if PBKDF2WithHmacSHA256 is somehow not supported
-            fallbackHash(password, salt)
+        } finally {
+            spec.clearPassword()
         }
-    }
-
-    private fun fallbackHash(password: String, salt: String): String {
-        val digest = java.security.MessageDigest.getInstance("SHA-256")
-        digest.reset()
-        digest.update(Base64.getDecoder().decode(salt))
-        val hashedBytes = digest.digest(password.toByteArray(Charsets.UTF_8))
-        return Base64.getEncoder().encodeToString(hashedBytes)
     }
 
     /**
      * Verifies if the candidate password matches the secured password hash.
      */
     fun verifyPassword(password: String, salt: String, securedHash: String): Boolean {
-        val newHash = hashPassword(password, salt)
-        return newHash == securedHash
+        return MessageDigest.isEqual(
+            Base64.getDecoder().decode(hashPassword(password, salt)),
+            Base64.getDecoder().decode(securedHash)
+        )
     }
 }

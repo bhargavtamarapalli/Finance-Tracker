@@ -547,8 +547,13 @@ fun AuthScreen(
                                 viewModel.setError("Unexpected credential type returned")
                             }
                         } catch (e: Exception) {
-                            Log.w("AuthScreen", "CredentialManager failed, falling back to simulated Google sign-in", e)
-                            viewModel.continueWithGoogle("simulated_id_token_123")
+                            Log.w("AuthScreen", "CredentialManager failed", e)
+                            if (com.example.BuildConfig.DEBUG) {
+                                Log.d("AuthScreen", "Falling back to simulated Google sign-in (debug only)")
+                                viewModel.continueWithGoogle("simulated_id_token_123")
+                            } else {
+                                viewModel.setError("Google Sign-In failed. Please try again.")
+                            }
                         }
                     }
                 },

@@ -73,4 +73,9 @@ class JsonDataManager(val context: Context) {
             e.printStackTrace()
         }
     }
+
+    fun clearLocalFiles() {
+        categoriesFile.delete()
+        transactionsFile.delete()
+    }
 }

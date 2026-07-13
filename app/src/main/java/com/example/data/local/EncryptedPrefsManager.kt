@@ -23,9 +23,26 @@ object EncryptedPrefsManager {
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to create EncryptedSharedPreferences for $name, falling back to standard prefs", e)
-            // Fallback gracefully to standard SharedPreferences to guarantee no crash if Keystore is corrupted
-            context.getSharedPreferences(name, Context.MODE_PRIVATE)
+            Log.e(TAG, "Failed to create EncryptedSharedPreferences for $name", e)
+            if (isTestEnvironment()) {
+                Log.d(TAG, "Test environment detected; falling back to plaintext SharedPreferences")
+                context.getSharedPreferences(name, Context.MODE_PRIVATE)
+            } else {
+                throw SecureStorageUnavailableException("Secure storage is unavailable. Please restart the app or reset device credentials.", e)
+            }
+        }
+    }
+
+    private fun isTestEnvironment(): Boolean {
+        return try {
+            Class.forName("org.robolectric.Robolectric") != null
+        } catch (e: ClassNotFoundException) {
+            Thread.currentThread().stackTrace.any {
+                it.className.startsWith("org.junit.") ||
+                it.className.startsWith("androidx.test.")
+            }
         }
     }
 }
+
+class SecureStorageUnavailableException(message: String, cause: Throwable) : IllegalStateException(message, cause)

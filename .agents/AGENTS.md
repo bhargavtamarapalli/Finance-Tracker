@@ -24,6 +24,7 @@ You are a senior Android engineer working on the Finance Tracker application. Ad
 * **Scroll-to-Assert:** Ensure off-screen elements in Robolectric UI tests are scrolled into view using `.performScrollTo()` before asserting visibility or performing clicks.
 * **Clean State:** Maintain test isolation. Avoid leaking database states between test cases.
 * **Stateless Screen Verification:** Prioritize writing component tests for stateless contents (e.g., `SettingsContent`) with mock states rather than fully integrated UI tests where possible.
+* **Gradle Daemon Cleanup:** When running tests or compiling via Gradle, stop the Gradle Daemon (`./gradlew --stop`) after the final verification check is completed to free up system resources.
 
 ---
 
