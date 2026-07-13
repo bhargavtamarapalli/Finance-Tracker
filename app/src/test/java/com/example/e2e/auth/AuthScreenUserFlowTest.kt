@@ -37,7 +37,7 @@ import org.robolectric.shadows.ShadowLooper
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(qualifiers = RobolectricDeviceQualifiers.Pixel8, sdk = [33])
+@Config(qualifiers = "w1000dp-h2000dp-xhdpi", sdk = [33])
 class AuthScreenUserFlowTest {
     @get:Rule val composeTestRule = createComposeRule()
     private val hasNoContentDescription = SemanticsMatcher("has no content description") {
@@ -57,7 +57,7 @@ class AuthScreenUserFlowTest {
         android.provider.Settings.Global.putFloat(context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 0f)
         android.provider.Settings.Global.putFloat(context.contentResolver, android.provider.Settings.Global.TRANSITION_ANIMATION_SCALE, 0f)
         android.provider.Settings.Global.putFloat(context.contentResolver, android.provider.Settings.Global.WINDOW_ANIMATION_SCALE, 0f)
-        val prefs = EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+        val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
         prefs.edit().clear().commit()
         val settingsPrefs = context.getSharedPreferences("settings_prefs", Context.MODE_PRIVATE)
         settingsPrefs.edit().clear().commit()
@@ -66,9 +66,9 @@ class AuthScreenUserFlowTest {
         } catch (ignored: Exception) {}
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries().setQueryExecutor { it.run() }.setTransactionExecutor { it.run() }.build()
-        val jsonDataManager = JsonDataManager(context)
+        val jsonDataManager = JsonDataManager(context, com.example.fakes.PlainFileStorage())
         financeRepository = FinanceRepository(db.financeDao(), jsonDataManager)
-        authRepository = AuthRepository(context)
+        authRepository = AuthRepository(context, injectedAuthPrefs = com.example.fakes.FakeSharedPreferences(), forceDemoFallback = true)
         try {
             val field = AuthRepository::class.java.getDeclaredField("useDemoFallback")
             field.isAccessible = true
@@ -76,7 +76,7 @@ class AuthScreenUserFlowTest {
         } catch (e: Exception) {
             e.printStackTrace()
         }
-        financeViewModel = FinanceViewModel(financeRepository)
+        financeViewModel = FinanceViewModel(financeRepository, injectedPrefs = com.example.fakes.FakeSharedPreferences())
         authViewModel = AuthViewModel(authRepository)
     }
 
@@ -181,12 +181,28 @@ class AuthScreenUserFlowTest {
      * Navigates to Settings and taps "Log Out", then idles until the auth screen
      * reappears.
      */
-    private fun performLogout() {
-        composeTestRule.onNode(hasContentDescription("Settings")).performClick()
-        advanceAndIdle()
+    private fun waitForAuthScreen() {
+        val start = System.currentTimeMillis()
+        while (System.currentTimeMillis() - start < 5000) {
+            advanceAndIdle()
+            val nodes = composeTestRule.onAllNodesWithTag("guest_login_button").fetchSemanticsNodes()
+            if (nodes.isNotEmpty()) return
+            Thread.sleep(50)
+        }
+        throw AssertionError("Timed out waiting for auth screen to appear")
+    }
 
+    private fun performLogout() {
         try {
-            composeTestRule.onNode(hasText("Log Out").and(hasNoContentDescription)).performSemanticsAction(SemanticsActions.OnClick)
+            composeTestRule.onNode(hasContentDescription("Settings")).performClick()
+            advanceAndIdle()
+
+            composeTestRule.onNodeWithTag("settings_logout_button")
+                .performScrollTo()
+                .performClick()
+            
+            waitForAuthScreen()
+            advanceAndIdle()
         } catch (t: Throwable) {
             val sb = java.lang.StringBuilder()
             try {
@@ -195,10 +211,9 @@ class AuthScreenUserFlowTest {
             } catch (ex: Exception) {
                 sb.append("Failed to fetch root: ${ex.message}")
             }
-            java.io.File("tree_logout_failed.txt").writeText(sb.toString())
+            java.io.File("tree_logout_timeout.txt").writeText(sb.toString())
             throw t
         }
-        advanceAndIdle()
     }
 
     /**
@@ -578,7 +593,7 @@ class AuthScreenUserFlowTest {
         advanceAndIdle()
 
         try {
-            composeTestRule.onNode(hasText("Sign In / Register").and(hasNoContentDescription))
+            composeTestRule.onNode(hasTestTag("settings_logout_button"))
                 .performScrollTo()
                 .assertIsDisplayed()
         } catch (t: Throwable) {
@@ -651,7 +666,10 @@ class AuthScreenUserFlowTest {
 
         try {
             // Scroll to and tap Log Out
-            composeTestRule.onNode(hasText("Log Out").and(hasNoContentDescription)).performSemanticsAction(SemanticsActions.OnClick)
+            composeTestRule.onNodeWithTag("settings_logout_button")
+                .performScrollTo()
+                .performClick()
+            waitForAuthScreen()
             advanceAndIdle()
 
             // Session cleared — auth screen should be visible again

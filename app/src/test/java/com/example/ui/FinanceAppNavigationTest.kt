@@ -55,9 +55,9 @@ class FinanceAppNavigationTest {
         android.provider.Settings.Global.putFloat(context.contentResolver, android.provider.Settings.Global.WINDOW_ANIMATION_SCALE, 0f)
         
         // Clear auth and settings prefs to isolate each test run
-        val prefs = EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+        val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
         prefs.edit().clear().commit()
-        val settingsPrefs = EncryptedPrefsManager.getEncryptedPrefs(context, "settings_prefs")
+        val settingsPrefs = context.getSharedPreferences("settings_prefs", Context.MODE_PRIVATE)
         settingsPrefs.edit().clear().commit()
 
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
@@ -65,11 +65,11 @@ class FinanceAppNavigationTest {
             .setQueryExecutor { it.run() }
             .setTransactionExecutor { it.run() }
             .build()
-        val jsonDataManager = JsonDataManager(context)
+        val jsonDataManager = JsonDataManager(context, com.example.fakes.PlainFileStorage())
         financeRepository = FinanceRepository(db.financeDao(), jsonDataManager)
-        authRepository = AuthRepository(context)
+        authRepository = AuthRepository(context, injectedAuthPrefs = com.example.fakes.FakeSharedPreferences(), forceDemoFallback = true)
 
-        financeViewModel = FinanceViewModel(financeRepository)
+        financeViewModel = FinanceViewModel(financeRepository, injectedPrefs = com.example.fakes.FakeSharedPreferences())
         authViewModel = AuthViewModel(authRepository)
     }
 

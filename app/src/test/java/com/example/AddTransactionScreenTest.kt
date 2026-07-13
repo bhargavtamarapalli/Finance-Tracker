@@ -55,10 +55,10 @@ class AddTransactionScreenTest {
             .setQueryExecutor(directExecutor)
             .setTransactionExecutor(directExecutor)
             .build()
-        val jsonDataManager = JsonDataManager(context)
+        val jsonDataManager = JsonDataManager(context, com.example.fakes.PlainFileStorage())
         repository = FinanceRepository(db.financeDao(), jsonDataManager)
 
-        viewModel = FinanceViewModel(repository)
+        viewModel = FinanceViewModel(repository, injectedPrefs = com.example.fakes.FakeSharedPreferences())
 
         // Clear default seeded transactions inserted during ViewModel init
         val existingTxs = db.financeDao().getAllTransactionsOnce()

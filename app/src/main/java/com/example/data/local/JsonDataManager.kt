@@ -9,7 +9,21 @@ import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import java.io.File
 
-class JsonDataManager(val context: Context) {
+/**
+ * Manages serialisation and persistence of [Category] and [TransactionEntity] lists
+ * to encrypted JSON cache files on the device's internal storage.
+ *
+ * File I/O is delegated to [IFileStorage], which defaults to [EncryptedFileStorage]
+ * (AES-256-GCM) in production. Tests inject [com.example.fakes.PlainFileStorage] to
+ * avoid requiring the Android Keystore.
+ *
+ * @param context  Application context used to resolve [Context.getFilesDir] and assets.
+ * @param storage  File I/O strategy. Defaults to [EncryptedFileStorage].
+ */
+class JsonDataManager(
+    val context: Context,
+    private val storage: IFileStorage = EncryptedFileStorage(context)
+) {
     private val moshi = Moshi.Builder()
         .add(KotlinJsonAdapterFactory())
         .build()
@@ -23,55 +37,9 @@ class JsonDataManager(val context: Context) {
     private val categoriesFile = File(context.filesDir, "categories.json")
     private val transactionsFile = File(context.filesDir, "transactions.json")
 
-    private fun writeTextSecurely(file: File, text: String) {
-        if (com.example.data.local.EncryptedPrefsManager.isTestEnvironment()) {
-            file.writeText(text)
-            return
-        }
-        try {
-            if (file.exists()) {
-                file.delete()
-            }
-            val masterKeyAlias = androidx.security.crypto.MasterKeys.getOrCreate(androidx.security.crypto.MasterKeys.AES256_GCM_SPEC)
-            val encryptedFile = androidx.security.crypto.EncryptedFile.Builder(
-                file,
-                context,
-                masterKeyAlias,
-                androidx.security.crypto.EncryptedFile.FileEncryptionScheme.AES256_GCM_HKDF_4KB
-            ).build()
-            encryptedFile.openFileOutput().use { outputStream ->
-                outputStream.write(text.toByteArray(Charsets.UTF_8))
-            }
-        } catch (e: Exception) {
-            Log.e("JsonDataManager", "Failed to write encrypted file: ${file.name}", e)
-        }
-    }
-
-    private fun readTextSecurely(file: File): String? {
-        if (!file.exists()) return null
-        if (com.example.data.local.EncryptedPrefsManager.isTestEnvironment()) {
-            return file.readText()
-        }
-        return try {
-            val masterKeyAlias = androidx.security.crypto.MasterKeys.getOrCreate(androidx.security.crypto.MasterKeys.AES256_GCM_SPEC)
-            val encryptedFile = androidx.security.crypto.EncryptedFile.Builder(
-                file,
-                context,
-                masterKeyAlias,
-                androidx.security.crypto.EncryptedFile.FileEncryptionScheme.AES256_GCM_HKDF_4KB
-            ).build()
-            encryptedFile.openFileInput().use { inputStream ->
-                inputStream.readBytes().toString(Charsets.UTF_8)
-            }
-        } catch (e: Exception) {
-            Log.e("JsonDataManager", "Failed to read encrypted file: ${file.name}", e)
-            null
-        }
-    }
-
     fun loadCategories(): List<Category> {
         return try {
-            val json = readTextSecurely(categoriesFile)
+            val json = storage.read(categoriesFile)
             if (json != null) {
                 categoryAdapter.fromJson(json) ?: emptyList()
             } else {
@@ -89,7 +57,7 @@ class JsonDataManager(val context: Context) {
     fun saveCategories(categories: List<Category>) {
         try {
             val json = categoryAdapter.toJson(categories)
-            writeTextSecurely(categoriesFile, json)
+            storage.write(categoriesFile, json)
         } catch (e: Exception) {
             Log.e("JsonDataManager", "Failed to save categories", e)
         }
@@ -97,7 +65,7 @@ class JsonDataManager(val context: Context) {
 
     fun loadTransactions(): List<TransactionEntity> {
         return try {
-            val json = readTextSecurely(transactionsFile)
+            val json = storage.read(transactionsFile)
             if (json != null) {
                 transactionAdapter.fromJson(json) ?: emptyList()
             } else {
@@ -115,7 +83,7 @@ class JsonDataManager(val context: Context) {
     fun saveTransactions(transactions: List<TransactionEntity>) {
         try {
             val json = transactionAdapter.toJson(transactions)
-            writeTextSecurely(transactionsFile, json)
+            storage.write(transactionsFile, json)
         } catch (e: Exception) {
             Log.e("JsonDataManager", "Failed to save transactions", e)
         }

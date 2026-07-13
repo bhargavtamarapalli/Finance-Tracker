@@ -381,7 +381,6 @@ NavigationBar(
         Triple("analytics", "Analytics", Icons.Default.PieChart),
         Triple("settings", "Settings", Icons.Default.Settings)
     )
-                        )
                         items.forEach { (route, label, icon) ->
                             val isSelected = currentRoute == route
                             NavigationBarItem(

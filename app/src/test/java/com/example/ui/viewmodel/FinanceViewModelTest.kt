@@ -41,9 +41,9 @@ class FinanceViewModelTest {
             .setQueryExecutor { it.run() }
             .setTransactionExecutor { it.run() }
             .build()
-        val jsonDataManager = JsonDataManager(context)
+        val jsonDataManager = JsonDataManager(context, com.example.fakes.PlainFileStorage())
         repository = FinanceRepository(db.financeDao(), jsonDataManager)
-        viewModel = FinanceViewModel(repository)
+        viewModel = FinanceViewModel(repository, injectedPrefs = com.example.fakes.FakeSharedPreferences())
     }
 
     @After

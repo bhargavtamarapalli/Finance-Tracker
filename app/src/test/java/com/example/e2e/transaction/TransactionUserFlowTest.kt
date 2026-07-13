@@ -76,7 +76,7 @@ class TransactionUserFlowTest {
         )
 
         // Clear auth state to ensure a fresh session
-        val prefs = EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+        val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
         prefs.edit().clear().commit()
 
         // Build isolated in-memory Room database
@@ -86,9 +86,9 @@ class TransactionUserFlowTest {
             .setTransactionExecutor { it.run() }
             .build()
 
-        val jsonDataManager = JsonDataManager(context)
+        val jsonDataManager = JsonDataManager(context, com.example.fakes.PlainFileStorage())
         financeRepository = FinanceRepository(db.financeDao(), jsonDataManager)
-        authRepository = AuthRepository(context)
+        authRepository = AuthRepository(context, injectedAuthPrefs = com.example.fakes.FakeSharedPreferences(), forceDemoFallback = true)
         try {
             val field = AuthRepository::class.java.getDeclaredField("useDemoFallback")
             field.isAccessible = true
@@ -96,7 +96,7 @@ class TransactionUserFlowTest {
         } catch (e: Exception) {
             e.printStackTrace()
         }
-        financeViewModel = FinanceViewModel(financeRepository)
+        financeViewModel = FinanceViewModel(financeRepository, injectedPrefs = com.example.fakes.FakeSharedPreferences())
         authViewModel = AuthViewModel(authRepository)
     }
 

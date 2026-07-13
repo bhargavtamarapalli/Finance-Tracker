@@ -59,12 +59,7 @@ fun SettingsScreen(
     var isSyncing by remember { mutableStateOf(false) }
     val isDevMode = remember {
         (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0 ||
-        try {
-            Class.forName("org.junit.Test")
-            true
-        } catch (e: ClassNotFoundException) {
-            false
-        }
+        com.example.BuildConfig.DEBUG
     }
 
     // CSV Document Creator Launcher
@@ -290,103 +285,105 @@ fun SettingsContent(
                     )
                     HorizontalDivider()
 
-                    ListItem(
-                        headlineContent = { Text("Email") },
-                        supportingContent = { Text("Guest Account", modifier = Modifier.testTag("guest_account_text")) },
-                        leadingContent = {
-                            Icon(Icons.Default.Email, contentDescription = "Email", tint = MaterialTheme.colorScheme.secondary)
-                        }
-                    )
-                    HorizontalDivider()
-
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                        ),
-                        shape = AppShapes.roundedCardMedium,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = AppDimens.paddingLarge, vertical = AppDimens.paddingSmall)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(AppDimens.paddingNormal),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = "Using Guest Session",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                text = "Sign in or register to customize your profile, enable secure cloud sync, and protect your wealth details.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            FinanceButton(
-                                text = "Sign In / Register",
-                                onClick = { onSignOut() },
-                                icon = Icons.Default.Login,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    }
-                    HorizontalDivider()
-                } else {
-                    ListItem(
-                        headlineContent = { Text("Name") },
-                        supportingContent = { Text(session.name, fontWeight = FontWeight.SemiBold, modifier = Modifier.testTag("profile_name_text")) },
-                        leadingContent = {
-                            Icon(Icons.Default.Person, contentDescription = "Name", tint = MaterialTheme.colorScheme.secondary)
-                        },
-                        trailingContent = {
-                            IconButton(onClick = {
-                                editName = session.name
-                                editEmail = session.email
-                                showEditProfileDialog = true
-                            }) {
-                                Icon(Icons.Default.Edit, contentDescription = "Edit Name", tint = MaterialTheme.colorScheme.primary)
+                    if (userSession?.isGuest == true) {
+                        ListItem(
+                            headlineContent = { Text("Email") },
+                            supportingContent = { Text("Guest Account", modifier = Modifier.testTag("guest_account_text")) },
+                            leadingContent = {
+                                Icon(Icons.Default.Email, contentDescription = "Email", tint = MaterialTheme.colorScheme.secondary)
                             }
-                        }
-                    )
-                    HorizontalDivider()
-
-                    ListItem(
-                        headlineContent = { Text("Email") },
-                        supportingContent = { Text(session.email, modifier = Modifier.testTag("profile_email_text")) },
-                        leadingContent = {
-                            Icon(Icons.Default.Email, contentDescription = "Email", tint = MaterialTheme.colorScheme.secondary)
-                        },
-                        trailingContent = {
-                            IconButton(onClick = {
-                                editName = session.name
-                                editEmail = session.email
-                                showEditProfileDialog = true
-                            }) {
-                                Icon(Icons.Default.Edit, contentDescription = "Edit Email", tint = MaterialTheme.colorScheme.primary)
-                            }
-                        }
-                    )
-                    HorizontalDivider()
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = AppDimens.paddingLarge, vertical = AppDimens.paddingSmall),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        FinanceTextButton(
-                            text = "Edit Profile Details",
-                            onClick = {
-                                editName = session.name
-                                editEmail = session.email
-                                showEditProfileDialog = true
-                            },
-                            icon = Icons.Default.Edit
                         )
+                        HorizontalDivider()
+
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                            ),
+                            shape = AppShapes.roundedCardMedium,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = AppDimens.paddingLarge, vertical = AppDimens.paddingSmall)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(AppDimens.paddingNormal),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "Using Guest Session",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "Sign in or register to customize your profile, enable secure cloud sync, and protect your wealth details.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                FinanceButton(
+                                    text = "Sign In / Register",
+                                    onClick = { onSignOut() },
+                                    icon = Icons.Default.Login,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                        HorizontalDivider()
+                    } else {
+                        ListItem(
+                            headlineContent = { Text("Name") },
+                            supportingContent = { Text(userSession?.name ?: "", fontWeight = FontWeight.SemiBold, modifier = Modifier.testTag("profile_name_text")) },
+                            leadingContent = {
+                                Icon(Icons.Default.Person, contentDescription = "Name", tint = MaterialTheme.colorScheme.secondary)
+                            },
+                            trailingContent = {
+                                IconButton(onClick = {
+                                    editName = userSession?.name ?: ""
+                                    editEmail = userSession?.email ?: ""
+                                    showEditProfileDialog = true
+                                }) {
+                                    Icon(Icons.Default.Edit, contentDescription = "Edit Name", tint = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        )
+                        HorizontalDivider()
+
+                        ListItem(
+                            headlineContent = { Text("Email") },
+                            supportingContent = { Text(userSession?.email ?: "", modifier = Modifier.testTag("profile_email_text")) },
+                            leadingContent = {
+                                Icon(Icons.Default.Email, contentDescription = "Email", tint = MaterialTheme.colorScheme.secondary)
+                            },
+                            trailingContent = {
+                                IconButton(onClick = {
+                                    editName = userSession?.name ?: ""
+                                    editEmail = userSession?.email ?: ""
+                                    showEditProfileDialog = true
+                                }) {
+                                    Icon(Icons.Default.Edit, contentDescription = "Edit Email", tint = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        )
+                        HorizontalDivider()
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = AppDimens.paddingLarge, vertical = AppDimens.paddingSmall),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            FinanceTextButton(
+                                text = "Edit Profile Details",
+                                onClick = {
+                                    editName = userSession?.name ?: ""
+                                    editEmail = userSession?.email ?: ""
+                                    showEditProfileDialog = true
+                                },
+                                icon = Icons.Default.Edit
+                            )
+                        }
+                        HorizontalDivider()
                     }
-                    HorizontalDivider()
                 }
             }
 

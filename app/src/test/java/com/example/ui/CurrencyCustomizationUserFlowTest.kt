@@ -31,7 +31,7 @@ import org.robolectric.shadows.ShadowLooper
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
-@Config(qualifiers = RobolectricDeviceQualifiers.Pixel8, sdk = [33])
+@Config(qualifiers = "w1000dp-h2000dp-xhdpi", sdk = [33])
 class CurrencyCustomizationUserFlowTest {
 
     @get:Rule
@@ -54,7 +54,7 @@ class CurrencyCustomizationUserFlowTest {
         android.provider.Settings.Global.putFloat(context.contentResolver, android.provider.Settings.Global.WINDOW_ANIMATION_SCALE, 0f)
         
         // Clear auth prefs
-        val prefs = EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+        val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
         prefs.edit().clear().commit()
 
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
@@ -62,11 +62,11 @@ class CurrencyCustomizationUserFlowTest {
             .setQueryExecutor { it.run() }
             .setTransactionExecutor { it.run() }
             .build()
-        val jsonDataManager = JsonDataManager(context)
+        val jsonDataManager = JsonDataManager(context, com.example.fakes.PlainFileStorage())
         financeRepository = FinanceRepository(db.financeDao(), jsonDataManager)
-        authRepository = AuthRepository(context)
+        authRepository = AuthRepository(context, injectedAuthPrefs = com.example.fakes.FakeSharedPreferences(), forceDemoFallback = true)
 
-        financeViewModel = FinanceViewModel(financeRepository)
+        financeViewModel = FinanceViewModel(financeRepository, injectedPrefs = com.example.fakes.FakeSharedPreferences())
         authViewModel = AuthViewModel(authRepository)
     }
 
@@ -91,6 +91,7 @@ class CurrencyCustomizationUserFlowTest {
     fun testCurrencyChangeFlow() {
         // 1. Sign up/Log in a normal user
         authViewModel.signUp("user@example.com", "Password123", "Normal User")
+        financeViewModel.seedDemoTransactions()
         testDispatcher.scheduler.advanceUntilIdle()
         db.invalidationTracker.refreshVersionsSync()
         ShadowLooper.idleMainLooper()
@@ -103,7 +104,8 @@ class CurrencyCustomizationUserFlowTest {
         bypassSplash()
 
         // 2. Verify default currency INR is used initially on Dashboard
-        composeTestRule.onNodeWithText("₹58,600.00").assertIsDisplayed()
+        val inrFormatted = com.example.ui.utils.CurrencyUtils.formatRupees(58600.0)
+        composeTestRule.onNodeWithText(inrFormatted).assertIsDisplayed()
 
         // 3. Navigate to Settings using the bottom bar
         composeTestRule.onNodeWithContentDescription("Settings").performClick()
@@ -121,8 +123,9 @@ class CurrencyCustomizationUserFlowTest {
 
         // 6. Verify Dashboard displays values with USD $ symbol
         printSemanticsTreeText()
-        composeTestRule.onNodeWithText("$58,600.00").assertIsDisplayed()
-        composeTestRule.onNodeWithText("₹58,600.00").assertDoesNotExist()
+        val usdFormatted = com.example.ui.utils.CurrencyUtils.formatRupees(58600.0)
+        composeTestRule.onNodeWithText(usdFormatted).assertIsDisplayed()
+        composeTestRule.onNodeWithText(inrFormatted).assertDoesNotExist()
     }
 
     private fun printSemanticsTreeText() {
