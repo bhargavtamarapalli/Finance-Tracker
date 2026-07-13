@@ -39,6 +39,7 @@ import com.example.ui.theme.AppShapes
 import com.example.ui.viewmodel.AuthState
 import com.example.ui.viewmodel.AuthViewModel
 import com.example.ui.components.*
+import kotlinx.coroutines.launch
 
 enum class AuthMode {
     LOGIN,
@@ -58,6 +59,7 @@ fun AuthScreen(
     val context = LocalContext.current
     val activity = context as? FragmentActivity
     val isBiometricAvailable = remember(context) { BiometricHelper.isBiometricAvailable(context) }
+    val coroutineScope = rememberCoroutineScope()
     
     // Form States
     var email by remember { mutableStateOf("") }
@@ -285,10 +287,22 @@ fun AuthScreen(
                                         OutlinedIconButton(
                                             onClick = {
                                                 if (activity != null) {
+                                                    val prefs = com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(activity, "auth_prefs")
+                                                    val ivBase64 = prefs.getString("biometric_challenge_iv", null)
+                                                    val iv = if (ivBase64 != null) android.util.Base64.decode(ivBase64, android.util.Base64.NO_WRAP) else null
+                                                    val cipher = BiometricHelper.getInitializedCipher(javax.crypto.Cipher.DECRYPT_MODE, iv)
+                                                    val cryptoObject = if (cipher != null) androidx.biometric.BiometricPrompt.CryptoObject(cipher) else null
+
                                                     BiometricHelper.showBiometricPrompt(
                                                         activity = activity,
-                                                        onSuccess = {
-                                                            viewModel.signInWithBiometrics()
+                                                        cryptoObject = cryptoObject,
+                                                        onSuccess = { result ->
+                                                            val unlockedCipher = result.cryptoObject?.cipher
+                                                            if (unlockedCipher != null && BiometricHelper.decryptAndVerifyChallenge(activity, unlockedCipher)) {
+                                                                viewModel.signInWithBiometrics()
+                                                            } else {
+                                                                viewModel.setError("Biometric verification failed. Please use password login.")
+                                                            }
                                                         },
                                                         onError = { error ->
                                                             if (error != "Cancelled") {
@@ -520,8 +534,40 @@ fun AuthScreen(
             FinanceButton(
                 text = "Continue with Google",
                 onClick = {
-                    // Triggers mock google auth logic using standard flow
-                    viewModel.signUp("bhargav1999.t@gmail.com", "googlePassword123", "Bhargav T")
+                    coroutineScope.launch {
+                        try {
+                            val credentialManager = androidx.credentials.CredentialManager.create(context)
+                            
+                            val googleIdOption = com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption.Builder(
+                                serverClientId = "1083618534945-1q1kh1b3fh14hhfnsmmfnb796pjebrq2.apps.googleusercontent.com"
+                            ).build()
+                            
+                            val getCredRequest = androidx.credentials.GetCredentialRequest.Builder()
+                                .addCredentialOption(googleIdOption)
+                                .build()
+                                
+                            val result = credentialManager.getCredential(
+                                context = context,
+                                request = getCredRequest
+                            )
+                            
+                            val credential = result.credential
+                            if (credential is com.google.android.libraries.identity.googleid.GoogleIdTokenCredential) {
+                                val idToken = credential.idToken
+                                viewModel.continueWithGoogle(idToken)
+                            } else {
+                                viewModel.setError("Unexpected credential type returned")
+                            }
+                        } catch (e: Exception) {
+                            Log.w("AuthScreen", "CredentialManager failed", e)
+                            if (com.example.BuildConfig.DEBUG) {
+                                Log.d("AuthScreen", "Falling back to simulated Google sign-in (debug only)")
+                                viewModel.continueWithGoogle("simulated_id_token_123")
+                            } else {
+                                viewModel.setError("Google Sign-In failed. Please try again.")
+                            }
+                        }
+                    }
                 },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = authState != AuthState.Loading,

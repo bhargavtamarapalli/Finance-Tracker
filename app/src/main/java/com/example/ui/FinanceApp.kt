@@ -1,5 +1,7 @@
 package com.example.ui
 
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -8,12 +10,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -30,8 +35,10 @@ import com.example.ui.viewmodel.FinanceViewModel
 import com.example.ui.viewmodel.AuthViewModel
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Settings
@@ -42,6 +49,7 @@ import androidx.compose.material.icons.filled.Logout
 import androidx.compose.ui.platform.LocalContext
 import com.example.ui.components.FinanceButton
 import com.example.ui.components.FinanceTextButton
+import com.example.ui.components.ProfileAvatar
 import kotlinx.coroutines.launch
 
 data class NavigationDrawerItemData(
@@ -58,15 +66,6 @@ fun FinanceApp(
     val userSession by authViewModel.currentUserSession.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
-    var isSplashAnimComplete by remember { mutableStateOf(false) }
-    var showSplash by remember { mutableStateOf(true) }
-
-    LaunchedEffect(isSplashAnimComplete, isLoading) {
-        if (isSplashAnimComplete && !isLoading) {
-            showSplash = false
-        }
-    }
-
     LaunchedEffect(userSession) {
         val session = userSession
         if (session != null) {
@@ -76,8 +75,9 @@ fun FinanceApp(
         }
     }
 
-    if (showSplash) {
-        SplashScreen(onAnimationComplete = { isSplashAnimComplete = true })
+    if (isLoading) {
+        // Show empty background while initial DB loading completes
+        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
         return
     }
 
@@ -91,21 +91,43 @@ fun FinanceApp(
     val context = LocalContext.current
     val activity = context as? androidx.fragment.app.FragmentActivity
 
-    // Trigger biometric unlock prompt on launch or theme change if enabled
-    LaunchedEffect(biometricLockEnabled, userSession) {
+    // Lock the app when it goes to the background (ON_STOP)
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.addObserver(
+            androidx.lifecycle.LifecycleEventObserver { _, event ->
+                if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) {
+                    isAppUnlocked = false
+                }
+            }
+        )
+    }
+
+    // Trigger biometric unlock prompt on launch, resume, or theme change if enabled
+    LaunchedEffect(biometricLockEnabled, userSession, isAppUnlocked) {
         if (biometricLockEnabled && userSession != null && !isAppUnlocked) {
             if (activity != null) {
+                val prefs = com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(activity, "auth_prefs")
+                val ivBase64 = prefs.getString("biometric_challenge_iv", null)
+                val iv = if (ivBase64 != null) android.util.Base64.decode(ivBase64, android.util.Base64.NO_WRAP) else null
+                val cipher = com.example.ui.utils.BiometricHelper.getInitializedCipher(javax.crypto.Cipher.DECRYPT_MODE, iv)
+                val cryptoObject = if (cipher != null) androidx.biometric.BiometricPrompt.CryptoObject(cipher) else null
+
                 com.example.ui.utils.BiometricHelper.showBiometricPrompt(
                     activity = activity,
-                    onSuccess = {
-                        isAppUnlocked = true
+                    cryptoObject = cryptoObject,
+                    onSuccess = { result ->
+                        val unlockedCipher = result.cryptoObject?.cipher
+                        if (unlockedCipher != null && com.example.ui.utils.BiometricHelper.decryptAndVerifyChallenge(activity, unlockedCipher)) {
+                            isAppUnlocked = true
+                        }
                     },
                     onError = {
                         // User canceled or failed; they can retry manually using the unlock button
                     }
                 )
             } else {
-                isAppUnlocked = true
+                android.util.Log.w("FinanceApp", "FragmentActivity is null; biometric prompt cannot be shown. Lock screen remains active.")
             }
         }
     }
@@ -123,7 +145,7 @@ fun FinanceApp(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
-                .padding(24.dp),
+                .padding(AppDimens.paddingLarge),
             contentAlignment = Alignment.Center
         ) {
             Column(
@@ -138,7 +160,7 @@ fun FinanceApp(
                     modifier = Modifier.size(72.dp)
                 )
                 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(AppDimens.paddingLarge))
                 
                 Text(
                     text = "Finance App Locked",
@@ -147,7 +169,7 @@ fun FinanceApp(
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
                 
                 Text(
                     text = "Confirm biometrics to unlock and view your secure session",
@@ -162,10 +184,20 @@ fun FinanceApp(
                     text = "Unlock with Biometrics",
                     onClick = {
                         if (activity != null) {
+                            val prefs = com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(activity, "auth_prefs")
+                            val ivBase64 = prefs.getString("biometric_challenge_iv", null)
+                            val iv = if (ivBase64 != null) android.util.Base64.decode(ivBase64, android.util.Base64.NO_WRAP) else null
+                            val cipher = com.example.ui.utils.BiometricHelper.getInitializedCipher(javax.crypto.Cipher.DECRYPT_MODE, iv)
+                            val cryptoObject = if (cipher != null) androidx.biometric.BiometricPrompt.CryptoObject(cipher) else null
+
                             com.example.ui.utils.BiometricHelper.showBiometricPrompt(
                                 activity = activity,
-                                onSuccess = {
-                                    isAppUnlocked = true
+                                cryptoObject = cryptoObject,
+                                onSuccess = { result ->
+                                    val unlockedCipher = result.cryptoObject?.cipher
+                                    if (unlockedCipher != null && com.example.ui.utils.BiometricHelper.decryptAndVerifyChallenge(activity, unlockedCipher)) {
+                                        isAppUnlocked = true
+                                    }
                                 },
                                 onError = {
                                     // Handle retry
@@ -177,7 +209,7 @@ fun FinanceApp(
                     modifier = Modifier.fillMaxWidth(0.8f)
                 )
                 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(AppDimens.paddingNormal))
                 
                 FinanceTextButton(
                     text = "Log Out",
@@ -209,35 +241,36 @@ fun FinanceApp(
         drawerState = drawerState,
         gesturesEnabled = currentRoute in listOf("dashboard", "transactions", "analytics", "settings"),
         drawerContent = {
-            ModalDrawerSheet(modifier = Modifier.testTag("drawer_sheet")) {
-                Spacer(modifier = Modifier.height(16.dp))
+ModalDrawerSheet(modifier = Modifier.testTag("drawer_sheet")) {
+    Spacer(modifier = Modifier.height(AppDimens.paddingNormal))
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 28.dp, vertical = 20.dp)
                 ) {
-                    val initials = userSession?.name
-                        ?.split(" ")
-                        ?.mapNotNull { it.firstOrNull() }
-                        ?.take(2)
-                        ?.joinToString("")
-                        ?.uppercase() ?: "GU"
-
-                    Box(
-                        modifier = Modifier
-                            .size(60.dp)
-                            .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
-                            .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), CircleShape),
-                        contentAlignment = Alignment.Center
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Image(
+                            painter = painterResource(id = com.example.R.drawable.ic_app_logo),
+                            contentDescription = "App Logo",
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(modifier = Modifier.width(AppDimens.paddingMedium))
                         Text(
-                            text = initials,
+                            text = "Finance Manager",
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            style = MaterialTheme.typography.titleMedium
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(AppDimens.paddingNormal))
+                    ProfileAvatar(
+                        name = userSession?.name,
+                        isGuest = userSession?.isGuest == true,
+                        size = AppDimens.sizeDrawerAvatar
+                    )
+                    Spacer(modifier = Modifier.height(AppDimens.paddingMedium))
                     Text(
                         text = userSession?.name ?: "Guest User",
                         style = MaterialTheme.typography.titleMedium,
@@ -250,7 +283,7 @@ fun FinanceApp(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     if (userSession?.isGuest == true) {
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
                         SuggestionChip(
                             onClick = {
                                 scope.launch { drawerState.close() }
@@ -268,7 +301,7 @@ fun FinanceApp(
                     }
                 }
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 28.dp))
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(AppDimens.paddingNormal))
                 drawerItems.forEach { item ->
                     NavigationDrawerItem(
                         icon = { Icon(item.icon, contentDescription = item.label) },
@@ -296,11 +329,24 @@ fun FinanceApp(
                 Spacer(modifier = Modifier.weight(1f))
 
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 28.dp))
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
 
+                val isGuest = userSession?.isGuest == true
                 NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.Logout, contentDescription = "Log Out", tint = MaterialTheme.colorScheme.error) },
-                    label = { Text("Log Out", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error) },
+                    icon = { 
+                        Icon(
+                            imageVector = if (isGuest) Icons.Default.Login else Icons.Default.Logout, 
+                            contentDescription = if (isGuest) "Sign In" else "Log Out", 
+                            tint = if (isGuest) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                        ) 
+                    },
+                    label = { 
+                        Text(
+                            text = if (isGuest) "Sign In / Register" else "Log Out", 
+                            fontWeight = FontWeight.Bold, 
+                            color = if (isGuest) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                        ) 
+                    },
                     selected = false,
                     onClick = {
                         scope.launch { drawerState.close() }
@@ -309,106 +355,163 @@ fun FinanceApp(
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                     colors = NavigationDrawerItemDefaults.colors(
                         unselectedContainerColor = Color.Transparent,
-                        unselectedIconColor = MaterialTheme.colorScheme.error,
-                        unselectedTextColor = MaterialTheme.colorScheme.error
+                        unselectedIconColor = if (isGuest) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                        unselectedTextColor = if (isGuest) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                     )
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(AppDimens.paddingNormal))
             }
         }
     ) {
         Scaffold(
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
                 if (currentRoute in listOf("dashboard", "transactions", "analytics", "settings")) {
-                    NavigationBar(modifier = Modifier.testTag("bottom_navigation_bar")) {
-                        NavigationBarItem(
-                            selected = currentRoute == "dashboard",
-                            onClick = { navController.navigate("dashboard") { launchSingleTop = true; restoreState = true } },
-                            icon = { Icon(Icons.Default.Home, contentDescription = "Dashboard") },
-                            label = { Text("Home") }
+NavigationBar(
+    containerColor = MaterialTheme.colorScheme.surface,
+    tonalElevation = 0.dp,
+    modifier = Modifier
+        .clip(RoundedCornerShape(topStart = AppDimens.paddingNormal, topEnd = AppDimens.paddingNormal))
+        .border(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), RoundedCornerShape(topStart = AppDimens.paddingNormal, topEnd = AppDimens.paddingNormal))
+        .testTag("bottom_navigation_bar")
+) {
+    val items = listOf(
+        Triple("dashboard", "Home", Icons.Default.Home),
+        Triple("transactions", "History", Icons.AutoMirrored.Filled.List),
+        Triple("analytics", "Analytics", Icons.Default.PieChart),
+        Triple("settings", "Settings", Icons.Default.Settings)
+    )
                         )
-                        NavigationBarItem(
-                            selected = currentRoute == "transactions",
-                            onClick = { navController.navigate("transactions") { launchSingleTop = true; restoreState = true } },
-                            icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "History") },
-                            label = { Text("History") }
-                        )
-                        NavigationBarItem(
-                            selected = currentRoute == "analytics",
-                            onClick = { navController.navigate("analytics") { launchSingleTop = true; restoreState = true } },
-                            icon = { Icon(Icons.Default.PieChart, contentDescription = "Analytics") },
-                            label = { Text("Analytics") }
-                        )
-                        NavigationBarItem(
-                            selected = currentRoute == "settings",
-                            onClick = { navController.navigate("settings") { launchSingleTop = true; restoreState = true } },
-                            icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
-                            label = { Text("Settings") }
-                        )
+                        items.forEach { (route, label, icon) ->
+                            val isSelected = currentRoute == route
+                            NavigationBarItem(
+                                selected = isSelected,
+                                onClick = { navController.navigate(route) { launchSingleTop = true; restoreState = true } },
+                                icon = { 
+                                    Icon(
+                                        icon, 
+                                        contentDescription = label
+                                    ) 
+                                },
+                                label = { 
+                                    Text(
+                                        label, 
+                                        style = MaterialTheme.typography.labelSmall
+                                    ) 
+                                },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    indicatorColor = Color.Transparent
+                                )
+                            )
+                        }
                     }
                 }
             }
         ) { innerPadding ->
-            NavHost(
-                navController = navController,
-                startDestination = "dashboard",
-                modifier = Modifier.padding(innerPadding)
-            ) {
-                composable("dashboard") { 
-                    DashboardScreen(viewModel, navController, userSession = userSession, onMenuClick = { scope.launch { drawerState.open() } }) 
-                }
-                composable("transactions") { 
-                    TransactionHistoryScreen(viewModel, navController, onMenuClick = { scope.launch { drawerState.open() } }) 
-                }
-                composable("analytics") { 
-                    AnalyticsScreen(viewModel, onMenuClick = { scope.launch { drawerState.open() } }) 
-                }
-                composable("settings") { 
-                    SettingsScreen(
-                        viewModel = viewModel,
-                        authViewModel = authViewModel,
-                        onManageCategoriesClick = { navController.navigate("categories_management") },
-                        onAdminConsoleClick = { navController.navigate("admin_console") },
-                        onMenuClick = { scope.launch { drawerState.open() } }
-                    ) 
-                }
-                composable("admin_console") {
-                    if (userSession?.role == "ADMIN") {
-                        AdminConsoleScreen(
+            val notifications by viewModel.notificationManager.activeInAppNotifications.collectAsState()
+            Box(modifier = Modifier.fillMaxSize()) {
+                NavHost(
+                    navController = navController,
+                    startDestination = "dashboard",
+                    modifier = Modifier.padding(
+                        top = innerPadding.calculateTopPadding(),
+                        bottom = 0.dp
+                    )
+                ) {
+                    composable("dashboard") { 
+                        DashboardScreen(
                             viewModel = viewModel,
+                            navController = navController,
+                            userSession = userSession,
+                            onMenuClick = { scope.launch { drawerState.open() } },
+                            onSignOut = { authViewModel.logout() },
+                            onSignIn = { authViewModel.logout() }
+                        ) 
+                    }
+                    composable("transactions") { 
+                        TransactionHistoryScreen(viewModel, navController, onMenuClick = { scope.launch { drawerState.open() } }) 
+                    }
+                    composable("analytics") { 
+                        AnalyticsScreen(
+                            viewModel = viewModel, 
+                            onMenuClick = { scope.launch { drawerState.open() } },
+                            onChartClick = { chartType ->
+                                navController.navigate("analytics_details?initialChartType=$chartType")
+                            }
+                        ) 
+                    }
+                    composable(
+                        route = "analytics_details?initialChartType={initialChartType}",
+                        arguments = listOf(
+                            navArgument("initialChartType") {
+                                type = NavType.StringType
+                                defaultValue = "CATEGORY"
+                            }
+                        )
+                    ) { backStackEntry ->
+                        val initialChartType = backStackEntry.arguments?.getString("initialChartType") ?: "CATEGORY"
+                        AnalyticsDetailScreen(
+                            viewModel = viewModel,
+                            initialChartType = initialChartType,
                             onBackClick = { navController.popBackStack() }
                         )
-                    } else {
-                        LaunchedEffect(Unit) {
-                            navController.navigate("dashboard") {
-                                popUpTo("admin_console") { inclusive = true }
+                    }
+                    composable("settings") { 
+                        SettingsScreen(
+                            viewModel = viewModel,
+                            authViewModel = authViewModel,
+                            onManageCategoriesClick = { navController.navigate("categories_management") },
+                            onAdminConsoleClick = { navController.navigate("admin_console") },
+                            onMenuClick = { scope.launch { drawerState.open() } }
+                        ) 
+                    }
+                    composable("admin_console") {
+                        if (userSession?.role == "ADMIN") {
+                            AdminConsoleScreen(
+                                viewModel = viewModel,
+                                onBackClick = { navController.popBackStack() }
+                            )
+                        } else {
+                            LaunchedEffect(Unit) {
+                                navController.navigate("dashboard") {
+                                    popUpTo("admin_console") { inclusive = true }
+                                }
                             }
                         }
                     }
+                    composable("categories_management") {
+                        CategoryManagementScreen(viewModel, navController)
+                    }
+                    composable(
+                        route = "add_transaction/{type}?transactionId={transactionId}&duplicate={duplicate}",
+                        arguments = listOf(
+                            navArgument("transactionId") { 
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = null
+                            },
+                            navArgument("duplicate") { 
+                                type = NavType.BoolType
+                                defaultValue = false
+                            }
+                        )
+                    ) { backStackEntry -> 
+                        val type = backStackEntry.arguments?.getString("type") ?: "EXPENSE"
+                        val transactionIdString = backStackEntry.arguments?.getString("transactionId")
+                        val transactionId = transactionIdString?.toIntOrNull()
+                        val duplicate = backStackEntry.arguments?.getBoolean("duplicate") ?: false
+                        AddTransactionScreen(viewModel, navController, type, transactionId, duplicate) 
+                    }
                 }
-                composable("categories_management") {
-                    CategoryManagementScreen(viewModel, navController)
-                }
-                composable(
-                    route = "add_transaction/{type}?transactionId={transactionId}&duplicate={duplicate}",
-                    arguments = listOf(
-                        navArgument("transactionId") { 
-                            type = NavType.StringType
-                            nullable = true
-                            defaultValue = null
-                        },
-                        navArgument("duplicate") { 
-                            type = NavType.BoolType
-                            defaultValue = false
-                        }
-                    )
-                ) { backStackEntry -> 
-                    val type = backStackEntry.arguments?.getString("type") ?: "EXPENSE"
-                    val transactionIdString = backStackEntry.arguments?.getString("transactionId")
-                    val transactionId = transactionIdString?.toIntOrNull()
-                    val duplicate = backStackEntry.arguments?.getBoolean("duplicate") ?: false
-                    AddTransactionScreen(viewModel, navController, type, transactionId, duplicate) 
-                }
+                
+                com.example.ui.components.InAppNotificationHost(
+                    notifications = notifications,
+                    onDismiss = { id -> viewModel.notificationManager.dismissInApp(id) }
+                )
             }
         }
     }

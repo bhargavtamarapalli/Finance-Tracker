@@ -155,8 +155,11 @@ class CategoryManagementScreenTest {
             composeTestRule.onAllNodesWithText("Groceries").fetchSemanticsNodes().isNotEmpty()
         }
 
-        // Click Rename/Edit icon
-        composeTestRule.onNodeWithContentDescription("Rename Category").performClick()
+        // Long press chip to open menu and click Rename
+        composeTestRule.onNodeWithText("Groceries").performTouchInput { longClick() }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Rename").performClick()
+        composeTestRule.waitForIdle()
         ShadowLooper.idleMainLooper(1000, TimeUnit.MILLISECONDS)
 
         // Verify Dialog
@@ -194,8 +197,11 @@ class CategoryManagementScreenTest {
             composeTestRule.onAllNodesWithText("Groceries").fetchSemanticsNodes().isNotEmpty()
         }
 
-        // Click Archive button
-        composeTestRule.onNodeWithContentDescription("Archive Category").performClick()
+        // Long press chip to open menu and click Archive
+        composeTestRule.onNodeWithText("Groceries").performTouchInput { longClick() }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Archive").performClick()
+        composeTestRule.waitForIdle()
 
         // Wait for Archived label/badge to appear
         composeTestRule.waitUntil(5000) {
@@ -204,8 +210,11 @@ class CategoryManagementScreenTest {
 
         composeTestRule.onNodeWithText("Archived").assertIsDisplayed()
 
-        // Click Unarchive button
-        composeTestRule.onNodeWithContentDescription("Unarchive Category").performClick()
+        // Long press chip to open menu and click Unarchive
+        composeTestRule.onNodeWithText("Groceries").performTouchInput { longClick() }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Unarchive").performClick()
+        composeTestRule.waitForIdle()
 
         // Wait for Archived label/badge to disappear
         composeTestRule.waitUntil(5000) {

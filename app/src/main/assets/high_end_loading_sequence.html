@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>High-End Loading Sequence</title>
+    <style>
+        :root {
+            --bg-color: #020104; 
+            --animation-duration: 4s;
+            --icon-size: 180px;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, #0f071d 0%, var(--bg-color) 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .loader-scene {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 0;
+            transform: translateY(20px) scale(0.96);
+            animation: emergeSequence 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            position: relative;
+        }
+
+        .icon-container {
+            position: relative;
+            width: var(--icon-size);
+            height: var(--icon-size);
+            margin-bottom: 32px;
+        }
+
+        .ambient-glow {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            filter: blur(40px);
+            opacity: 0.6;
+            z-index: 1;
+            will-change: transform, opacity;
+            transform-origin: center;
+            animation: pulseGlow var(--animation-duration) cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+
+        .brand-mark {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            height: 100%;
+            transform-origin: center;
+            will-change: transform;
+            animation: pulseLogo var(--animation-duration) cubic-bezier(0.4, 0, 0.2, 1) infinite;
+            filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.65));
+            
+            perspective: 1200px;
+            transform-style: preserve-3d;
+        }
+
+        .brand-mark svg {
+            transform-style: preserve-3d;
+            overflow: visible;
+        }
+
+        .spinning-rupee {
+            transform-origin: 60px 60px;
+            transform-style: preserve-3d;
+            animation: spinRupee 4.2s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+        }
+
+        .arrow-main {
+            stroke-dasharray: 100;
+            stroke-dashoffset: 100;
+            will-change: stroke-dashoffset, opacity;
+            animation: drawArrow var(--animation-duration) cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+
+        .arrow-head {
+            stroke-dasharray: 26;
+            stroke-dashoffset: 26;
+            will-change: stroke-dashoffset, opacity;
+            animation: drawArrowHead var(--animation-duration) cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+
+        .loading-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .title-mask {
+            /* Changed to visible so the 3D scattered letters aren't clipped */
+            overflow: visible; 
+            padding: 4px 10px;
+            margin-top: -4px;
+        }
+
+        .brand-title {
+            display: flex;
+            gap: 0.1em;
+            justify-content: center;
+            margin-left: 0.45em; /* Perfectly centers tracked-out text */
+            /* Removed the old slide-up transform that was forcing the text out of bounds */
+        }
+
+        .brand-tagline {
+            color: rgba(255, 255, 255, 0.38);
+            font-size: 0.65rem;
+            letter-spacing: 0.15em;
+            font-weight: 300;
+            margin-bottom: 4px;
+            opacity: 0;
+            
+            /* Entrance + breathing loop */
+            animation: 
+                taglineReveal 1.8s cubic-bezier(0.16, 1, 0.3, 1) 0.6s forwards,
+                taglineBreathing var(--animation-duration) ease-in-out infinite;
+        }
+
+        .loading-bar {
+            width: 70px;
+            height: 1.5px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .loading-bar-fill {
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, #03DAC6, transparent);
+            animation: fillSequence 2s infinite linear;
+        }
+
+        .sparkle {
+            position: absolute;
+            background: radial-gradient(circle, rgba(255,224,130,0.8) 0%, rgba(255,143,0,0) 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0;
+            animation: floatUp 6s infinite ease-in-out;
+        }
+        .sparkle:nth-child(1) { width: 6px; height: 6px; left: 15%; animation-delay: 0s; }
+        .sparkle:nth-child(2) { width: 4px; height: 4px; left: 80%; animation-delay: 1.5s; }
+        .sparkle:nth-child(3) { width: 5px; height: 5px; left: 35%; animation-delay: 3s; }
+        .sparkle:nth-child(4) { width: 3px; height: 3px; left: 65%; animation-delay: 4.5s; }
+
+        @keyframes emergeSequence {
+            0% {
+                opacity: 0;
+                transform: translateY(20px) scale(0.96);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes pulseLogo {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes pulseGlow {
+            0% { transform: scale(0.9); opacity: 0.5; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+            100% { transform: scale(0.9); opacity: 0.5; }
+        }
+
+        /* * Dynamic Title Assembly Animations * */
+        .letter {
+            opacity: 0;
+            display: inline-block;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.95rem;
+            letter-spacing: 0.45em;
+            text-transform: uppercase;
+            font-weight: 500;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.15);
+            /* High-End Metallic Shimmer Gradient applied to each letter */
+            background: linear-gradient(
+                90deg, 
+                rgba(255,255,255,0.7) 0%, 
+                rgba(255,255,255,1) 25%, 
+                #FFE082 50%, 
+                rgba(255,255,255,1) 75%, 
+                rgba(255,255,255,0.7) 100%
+            );
+            background-size: 400% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            
+            /* Start scattered: randomly translated and slightly rotated */
+            transform: translate3d(var(--scatter-x), var(--scatter-y), var(--scatter-z)) rotate(var(--scatter-rot));
+            filter: blur(4px);
+            
+            animation: assembleLetter 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards, shimmerSweep 6s linear infinite;
+        }
+
+        /* Provide a specific margin for the space character */
+        .letter.space {
+            margin-right: 0.6em; 
+        }
+
+        @keyframes assembleLetter {
+            0% {
+                opacity: 0;
+                transform: translate3d(var(--scatter-x), var(--scatter-y), var(--scatter-z)) rotate(var(--scatter-rot));
+                filter: blur(4px);
+            }
+            100% {
+                opacity: 1;
+                transform: translate3d(0, 0, 0) rotate(0deg);
+                filter: blur(0px);
+            }
+        }
+
+        @keyframes shimmerSweep {
+            0% { background-position: 200% center; }
+            100% { background-position: -200% center; }
+        }
+
+        @keyframes taglineReveal {
+            0% {
+                opacity: 0;
+                letter-spacing: 0.15em;
+                transform: translateY(6px);
+            }
+            100% {
+                opacity: 0.38;
+                letter-spacing: 0.22em; /* Fluidly expand text outward */
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes taglineBreathing {
+            0%, 100% { opacity: 0.38; filter: drop-shadow(0 0 0px rgba(255,255,255,0)); }
+            50% { opacity: 0.65; filter: drop-shadow(0 0 2px rgba(255,255,255,0.15)); }
+        }
+
+        /* * Unified path drawing equations * */
+        @keyframes drawArrow {
+            0%, 5% { stroke-dashoffset: 100; opacity: 0; }
+            10% { opacity: 1; }
+            45%, 75% { stroke-dashoffset: 0; opacity: 1; }
+            85%, 100% { stroke-dashoffset: -100; opacity: 0; }
+        }
+
+        @keyframes drawArrowHead {
+            0%, 35% { stroke-dashoffset: 26; opacity: 0; }
+            40% { opacity: 1; }
+            55%, 75% { stroke-dashoffset: 0; opacity: 1; }
+            85%, 100% { stroke-dashoffset: -26; opacity: 0; }
+        }
+
+        @keyframes spinRupee {
+            0% { transform: rotateY(-15deg); }
+            50% { transform: rotateY(345deg); }
+            100% { transform: rotateY(-15deg); }
+        }
+
+        @keyframes fillSequence {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(60px) scale(0.5); opacity: 0; }
+            30% { opacity: 0.6; }
+            70% { opacity: 0.6; }
+            100% { transform: translateY(-120px) scale(1); opacity: 0; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Ambient Floating Premium Sparkles -->
+    <div class="sparkle"></div>
+    <div class="sparkle"></div>
+    <div class="sparkle"></div>
+    <div class="sparkle"></div>
+
+    <div class="loader-scene">
+        <div class="icon-container">
+            <!-- Ambient Glow Behind the Logo -->
+            <div class="ambient-glow" aria-hidden="true">
+                <svg viewBox="0 0 120 120" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="glowBgGrad" x1="10" y1="10" x2="110" y2="110" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#6200EE" />
+                            <stop offset="100%" stop-color="#3700B3" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M30,10 H90 C101,10 110,19 110,30 V90 C110,101 101,110 90,110 H30 C19,110 10,101 10,90 V30 C10,19 19,10 30,10 Z" fill="url(#glowBgGrad)" />
+                    <path d="M25,85 L45,70 L65,75 L95,35" stroke-width="16" stroke="#03DAC6" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+                </svg>
+            </div>
+
+            <div class="brand-mark">
+                <svg viewBox="0 0 120 120" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <!-- Linear Gradient for Background Squircle -->
+                        <linearGradient id="bgGrad" x1="10" y1="10" x2="110" y2="110" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#4E1ED4" />
+                            <stop offset="100%" stop-color="#14063B" />
+                        </linearGradient>
+
+                        <!-- Squircle 3D Edge Gradient -->
+                        <linearGradient id="squircleSideGrad" x1="10" y1="10" x2="110" y2="110" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#2D1185" />
+                            <stop offset="100%" stop-color="#0B0321" />
+                        </linearGradient>
+
+                        <!-- Luxury Multi-Stop Gold Gradient for 3D Bevels -->
+                        <linearGradient id="goldGrad" x1="30" y1="30" x2="90" y2="90" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#FFF3E0" />
+                            <stop offset="15%" stop-color="#FFE082" />
+                            <stop offset="45%" stop-color="#FFC107" />
+                            <stop offset="75%" stop-color="#FF8F00" />
+                            <stop offset="100%" stop-color="#8D6E63" />
+                        </linearGradient>
+
+                        <linearGradient id="goldDarkGrad" x1="30" y1="30" x2="90" y2="90" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#FFB300" />
+                            <stop offset="100%" stop-color="#5D4037" />
+                        </linearGradient>
+
+                        <linearGradient id="goldLightGrad" x1="45" y1="45" x2="75" y2="75" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#FFFDE7" />
+                            <stop offset="50%" stop-color="#FFF59D" />
+                            <stop offset="100%" stop-color="#FFE082" />
+                        </linearGradient>
+
+                        <linearGradient id="bronzeGrad" x1="30" y1="32" x2="90" y2="92" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#A1887F" />
+                            <stop offset="50%" stop-color="#5D4037" />
+                            <stop offset="100%" stop-color="#3E2723" />
+                        </linearGradient>
+
+                        <!-- Metallic Silver Plate Gradient -->
+                        <linearGradient id="silverGrad" x1="37" y1="37" x2="83" y2="83" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#FFFFFF" />
+                            <stop offset="30%" stop-color="#ECEFF1" />
+                            <stop offset="70%" stop-color="#CFD8DC" />
+                            <stop offset="100%" stop-color="#90A4AE" />
+                        </linearGradient>
+
+                        <!-- Neon Teal Arrow Gradient -->
+                        <linearGradient id="tealGrad" x1="25" y1="85" x2="95" y2="35" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#00E5FF" />
+                            <stop offset="50%" stop-color="#00BFA5" />
+                            <stop offset="100%" stop-color="#1DE9B6" />
+                        </linearGradient>
+                        
+                        <!-- High-Contrast Soft Cast Shadow Filter -->
+                        <filter id="castShadow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feDropShadow dx="1" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity="0.6" />
+                        </filter>
+                        <filter id="arrowCastShadow" x="-30%" y="-30%" width="160%" height="160%">
+                            <feDropShadow dx="2" dy="5" stdDeviation="4" flood-color="#000000" flood-opacity="0.55" />
+                        </filter>
+                        
+                        <!-- High-contrast Neon SVG Glow filter -->
+                        <filter id="neonGlow" x="-50%" y="-50%" width="200%" height="200%">
+                            <feGaussianBlur stdDeviation="2.5" result="blur" />
+                            <feMerge>
+                                <feMergeNode in="blur" />
+                                <feMergeNode in="SourceGraphic" />
+                            </feMerge>
+                        </filter>
+                    </defs>
+
+                    <!-- ==========================================
+                         LAYER 1: SQUIRCLE BASE (Extruded 3D Stack)
+                         ========================================== -->
+                    <g fill="url(#squircleSideGrad)">
+                        <path d="M30,10 H90 C101,10 110,19 110,30 V90 C110,101 101,110 90,110 H30 C19,110 10,101 10,90 V30 C10,19 19,10 30,10 Z" transform="translate(0, 8)" />
+                        <path d="M30,10 H90 C101,10 110,19 110,30 V90 C110,101 101,110 90,110 H30 C19,110 10,101 10,90 V30 C10,19 19,10 30,10 Z" transform="translate(0, 6)" />
+                        <path d="M30,10 H90 C101,10 110,19 110,30 V90 C110,101 101,110 90,110 H30 C19,110 10,101 10,90 V30 C10,19 19,10 30,10 Z" transform="translate(0, 4)" />
+                        <path d="M30,10 H90 C101,10 110,19 110,30 V90 C110,101 101,110 90,110 H30 C19,110 10,101 10,90 V30 C10,19 19,10 30,10 Z" transform="translate(0, 2)" />
+                    </g>
+                    <!-- Top Premium Face Plate of Squircle -->
+                    <path d="M30,10 H90 C101,10 110,19 110,30 V90 C110,101 101,110 90,110 H30 C19,110 10,101 10,90 V30 C10,19 19,10 30,10 Z" fill="url(#bgGrad)" />
+
+                    <!-- Base Subtle Gloss Overlay -->
+                    <path d="M10,30 L110,90 L110,30 Z" fill="white" opacity="0.02" pointer-events="none" />
+
+                    <!-- ==========================================
+                         LAYER 3: THE COIN BASE & RINGS
+                         ========================================== -->
+                    <!-- Raised Gold Coin Bezel Extrusion Side-wall -->
+                    <circle cx="60" cy="62" r="28" fill="url(#bronzeGrad)" filter="url(#castShadow)" />
+                    <circle cx="60" cy="61" r="28" fill="url(#bronzeGrad)" />
+                    
+                    <!-- Main Coin Top Gold Bezel Surface -->
+                    <circle cx="60" cy="60" r="28" fill="url(#goldGrad)" stroke="#FFE082" stroke-width="0.5" />
+                    
+                    <!-- Coin Knurled Ridges (Concentric pattern matching 3D render) -->
+                    <circle cx="60" cy="60" r="26.5" fill="none" stroke="#5D4037" stroke-width="1.2" />
+                    <circle cx="60" cy="60" r="26.5" fill="none" stroke="#FFE082" stroke-width="0.8" stroke-dasharray="0.8, 1.2" />
+                    
+                    <!-- Beveled Recessed Inner Rim -->
+                    <circle cx="60" cy="60" r="25" fill="url(#goldDarkGrad)" />
+                    
+                    <!-- Recessed Silver Center Plate Face -->
+                    <circle cx="60" cy="60" r="23" fill="url(#silverGrad)" />
+                    <circle cx="60" cy="60" r="23" fill="none" stroke="rgba(0,0,0,0.15)" stroke-width="1" />
+                    
+                    <!-- Coin Center Accent Gold Ring -->
+                    <circle cx="60" cy="60" r="18" fill="none" stroke="url(#goldGrad)" stroke-width="1.5" />
+
+
+                    <!-- ==========================================
+                         LAYER 4: THE CONTINUOUS ARROW
+                         Renders over the coin, but firmly under the Rupee.
+                         ========================================== -->
+                    <g filter="url(#arrowCastShadow)">
+                        <!-- Full Arrow Shadow -->
+                        <path class="arrow-main" d="M25,85 L45,70 L65,75 L95,35" stroke="rgba(0,0,0,0.5)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+                        <path class="arrow-head" d="M83,35 L95,35 L95,47" stroke="rgba(0,0,0,0.5)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+                    </g>
+                    <!-- Extrusion Wall -->
+                    <g stroke="#004D40" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" fill="none" transform="translate(1, 2.5)">
+                        <path class="arrow-main" d="M25,85 L45,70 L65,75 L95,35" />
+                        <path class="arrow-head" d="M83,35 L95,35 L95,47" />
+                    </g>
+                    <!-- Neon Cyan Face -->
+                    <g stroke="url(#tealGrad)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#neonGlow)">
+                        <path class="arrow-main" d="M25,85 L45,70 L65,75 L95,35" />
+                        <path class="arrow-head" d="M83,35 L95,35 L95,47" />
+                    </g>
+                    <!-- Bright Specular Highlight Core -->
+                    <g stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+                        <path class="arrow-main" d="M25,85 L45,70 L65,75 L95,35" />
+                        <path class="arrow-head" d="M83,35 L95,35 L95,47" />
+                    </g>
+
+
+                    <!-- ==========================================
+                         LAYER 5: THE INDIAN RUPEE (₹) [Unified 3D Spin]
+                         Renders as the topmost element.
+                         ========================================== -->
+                    <g class="spinning-rupee">
+                        <!-- Shadow on Coin Plate -->
+                        <g opacity="0.45" transform="translate(1.5, 4)">
+                            <path d="M48,47 L72,47" stroke="#000" stroke-width="8" stroke-linecap="round"/>
+                            <path d="M48,55 L67,55" stroke="#000" stroke-width="8" stroke-linecap="round"/>
+                            <path d="M54,47 C68,47 68,62 54,62 L70,75" stroke="#000" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
+                        </g>
+                        
+                        <!-- Extruded Dark Bronze Base (Depth layers) -->
+                        <g stroke="#7B5700" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none">
+                            <g transform="translate(0, 2.5)">
+                                <path d="M48,47 L72,47" /> <path d="M48,55 L67,55" /> <path d="M54,47 C68,47 68,62 54,62 L70,75" />
+                            </g>
+                            <g transform="translate(0, 1.5)">
+                                <path d="M48,47 L72,47" /> <path d="M48,55 L67,55" /> <path d="M54,47 C68,47 68,62 54,62 L70,75" />
+                            </g>
+                            <g transform="translate(0, 0.5)">
+                                <path d="M48,47 L72,47" /> <path d="M48,55 L67,55" /> <path d="M54,47 C68,47 68,62 54,62 L70,75" />
+                            </g>
+                        </g>
+                        
+                        <!-- Polished Gold Front Face -->
+                        <g stroke="url(#goldGrad)" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+                            <path d="M48,47 L72,47" />
+                            <path d="M48,55 L67,55" />
+                            <path d="M54,47 C68,47 68,62 54,62 L70,75" />
+                        </g>
+                        
+                        <!-- Inner Gold Specular Bevel Highlights -->
+                        <g stroke="url(#goldLightGrad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9">
+                            <path d="M49,47 L71,47" />
+                            <path d="M49,55 L66,55" />
+                            <path d="M54.5,47.5 C66.5,47.5 66.5,61.5 54.5,61.5 L69.5,74" />
+                        </g>
+                        
+                        <!-- Pure White High-Spec Reflection Core -->
+                        <g stroke="#FFFFFF" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.95">
+                            <path d="M51,47 L69,47" />
+                            <path d="M51,55 L64,55" />
+                            <path d="M55,48 C64,48 64,61 55,61" />
+                        </g>
+                    </g>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Custom Typography Branding -->
+        <div class="loading-wrapper">
+            <div class="title-mask">
+                <div class="brand-title" id="titleContainer">
+                    <!-- Letters will be injected here via JavaScript for precise control -->
+                </div>
+            </div>
+            <div class="brand-tagline">Manage your wealth beautifully</div>
+            <div class="loading-bar">
+                <div class="loading-bar-fill"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Script to handle dynamic letter generation for the scatter effect -->
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const titleText = "FINANCE TRACKER";
+            const container = document.getElementById("titleContainer");
+            
+            titleText.split("").forEach((char, index) => {
+                const span = document.createElement("span");
+                
+                if (char === " ") {
+                    span.className = "letter space";
+                    span.innerHTML = "&nbsp;";
+                } else {
+                    span.className = "letter";
+                    span.textContent = char;
+                }
+
+                // Generate random scatter coordinates for each letter
+                // X: -40px to 40px, Y: 20px to 80px, Z: -50px to 50px, Rot: -30deg to 30deg
+                const scatterX = (Math.random() - 0.5) * 80;
+                const scatterY = (Math.random() * 60) + 20; 
+                const scatterZ = (Math.random() - 0.5) * 100;
+                const scatterRot = (Math.random() - 0.5) * 60;
+
+                span.style.setProperty('--scatter-x', `${scatterX}px`);
+                span.style.setProperty('--scatter-y', `${scatterY}px`);
+                span.style.setProperty('--scatter-z', `${scatterZ}px`);
+                span.style.setProperty('--scatter-rot', `${scatterRot}deg`);
+
+                // Stagger the animation delay for a cascading assembly effect
+                const delay = 0.1 + (index * 0.06); // Start at 0.1s, stagger by 60ms
+                span.style.animationDelay = `${delay}s, ${delay + 1.5}s`; // assemble delay, shimmer delay
+
+                container.appendChild(span);
+            });
+        });
+    </script>
+
+</body>
+</html>

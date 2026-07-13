@@ -3,9 +3,13 @@ package com.example.ui.screens
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -14,6 +18,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -26,9 +32,8 @@ import com.example.ui.viewmodel.AuthViewModel
 import com.example.data.repository.UserSession
 import com.example.ui.viewmodel.AppTheme
 import com.example.ui.utils.CurrencyOption
+import com.example.ui.utils.CurrencyUtils
 import kotlinx.coroutines.launch
-
-enum class RestoreType { LOCAL, CLOUD }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,12 +50,22 @@ fun SettingsScreen(
     val biometricLockEnabled by viewModel.biometricLockEnabled.collectAsStateWithLifecycle()
     val appTheme by viewModel.appTheme.collectAsStateWithLifecycle()
     val currencyOption by viewModel.currencyOption.collectAsStateWithLifecycle()
-    val appMode by viewModel.appMode.collectAsStateWithLifecycle()
     val isOnline by viewModel.isOnline.collectAsStateWithLifecycle()
+    val monthlyBudgetGoal by viewModel.monthlyBudgetGoal.collectAsStateWithLifecycle()
 
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val activity = context as? androidx.fragment.app.FragmentActivity
     var isSyncing by remember { mutableStateOf(false) }
+    val isDevMode = remember {
+        (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0 ||
+        try {
+            Class.forName("org.junit.Test")
+            true
+        } catch (e: ClassNotFoundException) {
+            false
+        }
+    }
 
     // CSV Document Creator Launcher
     val createCsvLauncher = rememberLauncherForActivityResult(
@@ -64,9 +79,9 @@ fun SettingsScreen(
                     context.contentResolver.openOutputStream(uri)?.use { os ->
                         os.write(csvContent.toByteArray())
                     }
-                    showToast(context, "Transactions exported to CSV successfully!", Toast.LENGTH_SHORT)
+                    showToast(context, "Transactions exported to CSV successfully!")
                 } catch (e: Exception) {
-                    showToast(context, "Export failed: ${e.localizedMessage}", Toast.LENGTH_LONG)
+                    showToast(context, "Export failed: ${e.localizedMessage}")
                 } finally {
                     isSyncing = false
                 }
@@ -80,10 +95,68 @@ fun SettingsScreen(
         biometricLockEnabled = biometricLockEnabled,
         appTheme = appTheme,
         currencyOption = currencyOption,
-        appMode = appMode,
         isSyncing = isSyncing,
+        monthlyBudgetGoal = monthlyBudgetGoal,
+        onBudgetGoalChange = { goal -> viewModel.updateMonthlyBudgetGoal(goal) },
         onReminderToggle = { enabled -> viewModel.setReminderEnabled(enabled, context) },
-        onBiometricToggle = { enabled -> viewModel.setBiometricLockEnabled(enabled) },
+        onBiometricToggle = { enabled ->
+            if (enabled) {
+                if (activity != null) {
+                    val cipher = com.example.ui.utils.BiometricHelper.getInitializedCipher(javax.crypto.Cipher.ENCRYPT_MODE)
+                    val cryptoObject = if (cipher != null) androidx.biometric.BiometricPrompt.CryptoObject(cipher) else null
+                    com.example.ui.utils.BiometricHelper.showBiometricPrompt(
+                        activity = activity,
+                        title = "Enable Secure Lock",
+                        subtitle = "Verify identity to enable biometric authentication",
+                        cryptoObject = cryptoObject,
+                        onSuccess = { result ->
+                            val unlockedCipher = result.cryptoObject?.cipher
+                            if (unlockedCipher != null && com.example.ui.utils.BiometricHelper.encryptAndSaveChallenge(context, unlockedCipher)) {
+                                viewModel.setBiometricLockEnabled(true)
+                            } else {
+                                showToast(context, "Failed to initialize biometric cryptography keys.")
+                            }
+                        },
+                        onError = { error ->
+                            if (error != "Cancelled") {
+                                showToast(context, "Biometric setup failed: $error")
+                            }
+                        }
+                    )
+                } else {
+                    showToast(context, "Biometric setup requires an active activity.")
+                }
+            } else {
+                if (activity != null) {
+                    val prefs = com.example.data.local.EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
+                    val ivBase64 = prefs.getString("biometric_challenge_iv", null)
+                    val iv = if (ivBase64 != null) android.util.Base64.decode(ivBase64, android.util.Base64.NO_WRAP) else null
+                    val cipher = com.example.ui.utils.BiometricHelper.getInitializedCipher(javax.crypto.Cipher.DECRYPT_MODE, iv)
+                    val cryptoObject = if (cipher != null) androidx.biometric.BiometricPrompt.CryptoObject(cipher) else null
+                    com.example.ui.utils.BiometricHelper.showBiometricPrompt(
+                        activity = activity,
+                        title = "Disable Secure Lock",
+                        subtitle = "Confirm identity to disable biometric app lock",
+                        cryptoObject = cryptoObject,
+                        onSuccess = { result ->
+                            val unlockedCipher = result.cryptoObject?.cipher
+                            if (unlockedCipher != null && com.example.ui.utils.BiometricHelper.decryptAndVerifyChallenge(context, unlockedCipher)) {
+                                viewModel.setBiometricLockEnabled(false)
+                            } else {
+                                showToast(context, "Verification failed.")
+                            }
+                        },
+                        onError = { error ->
+                            if (error != "Cancelled") {
+                                showToast(context, "Verification failed: $error")
+                            }
+                        }
+                    )
+                } else {
+                    viewModel.setBiometricLockEnabled(false)
+                }
+            }
+        },
         onThemeChange = { theme -> viewModel.setTheme(theme) },
         onCurrencyChange = { currency -> viewModel.setCurrency(currency) },
         onManageCategoriesClick = onManageCategoriesClick,
@@ -92,70 +165,53 @@ fun SettingsScreen(
         onExportCsv = { fileName -> createCsvLauncher.launch(fileName) },
         onBackupCloud = {
             if (!isOnline) {
-                showToast(context, "Backup failed: No internet connection. Please check your network settings.", Toast.LENGTH_LONG)
+                showToast(context, "Backup failed: No internet connection")
             } else {
                 scope.launch {
                     isSyncing = true
-                    val result = viewModel.backupToFirebase(userSession?.userId ?: "")
+                    viewModel.backupToFirebase(userSession?.userId ?: "")
                     isSyncing = false
-                    if (result.isSuccess) {
-                        showToast(context, "Backup successfully saved to cloud!", Toast.LENGTH_SHORT)
-                    } else {
-                        showToast(context, "Backup failed: ${result.exceptionOrNull()?.localizedMessage}", Toast.LENGTH_LONG)
-                    }
                 }
             }
         },
         onBackupLocal = {
             scope.launch {
                 isSyncing = true
-                val result = viewModel.backupLocally()
+                viewModel.backupLocally()
                 isSyncing = false
-                if (result.isSuccess) {
-                    showToast(context, "Local backup created successfully!", Toast.LENGTH_SHORT)
-                } else {
-                    showToast(context, "Backup failed: ${result.exceptionOrNull()?.localizedMessage}", Toast.LENGTH_LONG)
-                }
             }
         },
         onRestoreCloud = {
             if (!isOnline) {
-                showToast(context, "Restore failed: No internet connection. Please check your network settings.", Toast.LENGTH_LONG)
+                showToast(context, "Restore failed: No internet connection")
             } else {
                 scope.launch {
                     isSyncing = true
-                    val result = viewModel.restoreFromFirebase(userSession?.userId ?: "")
+                    viewModel.restoreFromFirebase(userSession?.userId ?: "")
                     isSyncing = false
-                    if (result.isSuccess) {
-                        showToast(context, "Data successfully restored!", Toast.LENGTH_SHORT)
-                    } else {
-                        showToast(context, "Restore failed: ${result.exceptionOrNull()?.localizedMessage}", Toast.LENGTH_LONG)
-                    }
                 }
             }
         },
         onRestoreLocal = {
             scope.launch {
                 isSyncing = true
-                val result = viewModel.restoreLocally()
+                viewModel.restoreLocally()
                 isSyncing = false
-                if (result.isSuccess) {
-                    showToast(context, "Data successfully restored!", Toast.LENGTH_SHORT)
-                } else {
-                    showToast(context, "Restore failed: ${result.exceptionOrNull()?.localizedMessage}", Toast.LENGTH_LONG)
-                }
             }
         },
         onUpdateProfile = { name, email, onSuccess, onError ->
             authViewModel.updateProfile(name, email, onSuccess, onError)
         },
         onSignOut = {
-            scope.launch {
-                authViewModel.logout()
-            }
-        }
+            authViewModel.logout()
+        },
+        onSeedDemoTransactions = { viewModel.seedDemoTransactions() },
+        onClearAllData = { viewModel.clearAllData() },
+        isDevMode = isDevMode
     )
 }
+
+enum class RestoreType { LOCAL, CLOUD }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -165,8 +221,9 @@ fun SettingsContent(
     biometricLockEnabled: Boolean,
     appTheme: AppTheme,
     currencyOption: CurrencyOption,
-    appMode: String,
     isSyncing: Boolean,
+    monthlyBudgetGoal: Double,
+    onBudgetGoalChange: (Double) -> Unit,
     onReminderToggle: (Boolean) -> Unit,
     onBiometricToggle: (Boolean) -> Unit,
     onThemeChange: (AppTheme) -> Unit,
@@ -180,76 +237,27 @@ fun SettingsContent(
     onRestoreCloud: () -> Unit,
     onRestoreLocal: () -> Unit,
     onUpdateProfile: (name: String, email: String, onSuccess: () -> Unit, onError: (String) -> Unit) -> Unit,
-    onSignOut: () -> Unit
+    onSignOut: () -> Unit,
+    onSeedDemoTransactions: () -> Unit,
+    onClearAllData: () -> Unit,
+    isDevMode: Boolean
 ) {
-    val scope = rememberCoroutineScope()
-    val context = LocalContext.current
     val scrollState = rememberScrollState()
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            onReminderToggle(true)
-            showToast(context, "Daily expense reminder enabled!", Toast.LENGTH_SHORT)
-        } else {
-            showToast(context, "Notification permission is required for reminders.", Toast.LENGTH_SHORT)
-        }
-    }
+    val context = LocalContext.current
+    var showEditProfileDialog by remember { mutableStateOf(false) }
+    var editName by remember { mutableStateOf(userSession?.name ?: "") }
+    var editEmail by remember { mutableStateOf(userSession?.email ?: "") }
     var showRestoreWarning by remember { mutableStateOf(false) }
     var restoreActionType by remember { mutableStateOf<RestoreType?>(null) }
-    
-    var showEditProfileDialog by remember { mutableStateOf(false) }
-    var editName by remember { mutableStateOf("") }
-    var editEmail by remember { mutableStateOf("") }
-
-
-
-
-
-    if (showRestoreWarning) {
-        AlertDialog(
-            onDismissRequest = { showRestoreWarning = false },
-            title = { Text("Confirm Data Restore", fontWeight = FontWeight.Bold) },
-            text = { Text("Are you sure you want to restore data? This will add or update categories and transactions. This action cannot be undone.") },
-            confirmButton = {
-                FinanceButton(
-                    text = "Restore",
-                    containerColor = MaterialTheme.colorScheme.error,
-                    contentColor = MaterialTheme.colorScheme.onError,
-                    onClick = {
-                        showRestoreWarning = false
-                        val type = restoreActionType
-                        if (type != null) {
-                            if (type == RestoreType.CLOUD) {
-                                onRestoreCloud()
-                            } else {
-                                onRestoreLocal()
-                            }
-                        }
-                    }
-                )
-            },
-            dismissButton = {
-                FinanceTextButton(
-                    text = "Cancel",
-                    onClick = { showRestoreWarning = false }
-                )
-            }
-        )
-    }
+    var showCurrencyDialog by remember { mutableStateOf(false) }
+    var showClearAllWarning by remember { mutableStateOf(false) }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = { Text("Settings", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    FinanceIconButton(
-                        icon = Icons.Default.Menu,
-                        onClick = onMenuClick,
-                        contentDescription = "Menu"
-                    )
-                }
+            CenterAlignedTopAppBar(
+                title = { Text("Settings", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground) },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         }
     ) { padding ->
@@ -258,139 +266,27 @@ fun SettingsContent(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(scrollState)
+                .padding(horizontal = AppDimens.paddingNormal)
         ) {
-            val currentTheme = appTheme
-            val currentCurrency = currencyOption
-
-            // -------------------------------------------------------------
-            // Section: Theme Settings
-            // -------------------------------------------------------------
-            Text(
-                text = "Theme",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = AppDimens.paddingLarge, vertical = AppDimens.paddingSmall)
-            )
-
-            listOf(
-                AppTheme.LIGHT to "Light",
-                AppTheme.DARK to "Dark",
-                AppTheme.SYSTEM to "System"
-            ).forEach { (theme, label) ->
-                ListItem(
-                    headlineContent = { Text(label) },
-                    leadingContent = {
-                        val icon = when (theme) {
-                            AppTheme.LIGHT -> Icons.Default.WbSunny
-                            AppTheme.DARK -> Icons.Default.Brightness2
-                            AppTheme.SYSTEM -> Icons.Default.Settings
-                        }
-                        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
-                    },
-                    trailingContent = {
-                        RadioButton(
-                            selected = (currentTheme == theme),
-                            onClick = { onThemeChange(theme) }
-                        )
-                    },
-                    modifier = Modifier
-                        .clickable { onThemeChange(theme) }
-                        .padding(vertical = AppDimens.paddingExtraSmall)
-                )
-            }
-            HorizontalDivider()
-
-            // -------------------------------------------------------------
-            // Section: Currency Settings
-            // -------------------------------------------------------------
-            Text(
-                text = "Currency",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = AppDimens.paddingLarge, vertical = AppDimens.paddingSmall)
-            )
-
-            // Default Option: INR ₹
-            ListItem(
-                headlineContent = { Text("INR (₹)") },
-                supportingContent = { Text("Default Currency", color = MaterialTheme.colorScheme.primary) },
-                leadingContent = {
-                    Icon(Icons.Default.AccountBalanceWallet, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                },
-                trailingContent = {
-                    RadioButton(
-                        selected = (currentCurrency == CurrencyOption.INR),
-                        onClick = { onCurrencyChange(CurrencyOption.INR) }
-                    )
-                },
+            // Profile Section
+            Row(
                 modifier = Modifier
-                    .clickable { onCurrencyChange(CurrencyOption.INR) }
-                    .padding(vertical = AppDimens.paddingExtraSmall)
-            )
-
-            // Future / Multiple currencies Option Header
-            Text(
-                text = "Future Options (Multiple currencies)",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.outline,
-                modifier = Modifier.padding(horizontal = AppDimens.paddingLarge, vertical = AppDimens.paddingExtraSmall)
-            )
-
-            listOf(
-                CurrencyOption.USD to "USD ($)",
-                CurrencyOption.EUR to "EUR (€)",
-                CurrencyOption.GBP to "GBP (£)"
-            ).forEach { (currency, label) ->
-                ListItem(
-                    headlineContent = { 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(label, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            SuggestionChip(
-                                onClick = { },
-                                label = { Text("Future", style = MaterialTheme.typography.labelSmall) },
-                                enabled = false
-                            )
-                        }
-                    },
-                    supportingContent = { Text("Coming Soon", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline) },
-                    leadingContent = {
-                        Icon(Icons.Default.AccountBalanceWallet, contentDescription = null, tint = MaterialTheme.colorScheme.outline)
-                    },
-                    trailingContent = {
-                        RadioButton(
-                            selected = (currentCurrency == currency),
-                            onClick = { onCurrencyChange(currency) }
-                        )
-                    },
-                    modifier = Modifier
-                        .clickable { onCurrencyChange(currency) }
-                        .padding(vertical = AppDimens.paddingExtraSmall)
+                    .fillMaxWidth()
+                    .padding(vertical = AppDimens.paddingIconInside),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ProfileAvatar(
+                    name = userSession?.name,
+                    isGuest = userSession?.isGuest == true,
+                    size = AppDimens.sizeAvatar
                 )
-            }
-            HorizontalDivider()
-
-            // -------------------------------------------------------------
-            // Section: Profile Settings
-            // -------------------------------------------------------------
-            Text(
-                text = "Profile",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = AppDimens.paddingLarge, vertical = AppDimens.paddingSmall)
-            )
-
-            userSession?.let { session ->
-                if (session.isGuest) {
-                    ListItem(
-                        headlineContent = { Text("Name") },
-                        supportingContent = { Text(session.name, fontWeight = FontWeight.SemiBold) },
-                        leadingContent = {
-                            Icon(Icons.Default.Person, contentDescription = "Name", tint = MaterialTheme.colorScheme.secondary)
-                        }
+                Spacer(modifier = Modifier.width(AppDimens.paddingNormal))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = userSession?.name ?: "Guest User",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                     HorizontalDivider()
 
@@ -494,417 +390,593 @@ fun SettingsContent(
                 }
             }
 
-            // -------------------------------------------------------------
-            // Section: Notifications Settings
-            // -------------------------------------------------------------
-            Text(
-                text = "Notifications",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = AppDimens.paddingLarge, vertical = AppDimens.paddingSmall)
-            )
-
-            ListItem(
-                headlineContent = { Text("Daily Expense Reminder") },
-                supportingContent = { Text("Don't forget to record today's expenses.") },
-                leadingContent = {
-                    Icon(
-                        imageVector = Icons.Default.NotificationsActive,
-                        contentDescription = "Notification Reminder Icon",
-                        tint = MaterialTheme.colorScheme.secondary
-                    )
-                },
-                trailingContent = {
-                    Switch(
-                        checked = reminderEnabled,
-                        onCheckedChange = { checked ->
-                            if (checked) {
-                                val hasPermission = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                                    androidx.core.content.ContextCompat.checkSelfPermission(
-                                        context,
-                                        android.Manifest.permission.POST_NOTIFICATIONS
-                                    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                                } else {
-                                    true
-                                }
-
-                                if (hasPermission) {
-                                    onReminderToggle(true)
-                                } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                                    permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                                }
-                            } else {
-                                onReminderToggle(false)
-                            }
-                        }
-                    )
-                },
+            // Upgrade Card
+            Card(
                 modifier = Modifier
-                    .clickable {
-                        val checked = !reminderEnabled
-                        if (checked) {
-                            val hasPermission = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                                androidx.core.content.ContextCompat.checkSelfPermission(
-                                    context,
-                                    android.Manifest.permission.POST_NOTIFICATIONS
-                                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                            } else {
-                                true
-                            }
-
-                            if (hasPermission) {
-                                onReminderToggle(true)
-                            } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                                permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                            }
-                        } else {
-                            onReminderToggle(false)
-                        }
-                    }
-                    .padding(vertical = AppDimens.paddingExtraSmall)
-            )
-            HorizontalDivider()
-
-            // -------------------------------------------------------------
-            // Section: Security Settings
-            // -------------------------------------------------------------
-            Text(
-                text = "Security",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = AppDimens.paddingLarge, vertical = AppDimens.paddingSmall)
-            )
-
-            
-            val isBiometricAvailable = remember(context) { com.example.ui.utils.BiometricHelper.isBiometricAvailable(context) }
-
-            ListItem(
-                headlineContent = { Text("Biometric App Lock") },
-                supportingContent = { Text(if (isBiometricAvailable) "Require fingerprint or face unlock to open the app." else "Biometrics not available or not set up on this device.") },
-                leadingContent = {
-                    Icon(
-                        imageVector = Icons.Default.Fingerprint,
-                        contentDescription = "Biometric Lock Icon",
-                        tint = if (isBiometricAvailable) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline
+                    .fillMaxWidth()
+                    .padding(vertical = AppDimens.paddingExtraSmall),
+                shape = AppShapes.roundedCardMedium,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                border = BorderStroke(AppDimens.borderWidthThin, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .background(
+                            brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                colors = listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), Color.Transparent)
+                            )
+                        )
+                        .padding(AppDimens.paddingNormal)
+                ) {
+                    Text(
+                        "Upgrade to Business",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                },
-                trailingContent = {
-                    Switch(
-                        checked = biometricLockEnabled,
-                        onCheckedChange = { checked ->
-                            if (checked && !isBiometricAvailable) {
-                                showToast(context, "Biometric authentication is not set up on this device.", Toast.LENGTH_LONG)
-                            } else {
-                                onBiometricToggle(checked)
-                            }
-                        },
-                        enabled = isBiometricAvailable
+                    Spacer(modifier = Modifier.height(AppDimens.paddingExtraSmall))
+                    Text(
+                        "Unlock advanced analytics and business features. Scale your financial management.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                     )
-                },
-                modifier = Modifier
-                    .clickable(enabled = isBiometricAvailable) {
-                        onBiometricToggle(!biometricLockEnabled)
-                    }
-                    .padding(vertical = AppDimens.paddingExtraSmall)
-            )
-            HorizontalDivider()
-
-            // Sync Overlay indicator
-            if (isSyncing) {
-                LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.primary
-                )
+                    Spacer(modifier = Modifier.height(AppDimens.paddingMedium))
+                    FinanceButton(
+                        text = "Learn More",
+                        onClick = { /* Learn more */ },
+                        modifier = Modifier.fillMaxWidth(),
+                        containerColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f),
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        shape = AppShapes.roundedIconContainer
+                    )
+                }
             }
+ 
+            Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
 
-            // Section 1: Categories
-            Text(
-                text = "Preferences",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = AppDimens.paddingLarge, vertical = AppDimens.paddingSmall)
-            )
-
-            ListItem(
-                headlineContent = { Text("Manage Categories") },
-                supportingContent = { Text("Add, edit or remove custom categories.") },
-                leadingContent = {
-                    Icon(Icons.Default.Category, contentDescription = "Categories", tint = MaterialTheme.colorScheme.secondary)
-                },
-                modifier = Modifier
-                    .clickable { onManageCategoriesClick() }
-                    .padding(vertical = AppDimens.paddingExtraSmall)
-            )
-            HorizontalDivider()
-
-            // Section 2: Data Management
-            Text(
-                text = "Data Management",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = AppDimens.paddingLarge, vertical = AppDimens.paddingSmall)
-            )
-
-            // Export to CSV Option
-            ListItem(
-                headlineContent = { Text("Export to CSV") },
-                supportingContent = { Text("Export all transaction data as a standard CSV spreadsheet.") },
-                leadingContent = {
-                    Icon(Icons.Default.Share, contentDescription = "Export CSV", tint = MaterialTheme.colorScheme.secondary)
-                },
-                modifier = Modifier
-.clickable(enabled = !isSyncing) {
-                        val fileName = "finance_tracker_export_${System.currentTimeMillis()}.csv"
-                        onExportCsv(fileName)
-                    }
-                    .padding(vertical = AppDimens.paddingExtraSmall)
-            )
-            HorizontalDivider()
-
-            // Cloud Sync Section (Firebase)
-            userSession?.let { session ->
-                if (!session.isGuest) {
-                    ListItem(
-                        headlineContent = { Text("Backup to Cloud (Firebase)") },
-                        supportingContent = { Text("Securely sync and backup your data to the cloud.") },
-                        leadingContent = {
-                            Icon(Icons.Default.CloudUpload, contentDescription = "Cloud Backup", tint = MaterialTheme.colorScheme.secondary)
-                        },
-                        modifier = Modifier
-.clickable(enabled = !isSyncing) {
-                                onBackupCloud()
+            // Account Section
+            SettingsSectionHeader("Account")
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = AppShapes.roundedCardMedium,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    SettingsItem(
+                        icon = Icons.Default.CurrencyExchange,
+                        title = "Currency",
+                        trailingText = currencyOption.name,
+                        onClick = { showCurrencyDialog = true }
+                    )
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f),
+                        modifier = Modifier.padding(horizontal = AppDimens.paddingNormal)
+                    )
+                    SettingsItem(
+                        icon = Icons.Default.List,
+                        title = "Manage Categories",
+                        onClick = onManageCategoriesClick
+                    )
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f),
+                        modifier = Modifier.padding(horizontal = AppDimens.paddingNormal)
+                    )
+                    var isEditingBudget by remember { mutableStateOf(false) }
+                    var tempBudgetInput by remember(monthlyBudgetGoal) { mutableStateOf(monthlyBudgetGoal.toInt().toString()) }
+                    SettingsItem(
+                        icon = Icons.Default.AccountBalanceWallet,
+                        title = "Monthly Budget Goal",
+                        trailingContent = {
+                            if (isEditingBudget) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)
+                                ) {
+                                    OutlinedTextField(
+                                        value = tempBudgetInput,
+                                        onValueChange = { tempBudgetInput = it },
+                                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                                        ),
+                                        singleLine = true,
+                                        modifier = Modifier.width(100.dp),
+                                        textStyle = MaterialTheme.typography.bodyMedium
+                                    )
+                                    IconButton(
+                                        onClick = {
+                                            val goal = tempBudgetInput.toDoubleOrNull() ?: 0.0
+                                            onBudgetGoalChange(goal)
+                                            isEditingBudget = false
+                                        },
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = "Save Goal",
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            } else {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.clickable { isEditingBudget = true }
+                                ) {
+                                    Text(
+                                        text = CurrencyUtils.formatRupees(monthlyBudgetGoal),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                                    )
+                                    Spacer(modifier = Modifier.width(AppDimens.paddingSmall))
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = "Edit Goal",
+                                        tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
                             }
-                            .padding(vertical = AppDimens.paddingExtraSmall)
+                        }
                     )
-                    HorizontalDivider()
-
-                    ListItem(
-                        headlineContent = { Text("Restore from Cloud (Firebase)") },
-                        supportingContent = { Text("Download your data from the cloud onto this device.") },
-                        leadingContent = {
-                            Icon(Icons.Default.CloudDownload, contentDescription = "Cloud Restore", tint = MaterialTheme.colorScheme.secondary)
-                        },
-                        modifier = Modifier
-                            .clickable(enabled = !isSyncing) {
-                                restoreActionType = RestoreType.CLOUD
-                                showRestoreWarning = true
-                            }
-                            .padding(vertical = AppDimens.paddingExtraSmall)
-                    )
-                    HorizontalDivider()
-                } else {
-                    // Guest Warning about Cloud Sync
-                    ListItem(
-                        headlineContent = { Text("Cloud Sync (Unavailable)") },
-                        supportingContent = { Text("Sign in with an email account to enable secure Firebase cloud backup and sync.") },
-                        leadingContent = {
-                            Icon(Icons.Default.CloudOff, contentDescription = "Cloud Sync Offline", tint = MaterialTheme.colorScheme.outline)
-                        },
-                        modifier = Modifier.padding(vertical = AppDimens.paddingExtraSmall)
-                    )
-                    HorizontalDivider()
                 }
             }
 
-            // Local Backup Options
-            ListItem(
-                headlineContent = { Text("Backup to Local Storage") },
-                supportingContent = { Text("Create a secure local copy of your financial data on this device.") },
-                leadingContent = {
-                    Icon(Icons.Default.Backup, contentDescription = "Local Backup", tint = MaterialTheme.colorScheme.secondary)
-                },
-                modifier = Modifier
-.clickable(enabled = !isSyncing) {
-                        onBackupLocal()
-                    }
-                    .padding(vertical = AppDimens.paddingExtraSmall)
-            )
-            HorizontalDivider()
+            Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
 
-            ListItem(
-                headlineContent = { Text("Restore from Local Storage") },
-                supportingContent = { Text("Restore categories & transactions from local backup.") },
-                leadingContent = {
-                    Icon(Icons.Default.Restore, contentDescription = "Local Restore", tint = MaterialTheme.colorScheme.secondary)
-                },
-                modifier = Modifier
-                    .clickable(enabled = !isSyncing) {
-                        restoreActionType = RestoreType.LOCAL
-                        showRestoreWarning = true
-                    }
-                    .padding(vertical = AppDimens.paddingExtraSmall)
-            )
-            HorizontalDivider()
-
-            // About Screen Info
-            Text(
-                text = "App Info",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = AppDimens.paddingLarge, vertical = AppDimens.paddingSmall)
-            )
-
-            ListItem(
-                headlineContent = { Text("About") },
-                supportingContent = { Text("Finance Tracker v1.1") },
-                leadingContent = {
-                    androidx.compose.foundation.Image(
-                        painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.ic_app_logo),
-                        contentDescription = "Finance Tracker Logo",
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(com.example.ui.theme.AppShapes.roundedIconContainer)
+            // Preferences Section
+            SettingsSectionHeader("Preferences")
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = AppShapes.roundedCardMedium,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    SettingsItem(
+                        icon = Icons.Default.Lightbulb,
+                        title = "Theme",
+                        trailingContent = {
+                            Switch(
+                                checked = appTheme == AppTheme.DARK,
+                                onCheckedChange = { onThemeChange(if (it) AppTheme.DARK else AppTheme.LIGHT) },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                    checkedTrackColor = MaterialTheme.colorScheme.primary,
+                                    uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            )
+                        }
                     )
-                },
-                modifier = Modifier.padding(vertical = AppDimens.paddingExtraSmall)
-            )
-            HorizontalDivider()
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f),
+                        modifier = Modifier.padding(horizontal = AppDimens.paddingNormal)
+                    )
+                    SettingsItem(
+                        icon = Icons.Default.Notifications,
+                        title = "Notifications",
+                        trailingContent = {
+                            Switch(
+                                checked = reminderEnabled,
+                                onCheckedChange = onReminderToggle,
+                                modifier = Modifier.testTag("settings_reminder_switch"),
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                    checkedTrackColor = MaterialTheme.colorScheme.primary,
+                                    uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            )
+                        }
+                    )
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f),
+                        modifier = Modifier.padding(horizontal = AppDimens.paddingNormal)
+                    )
+                    SettingsItem(
+                        icon = Icons.Default.Public,
+                        title = "Language",
+                        trailingText = "English",
+                        onClick = { /* Change language */ }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
+
+            // Security Section
+            SettingsSectionHeader("Security")
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = AppShapes.roundedCardMedium,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    SettingsItem(
+                        icon = Icons.Default.Fingerprint,
+                        title = "Biometric App Lock",
+                        trailingContent = {
+                            Switch(
+                                checked = biometricLockEnabled,
+                                onCheckedChange = onBiometricToggle,
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                    checkedTrackColor = MaterialTheme.colorScheme.primary,
+                                    uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            )
+                        }
+                    )
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f),
+                        modifier = Modifier.padding(horizontal = AppDimens.paddingNormal)
+                    )
+                    SettingsItem(
+                        icon = Icons.Default.Lock,
+                        title = "Change Password",
+                        onClick = { /* Change password */ }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
+
+            // Data & Backup Section
+            SettingsSectionHeader("Data & Backup")
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = AppShapes.roundedCardMedium,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    SettingsItem(
+                        icon = Icons.Default.Save,
+                        title = "Backup to Local Storage",
+                        onClick = onBackupLocal
+                    )
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f),
+                        modifier = Modifier.padding(horizontal = AppDimens.paddingNormal)
+                    )
+                    SettingsItem(
+                        icon = Icons.Default.Restore,
+                        title = "Restore from Local Storage",
+                        onClick = {
+                            restoreActionType = RestoreType.LOCAL
+                            showRestoreWarning = true
+                        }
+                    )
+                    
+                    if (userSession?.isGuest == false) {
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f),
+                            modifier = Modifier.padding(horizontal = AppDimens.paddingNormal)
+                        )
+                        SettingsItem(
+                            icon = Icons.Default.CloudUpload,
+                            title = "Backup to Cloud",
+                            onClick = onBackupCloud
+                        )
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f),
+                            modifier = Modifier.padding(horizontal = AppDimens.paddingNormal)
+                        )
+                        SettingsItem(
+                            icon = Icons.Default.CloudDownload,
+                            title = "Restore from Cloud",
+                            onClick = {
+                                restoreActionType = RestoreType.CLOUD
+                                showRestoreWarning = true
+                            }
+                        )
+                    }
+                }
+            }
 
             // Admin Access Section
             if (userSession?.role == "ADMIN") {
-                Text(
-                    text = "Administrative Access",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = AppDimens.paddingLarge, vertical = AppDimens.paddingSmall)
-                )
-
-                ListItem(
-                    headlineContent = { Text("Admin Console") },
-                    supportingContent = { Text("Configure app focus modes, publish updates feed, and view diagnostics.") },
-                    leadingContent = {
-                        Icon(Icons.Default.SupervisorAccount, contentDescription = "Admin Console", tint = MaterialTheme.colorScheme.primary)
-                    },
-                    trailingContent = {
-                        Icon(Icons.Default.ChevronRight, contentDescription = "Navigate to Admin")
-                    },
-                    modifier = Modifier
-                        .clickable { onAdminConsoleClick() }
-                        .padding(vertical = AppDimens.paddingExtraSmall)
-                )
-                HorizontalDivider()
+                Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
+                SettingsSectionHeader("Administrative Access")
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = AppShapes.roundedCardMedium,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                ) {
+                    SettingsItem(
+                        icon = Icons.Default.SupervisorAccount,
+                        title = "Admin Console",
+                        onClick = onAdminConsoleClick
+                    )
+                }
             }
-            
+
+            Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
+
+            // App Info Section
+            SettingsSectionHeader("App Info")
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = AppShapes.roundedCardMedium,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+            ) {
+                SettingsItem(
+                    icon = Icons.Default.Info,
+                    title = "About",
+                    trailingText = "v1.1"
+                )
+            }
+
+            // Developer Settings Section
+            if (isDevMode) {
+                Spacer(modifier = Modifier.height(AppDimens.paddingSmall))
+                SettingsSectionHeader("Developer Settings")
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = AppShapes.roundedCardMedium,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(AppDimens.borderWidthThin, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        SettingsItem(
+                            icon = Icons.Default.PlayArrow,
+                            title = "Seed Demo Transactions",
+                            onClick = onSeedDemoTransactions
+                        )
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f),
+                            modifier = Modifier.padding(horizontal = AppDimens.paddingNormal)
+                        )
+                        SettingsItem(
+                            icon = Icons.Default.Delete,
+                            title = "Clear All Data",
+                            onClick = { showClearAllWarning = true }
+                        )
+                    }
+                }
+            }
+ 
             Spacer(modifier = Modifier.height(AppDimens.paddingLarge))
             
-            // Logout Button
+            val isGuest = userSession?.isGuest == true
             FinanceButton(
-                text = "Log Out",
+                text = if (isGuest) "Sign In / Register" else "Log Out",
                 onClick = { onSignOut() },
-                containerColor = MaterialTheme.colorScheme.errorContainer,
-                contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                icon = Icons.Default.Logout,
+                containerColor = if (isGuest) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer,
+                contentColor = if (isGuest) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer,
+                icon = if (isGuest) Icons.Default.Login else Icons.Default.Logout,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(AppDimens.paddingLarge),
                 shape = AppShapes.roundedCardMedium,
                 testTag = "settings_logout_button"
             )
+
+            Spacer(modifier = Modifier.height(60.dp))
         }
+    }
+
+    if (showRestoreWarning) {
+        AlertDialog(
+            onDismissRequest = { showRestoreWarning = false },
+            title = { Text("Confirm Data Restore", fontWeight = FontWeight.Bold) },
+            text = { Text("Are you sure you want to restore data? This will overwrite or merge categories and transactions. This action cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showRestoreWarning = false
+                        if (restoreActionType == RestoreType.CLOUD) {
+                            onRestoreCloud()
+                        } else {
+                            onRestoreLocal()
+                        }
+                    }
+                ) {
+                    Text("Restore", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRestoreWarning = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showClearAllWarning) {
+        AlertDialog(
+            onDismissRequest = { showClearAllWarning = false },
+            title = { Text("Confirm Clear All Data", fontWeight = FontWeight.Bold) },
+            text = { Text("Are you sure you want to permanently clear all categories and transaction data? This action cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showClearAllWarning = false
+                        onClearAllData()
+                    }
+                ) {
+                    Text("Clear Data", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearAllWarning = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showCurrencyDialog) {
+        AlertDialog(
+            onDismissRequest = { showCurrencyDialog = false },
+            title = { Text("Select Currency", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)) {
+                    CurrencyOption.values().forEach { option ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onCurrencyChange(option)
+                                    showCurrencyDialog = false
+                                }
+                                .padding(vertical = AppDimens.paddingSmall),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = currencyOption == option,
+                                onClick = {
+                                    onCurrencyChange(option)
+                                    showCurrencyDialog = false
+                                }
+                            )
+                            Spacer(modifier = Modifier.width(AppDimens.paddingNormal))
+                            Text(text = option.label, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showCurrencyDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     if (showEditProfileDialog) {
         AlertDialog(
             onDismissRequest = { showEditProfileDialog = false },
-            title = {
-                Text(
-                    text = "Edit Profile",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            },
+            title = { Text("Edit Profile", fontWeight = FontWeight.Bold) },
             text = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp)
-                ) {
+                Column(verticalArrangement = Arrangement.spacedBy(AppDimens.paddingSmall)) {
                     OutlinedTextField(
                         value = editName,
                         onValueChange = { editName = it },
-                        label = { Text("Full Name") },
-                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                        label = { Text("Name") },
+                        modifier = Modifier.fillMaxWidth().testTag("profile_name_input")
                     )
                     OutlinedTextField(
                         value = editEmail,
                         onValueChange = { editEmail = it },
-                        label = { Text("Email Address") },
-                        leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
-                        singleLine = true,
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Email
-                        ),
-                        modifier = Modifier.fillMaxWidth()
+                        label = { Text("Email") },
+                        modifier = Modifier.fillMaxWidth().testTag("profile_email_input")
                     )
                 }
             },
             confirmButton = {
-                FinanceButton(
-                    text = "Save Changes",
-                    onClick = {
-                        if (editName.isBlank()) {
-                            showToast(context, "Name cannot be blank", Toast.LENGTH_SHORT)
-                            return@FinanceButton
-                        }
-                        onUpdateProfile(
-                            editName,
-                            editEmail,
-                            {
-                                showToast(context, "Profile updated successfully!", Toast.LENGTH_SHORT)
-                                showEditProfileDialog = false
-                            },
-                            { error ->
-                                showToast(context, "Failed to update: $error", Toast.LENGTH_LONG)
-                                showEditProfileDialog = false
-                            }
-                        )
-                    }
-                )
+                TextButton(onClick = {
+                    onUpdateProfile(editName, editEmail, {
+                        showEditProfileDialog = false
+                    }, {
+                        showToast(context, it)
+                    })
+                }) {
+                    Text("Save")
+                }
             },
             dismissButton = {
-                FinanceTextButton(
-                    text = "Cancel",
-                    onClick = { showEditProfileDialog = false }
-                )
+                TextButton(onClick = { showEditProfileDialog = false }) {
+                    Text("Cancel")
+                }
             }
         )
     }
 }
 
+@Composable
+fun SettingsSectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.primary,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(top = 6.dp, bottom = AppDimens.paddingExtraSmall)
+    )
+}
+
+@Composable
+fun SettingsItem(
+    icon: ImageVector,
+    title: String,
+    trailingText: String? = null,
+    trailingContent: (@Composable () -> Unit)? = null,
+    onClick: (() -> Unit)? = null
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
+            .padding(horizontal = AppDimens.paddingNormal, vertical = AppDimens.paddingIconInside),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+            modifier = Modifier.size(40.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+            }
+        }
+        Spacer(modifier = Modifier.width(AppDimens.paddingNormal))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.weight(1f)
+        )
+        if (trailingText != null) {
+            Text(
+                text = trailingText,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f))
+        } else if (trailingContent != null) {
+            trailingContent()
+        } else if (onClick != null) {
+            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f))
+        }
+    }
+}
+
+private fun escapeCsvField(value: String?): String {
+    if (value == null) return ""
+    var sanitized = value
+    // Formula Injection prevention: prepend single quote to trigger characters
+    if (sanitized.startsWith("=") || sanitized.startsWith("+") || sanitized.startsWith("-") || sanitized.startsWith("@")) {
+        sanitized = "'$sanitized"
+    }
+    // Layout corruption prevention: escape quotes and wrap in double quotes if commas or newlines present
+    if (sanitized.contains(",") || sanitized.contains("\"") || sanitized.contains("\n") || sanitized.contains("\r")) {
+        sanitized = "\"" + sanitized.replace("\"", "\"\"") + "\""
+    }
+    return sanitized
+}
+
 private fun generateCsvContent(transactions: List<com.example.data.model.TransactionWithCategory>): String {
-    val sb = java.lang.StringBuilder()
-    sb.append("ID,Date,Amount,Source/Recipient,Category,Type,Notes,Payment Method\n")
-    val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
-    transactions.forEach { item ->
-        val t = item.transaction
-        val dateStr = dateFormat.format(java.util.Date(t.date))
-        val categoryName = item.category?.name ?: "Uncategorized"
-        val sourceEscaped = t.source.replace("\"", "\"\"")
-        val notesEscaped = t.notes.replace("\"", "\"\"")
-        sb.append("${t.id},")
-          .append("\"$dateStr\",")
-          .append("${t.amount},")
-          .append("\"$sourceEscaped\",")
-          .append("\"$categoryName\",")
-          .append("${t.type.name},")
-          .append("\"$notesEscaped\",")
-          .append("\"${t.paymentMethod}\"\n")
+    val sb = StringBuilder()
+    sb.append("ID,Date,Amount,Source,Category,Type,Notes\n")
+    transactions.forEach {
+        val id = it.transaction.id
+        val date = it.transaction.date
+        val amount = it.transaction.amount
+        val source = escapeCsvField(it.transaction.source)
+        val category = escapeCsvField(it.category?.name)
+        val type = it.transaction.type
+        val notes = escapeCsvField(it.transaction.notes)
+        sb.append("$id,$date,$amount,$source,$category,$type,$notes\n")
     }
     return sb.toString()
 }
 
-private fun showToast(context: android.content.Context, message: String, duration: Int = Toast.LENGTH_SHORT) {
-    android.os.Handler(android.os.Looper.getMainLooper()).post {
-        Toast.makeText(context, message, duration).show()
-    }
+private fun showToast(context: android.content.Context, message: String) {
+    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
 }

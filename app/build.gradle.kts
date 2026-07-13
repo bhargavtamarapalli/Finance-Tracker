@@ -5,6 +5,7 @@ plugins {
   alias(libs.plugins.roborazzi)
   alias(libs.plugins.secrets)
   alias(libs.plugins.kover)
+  alias(libs.plugins.google.services)
   jacoco
 }
 
@@ -13,7 +14,7 @@ android {
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.example"
+    applicationId = "com.Finance.Tracker"
     minSdk = 24
     targetSdk = 36
 
@@ -31,7 +32,8 @@ android {
 
   buildTypes {
     release {
-      isMinifyEnabled = false
+      isMinifyEnabled = true
+      isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
     }
     debug {
@@ -55,6 +57,9 @@ android {
       isIncludeAndroidResources = true
       all {
         it.systemProperty("robolectric.enabledSdks", "33")
+        it.testLogging {
+          showStandardStreams = true
+        }
       }
     }
   }
@@ -90,6 +95,7 @@ dependencies {
   implementation(libs.androidx.compose.ui.graphics)
   implementation(libs.androidx.compose.ui.tooling.preview)
   implementation(libs.androidx.core.ktx)
+  implementation(libs.androidx.core.splashscreen)
   implementation(libs.androidx.datastore.preferences)
   implementation(libs.androidx.security.crypto)
   implementation(libs.androidx.biometric)
@@ -100,14 +106,14 @@ dependencies {
   implementation(libs.androidx.room.ktx)
   implementation(libs.androidx.room.runtime)
   implementation(libs.converter.moshi)
-  implementation(libs.firebase.ai)
   implementation(libs.firebase.auth)
+  implementation(libs.androidx.credentials)
+  implementation(libs.androidx.credentials.play.services.auth)
+  implementation(libs.google.id)
   implementation(libs.kotlinx.coroutines.android)
   implementation(libs.kotlinx.coroutines.core)
-  implementation(libs.logging.interceptor)
   implementation(libs.moshi.kotlin)
   implementation(libs.okhttp)
-  implementation(libs.retrofit)
 
   // Unit test dependencies (Robolectric runs these on JVM)
   testImplementation(libs.androidx.compose.ui.test.junit4)

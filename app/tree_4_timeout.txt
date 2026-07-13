@@ -1,0 +1,22 @@
+- Node: tag=null, text=null, editableText=null, desc=null
+  - Node: tag=null, text=null, editableText=null, desc=null
+    - Node: tag=null, text=null, editableText=null, desc=[Finance Logo]
+    - Node: tag=null, text=[Finance Tracker], editableText=null, desc=null
+    - Node: tag=null, text=[Manage your wealth beautifully], editableText=null, desc=null
+    - Node: tag=auth_error_card, text=null, editableText=null, desc=null
+      - Node: tag=null, text=null, editableText=null, desc=[Error icon]
+      - Node: tag=null, text=[Algorithm not found], editableText=null, desc=null
+    - Node: tag=auth_form_card, text=null, editableText=null, desc=null
+      - Node: tag=null, text=[Create Account], editableText=null, desc=null
+      - Node: tag=name_input, text=[Full Name], editableText=New User, desc=null
+      - Node: tag=email_input, text=[Email Address], editableText=newuser@example.com, desc=null
+      - Node: tag=password_input, text=[Password (min 6 characters)], editableText=••••••••••, desc=null
+        - Node: tag=null, text=null, editableText=null, desc=[Show Password]
+      - Node: tag=confirm_password_input, text=[Confirm Password], editableText=••••••••••, desc=null
+        - Node: tag=null, text=null, editableText=null, desc=[Show Password]
+      - Node: tag=register_submit_button, text=[Register], editableText=null, desc=null
+      - Node: tag=null, text=[Already have an account? ], editableText=null, desc=null
+      - Node: tag=go_to_login_button, text=[Log In], editableText=null, desc=null
+    - Node: tag=null, text=[OR], editableText=null, desc=null
+    - Node: tag=google_login_button, text=[Continue with Google], editableText=null, desc=null
+    - Node: tag=guest_login_button, text=[Continue as Guest], editableText=null, desc=null

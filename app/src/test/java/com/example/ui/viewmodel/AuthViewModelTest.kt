@@ -28,6 +28,12 @@ class AuthViewModelTest {
     fun setUp() {
         MockKAnnotations.init(this)
         Dispatchers.setMain(testDispatcher)
+
+        val dummyContext = mockk<android.content.Context>(relaxed = true)
+        val dummyNm = mockk<android.app.NotificationManager>(relaxed = true)
+        every { dummyContext.getSystemService(android.content.Context.NOTIFICATION_SERVICE) } returns dummyNm
+        every { mockRepository.getContext() } returns dummyContext
+
         every { mockRepository.currentUserSession } returns sessionFlow
         viewModel = AuthViewModel(mockRepository)
     }
@@ -119,7 +125,7 @@ class AuthViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertTrue(viewModel.authState.value is AuthState.Error)
-        assertEquals("Email already in use", (viewModel.authState.value as AuthState.Error).message)
+        assertEquals("This email address is already registered. Please sign in instead.", (viewModel.authState.value as AuthState.Error).message)
     }
 
     // --- sendPasswordReset ---
@@ -162,10 +168,11 @@ class AuthViewModelTest {
     // --- loginAsGuest ---
 
     @Test
-    fun testLoginAsGuest_delegatesToRepository() {
-        every { mockRepository.loginAsGuest() } just Runs
+    fun testLoginAsGuest_delegatesToRepository() = runTest {
+        coEvery { mockRepository.loginAsGuest() } just Runs
         viewModel.loginAsGuest()
-        verify(exactly = 1) { mockRepository.loginAsGuest() }
+        testDispatcher.scheduler.advanceUntilIdle()
+        coVerify(exactly = 1) { mockRepository.loginAsGuest() }
     }
 
     // --- signInWithBiometrics ---
@@ -195,10 +202,11 @@ class AuthViewModelTest {
     // --- logout ---
 
     @Test
-    fun testLogout_delegatesToRepositoryAndResetsStateToIdle() {
-        every { mockRepository.logout() } just Runs
+    fun testLogout_delegatesToRepositoryAndResetsStateToIdle() = runTest {
+        coEvery { mockRepository.logout() } just Runs
         viewModel.logout()
-        verify(exactly = 1) { mockRepository.logout() }
+        testDispatcher.scheduler.advanceUntilIdle()
+        coVerify(exactly = 1) { mockRepository.logout() }
         assertEquals(AuthState.Idle, viewModel.authState.value)
     }
 
@@ -359,6 +367,44 @@ class AuthViewModelTest {
         assertFalse(successCalled)
         assertEquals("Database timeout", errorMsg)
         assertEquals(AuthState.Error("Database timeout"), viewModel.authState.value)
+    }
+
+    // --- Continue with Google ---
+
+    @Test
+    fun testContinueWithGoogle_successfulAuth_setsAuthStateSuccess() = runTest {
+        val dummySession = UserSession("google-uid", "Bhargav T", "bhargav1999.t@gmail.com", false)
+        coEvery { mockRepository.signInWithGoogleCredential("valid_token") } returns dummySession
+
+        viewModel.continueWithGoogle("valid_token")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(AuthState.Success(dummySession), viewModel.authState.value)
+        coVerify(exactly = 1) { mockRepository.signInWithGoogleCredential("valid_token") }
+    }
+
+    @Test
+    fun testContinueWithGoogle_failedAuth_setsAuthStateErrorWithFriendlyMapping() = runTest {
+        coEvery { mockRepository.signInWithGoogleCredential("invalid_token") } throws Exception("network error")
+
+        viewModel.continueWithGoogle("invalid_token")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(viewModel.authState.value is AuthState.Error)
+        val errorMsg = (viewModel.authState.value as AuthState.Error).message
+        assertEquals("Network connection failure. Please check your internet connection and try again.", errorMsg)
+    }
+
+    @Test
+    fun testSignIn_emailAlreadyInUse_showsUserFriendlyError() = runTest {
+        coEvery { mockRepository.signInWithEmail(any(), any()) } throws Exception("The email address is already in use by another account.")
+
+        viewModel.signIn("existing@example.com", "password")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(viewModel.authState.value is AuthState.Error)
+        val errorMsg = (viewModel.authState.value as AuthState.Error).message
+        assertEquals("This email address is already registered. Please sign in instead.", errorMsg)
     }
 
     // --- AuthViewModelFactory ---

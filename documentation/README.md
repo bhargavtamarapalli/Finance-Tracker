@@ -28,7 +28,11 @@ Click on any file below to access detailed specifications:
 *   **Key Concepts:** Authentication & Biometrics, Offline Synchronization & Backup engines, Daily Reminders & `AlarmManager` schedulers, Admin Console notifications, and error handling.
 *   **Visual Map:** Sequential lifecycle flows for background syncing and local reminder scheduling.
 
-### 5. [Testing Strategy & Regression Verification](context/TESTING_STRATEGY.md)
+### 5. [App Features & Functional Specifications](context/FEATURES_SPECIFICATION.md)
+*   **Overview:** Detailed inventory of all application features, roles, and UI forms.
+*   **Key Concepts:** Role-Based Access Control, transaction ledger fields, advanced query filters, CategoryChipGrid reusable UI, backups, and devmode configurations.
+
+### 6. [Testing Strategy & Regression Verification](context/TESTING_STRATEGY.md)
 *   **Overview:** Documentation of the testing suite ensuring robust builds.
 *   **Key Concepts:** JVM-based Robolectric unit and UI testing, Roborazzi screenshot verification, test coverage areas, and regression prevention rules.
 

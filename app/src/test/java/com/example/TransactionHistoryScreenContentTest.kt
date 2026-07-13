@@ -30,6 +30,8 @@ class TransactionHistoryScreenContentTest {
                     activeDate = System.currentTimeMillis(),
                     isNextPeriodEnabled = false,
                     categories = emptyList(),
+                    predictedSpending = 0.0,
+                    spendingChangePercentage = 0.0,
                     onMenuClick = {},
                     onPeriodSelected = {},
                     onPreviousClick = {},
@@ -37,10 +39,12 @@ class TransactionHistoryScreenContentTest {
                     onDateSelected = {},
                     onEditTransactionClick = {},
                     onDuplicateTransactionClick = {},
-                    onDeleteTransactionClick = {}
+                    onDeleteTransactionClick = {},
+                    onAddTransactionClick = {},
+                    onAddCategory = { _, _, _ -> }
                 )
             }
         }
-        composeTestRule.onNodeWithText("Transaction History", ignoreCase = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Search transactions...", ignoreCase = true).assertIsDisplayed()
     }
 }

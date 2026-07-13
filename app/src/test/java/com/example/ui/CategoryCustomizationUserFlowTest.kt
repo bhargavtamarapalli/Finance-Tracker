@@ -2,6 +2,7 @@ package com.example.ui
 
 import android.content.Context
 import androidx.compose.ui.test.*
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.room.Room
@@ -130,24 +131,32 @@ class CategoryCustomizationUserFlowTest {
         composeTestRule.onAllNodesWithText("Food").onLast().performClick()
         composeTestRule.onNodeWithText("Create").performClick()
         composeTestRule.waitForIdle()
+        testDispatcher.scheduler.advanceUntilIdle()
+        db.invalidationTracker.refreshVersionsSync()
         ShadowLooper.idleMainLooper()
+        composeTestRule.waitForIdle()
 
         // 6. Navigate back to Settings, then back to Dashboard
         composeTestRule.onNodeWithContentDescription("Back").performClick()
         composeTestRule.waitForIdle()
+        testDispatcher.scheduler.advanceUntilIdle()
         ShadowLooper.idleMainLooper()
-        composeTestRule.onNodeWithContentDescription("Menu").performClick()
         composeTestRule.waitForIdle()
-        ShadowLooper.idleMainLooper()
         composeTestRule.onNodeWithContentDescription("Home").performClick()
         composeTestRule.waitForIdle()
+        testDispatcher.scheduler.advanceUntilIdle()
         ShadowLooper.idleMainLooper()
-
-        // 7. Click Add Expense and verify the custom category "Organic Tea" is selectable
-        composeTestRule.onNodeWithText("Add Expense").performClick()
         composeTestRule.waitForIdle()
+
+        // 7. Click Add Transaction FAB and verify the custom category "Organic Tea" is selectable
+        composeTestRule.onNodeWithContentDescription("Add Transaction").performSemanticsAction(SemanticsActions.OnClick)
+        composeTestRule.waitForIdle()
+        testDispatcher.scheduler.advanceUntilIdle()
+        db.invalidationTracker.refreshVersionsSync()
         ShadowLooper.idleMainLooper()
+        composeTestRule.waitForIdle()
         
-        composeTestRule.onNodeWithText("Organic Tea").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithTag("category_lazy_row").performScrollToNode(hasText("Organic Tea"))
+        composeTestRule.onNodeWithText("Organic Tea").assertIsDisplayed()
     }
 }

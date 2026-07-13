@@ -122,44 +122,34 @@ class SettingsScreenTest {
 
         // Assert Theme Section
         composeTestRule.onNodeWithText("Theme").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Light").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Dark").assertIsDisplayed()
-        composeTestRule.onNodeWithText("System").assertIsDisplayed()
 
         // Assert Currency Section
         composeTestRule.onNodeWithText("Currency").assertIsDisplayed()
-        composeTestRule.onNodeWithText("INR (₹)").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Future Options (Multiple currencies)").assertIsDisplayed()
 
-        // Assert Profile Section
-        composeTestRule.onNodeWithText("Profile").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Name").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Email").assertIsDisplayed()
+        // Assert Account Section
+        composeTestRule.onNodeWithText("Account").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Guest User").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Guest Session").assertIsDisplayed()
 
         // Assert Notifications Section
         composeTestRule.onNodeWithText("Notifications").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Daily Expense Reminder").performScrollTo().assertIsDisplayed()
 
         // Assert that Preferences section is present (using performScrollTo as it's below the fold)
         composeTestRule.onNodeWithText("Preferences").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Manage Categories").performScrollTo().assertIsDisplayed()
 
-        // Assert that Data Management section is present
-        composeTestRule.onNodeWithText("Data Management").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Export to CSV").performScrollTo().assertIsDisplayed()
+        // Assert that Data & Backup section is present
+        composeTestRule.onNodeWithText("Data & Backup").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Backup to Local Storage").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Restore from Local Storage").performScrollTo().assertIsDisplayed()
-
-        // Assert that Cloud sync option is displayed as unavailable in Guest mode
-        composeTestRule.onNodeWithText("Cloud Sync (Unavailable)").performScrollTo().assertIsDisplayed()
 
         // Assert App Info section is present
         composeTestRule.onNodeWithText("App Info").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("About").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Finance Tracker v1.1").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("v1.1").performScrollTo().assertIsDisplayed()
 
-        // Assert Log Out exists
-        composeTestRule.onNodeWithText("Log Out").performScrollTo().assertIsDisplayed()
+        // Assert Sign In / Register exists
+        composeTestRule.onNodeWithText("Sign In / Register").performScrollTo().assertIsDisplayed()
     }
 
     @Test

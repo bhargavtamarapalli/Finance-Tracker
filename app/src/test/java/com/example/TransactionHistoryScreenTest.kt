@@ -117,8 +117,8 @@ class TransactionHistoryScreenTest {
             composeTestRule.onAllNodesWithText("Reliance Smart Supermarket").fetchSemanticsNodes().isNotEmpty()
         }
 
-        // Verify the title is displayed
-        composeTestRule.onNodeWithText("Transaction History").assertIsDisplayed()
+        // Verify search field is displayed
+        composeTestRule.onNodeWithText("Search transactions...").assertIsDisplayed()
 
         // Verify seeded transactions are visible
         composeTestRule.onNodeWithText("Tech Corp Inc.").assertIsDisplayed()
@@ -177,14 +177,10 @@ class TransactionHistoryScreenTest {
         composeTestRule.waitForIdle()
 
         // Verify bottom sheet title is visible
-        composeTestRule.onNodeWithText("Filter & Sort").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Filter").assertIsDisplayed()
 
-        // Click "Transaction Type" tab to view type filters
-        composeTestRule.onNodeWithText("Transaction Type").performClick()
-        composeTestRule.waitForIdle()
-
-        // Choose "Expense Only" in the bottom sheet filter section
-        composeTestRule.onNodeWithText("Expense Only").performClick()
+        // Choose "Expense" in the bottom sheet filter section
+        composeTestRule.onAllNodesWithText("Expense").onLast().performClick()
 
         // Click "Apply Filters" button
         composeTestRule.onNodeWithText("Apply Filters").performClick()
@@ -195,10 +191,10 @@ class TransactionHistoryScreenTest {
         composeTestRule.onNodeWithText("Tech Corp Inc.").assertDoesNotExist()
 
         // Active filter chip should show up
-        composeTestRule.onNodeWithText("Expense Only").assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("Expense").onFirst().assertIsDisplayed()
 
-        // Clear filter using the active chip's close action
-        composeTestRule.onNodeWithContentDescription("Clear Filter").performClick()
+        // Clear filter using the All Categories chip
+        composeTestRule.onNodeWithText("All Categories").performClick()
         composeTestRule.waitForIdle()
 
         // Both transactions should be visible again

@@ -29,8 +29,9 @@ class SettingsScreenContentTest {
                     biometricLockEnabled = false,
                     appTheme = AppTheme.SYSTEM,
                     currencyOption = CurrencyOption.INR,
-                    appMode = "PERSONAL",
                     isSyncing = false,
+                    monthlyBudgetGoal = 100000.0,
+                    onBudgetGoalChange = {},
                     onReminderToggle = {},
                     onBiometricToggle = {},
                     onThemeChange = {},
@@ -44,10 +45,13 @@ class SettingsScreenContentTest {
                     onRestoreCloud = {},
                     onRestoreLocal = {},
                     onUpdateProfile = { _, _, _, _ -> },
-                    onSignOut = {}
+                    onSignOut = {},
+                    onSeedDemoTransactions = {},
+                    onClearAllData = {},
+                    isDevMode = false
                 )
             }
         }
-        composeTestRule.onNodeWithText("Daily Expense Reminder", ignoreCase = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Notifications", ignoreCase = true).assertIsDisplayed()
     }
 }

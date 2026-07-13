@@ -17,9 +17,8 @@ import com.example.ui.viewmodel.FinanceViewModel
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.test.resetMain
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -27,17 +26,19 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 import org.robolectric.shadows.ShadowLooper
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
-@Config(qualifiers = RobolectricDeviceQualifiers.Pixel8, sdk = [33])
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(qualifiers = "w1000dp-h2000dp-xhdpi", sdk = [33])
 class FinanceAppNavigationTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    private val testDispatcher = UnconfinedTestDispatcher()
+    private val testDispatcher = kotlinx.coroutines.test.UnconfinedTestDispatcher()
     private lateinit var context: Context
     private lateinit var db: AppDatabase
     private lateinit var financeRepository: FinanceRepository
@@ -53,9 +54,11 @@ class FinanceAppNavigationTest {
         android.provider.Settings.Global.putFloat(context.contentResolver, android.provider.Settings.Global.TRANSITION_ANIMATION_SCALE, 0f)
         android.provider.Settings.Global.putFloat(context.contentResolver, android.provider.Settings.Global.WINDOW_ANIMATION_SCALE, 0f)
         
-        // Clear auth prefs
+        // Clear auth and settings prefs to isolate each test run
         val prefs = EncryptedPrefsManager.getEncryptedPrefs(context, "auth_prefs")
         prefs.edit().clear().commit()
+        val settingsPrefs = EncryptedPrefsManager.getEncryptedPrefs(context, "settings_prefs")
+        settingsPrefs.edit().clear().commit()
 
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
@@ -92,10 +95,8 @@ class FinanceAppNavigationTest {
     }
 
     private fun bypassSplash() {
-        testDispatcher.scheduler.advanceTimeBy(3000L)
         composeTestRule.mainClock.advanceTimeBy(3000L)
         composeTestRule.waitForIdle()
-        testDispatcher.scheduler.advanceUntilIdle()
         db.invalidationTracker.refreshVersionsSync()
         composeTestRule.waitForIdle()
         ShadowLooper.idleMainLooper()
@@ -119,7 +120,7 @@ class FinanceAppNavigationTest {
     fun testNavigation_whenGuestLoggedIn_hidesAdminAndCloudBackup() {
         // Log in as guest
         authViewModel.loginAsGuest()
-        testDispatcher.scheduler.advanceUntilIdle()
+        ShadowLooper.idleMainLooper()
         db.invalidationTracker.refreshVersionsSync()
         ShadowLooper.idleMainLooper()
 
@@ -130,16 +131,10 @@ class FinanceAppNavigationTest {
         }
         bypassSplash()
 
-        // 1. Check we are on Dashboard greeting
-        composeTestRule.onNodeWithText("Hello, Guest").assertIsDisplayed()
+        // 1. Check we are on Dashboard
+        composeTestRule.onNodeWithText("Total Balance", ignoreCase = true).assertIsDisplayed()
 
-        // 2. Open drawer and navigate to settings
-        // Open drawer via menu icon click (contentDescription is "Menu")
-        composeTestRule.onNodeWithContentDescription("Menu").performClick()
-        composeTestRule.waitForIdle()
-        ShadowLooper.idleMainLooper()
-        
-        // Click Settings drawer item
+        // 2. Navigate to settings using the bottom bar
         composeTestRule.onNodeWithContentDescription("Settings").performClick()
         composeTestRule.waitForIdle()
         ShadowLooper.idleMainLooper()
@@ -147,14 +142,14 @@ class FinanceAppNavigationTest {
         // 3. Verify Admin Console and Cloud Backup are hidden for Guest
         composeTestRule.onNodeWithText("Administrative Access").assertDoesNotExist()
         composeTestRule.onNodeWithText("Admin Console").assertDoesNotExist()
-        composeTestRule.onNodeWithText("Backup to Cloud (Firebase)").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Backup to Cloud").assertDoesNotExist()
     }
 
     @Test
     fun testNavigation_whenNormalUserLoggedIn_hidesAdminShowsCloudBackup() {
         // Register & Log in as normal user
         authViewModel.signUp("user@example.com", "Password123", "Normal User")
-        testDispatcher.scheduler.advanceUntilIdle()
+        ShadowLooper.idleMainLooper()
         db.invalidationTracker.refreshVersionsSync()
         ShadowLooper.idleMainLooper()
 
@@ -165,26 +160,16 @@ class FinanceAppNavigationTest {
         }
         bypassSplash()
 
-        // 1. Verify dashboard shows greeting
-        composeTestRule.onNodeWithText("Hello, Normal").assertIsDisplayed()
+        // 1. Verify dashboard shows first-name badge
+        composeTestRule.onNodeWithText("Normal").assertIsDisplayed()
 
-        // 2. Navigate to Settings
-        composeTestRule.onNodeWithContentDescription("Menu").performClick()
-        composeTestRule.waitForIdle()
-        ShadowLooper.idleMainLooper()
-        
-        // Click Settings drawer item
+        // 2. Navigate to Settings using the bottom bar
         composeTestRule.onNodeWithContentDescription("Settings").performClick()
         composeTestRule.waitForIdle()
         ShadowLooper.idleMainLooper()
 
-        composeTestRule.onRoot().printToLog("NAVIGATION_TEST")
-        printSemanticsTreeText()
-
-        // 3. Verify normal user has Cloud Backup but NO Admin Console
-        composeTestRule.onNodeWithText("Backup to Cloud (Firebase)").performScrollTo().assertIsDisplayed()
-        
-        // Admin console should be hidden
+        // 3. Verify User has access to Cloud Backup but not Admin Console
+        composeTestRule.onNodeWithText("Backup to Cloud").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Administrative Access").assertDoesNotExist()
         composeTestRule.onNodeWithText("Admin Console").assertDoesNotExist()
     }
@@ -192,12 +177,18 @@ class FinanceAppNavigationTest {
     private fun printSemanticsTreeText() {
         try {
             val root = composeTestRule.onRoot().fetchSemanticsNode()
-            val file = java.io.File("/Users/bhargavtamarapalli/.gemini/antigravity-ide/brain/0405ccdd-c3b9-4efd-bba1-821470563c76/scratch/semantics_tree.txt")
+            val file = java.io.File("/Users/bhargavtamarapalli/.gemini/antigravity/brain/8d14cdc5-b5bf-4076-ae32-0b43c6d2e6f6/scratch/semantics_tree.txt")
+            if (file.parentFile != null) {
+                file.parentFile.mkdirs()
+            }
             val sb = java.lang.StringBuilder()
             buildTreeString(root, sb, 0)
             file.writeText(sb.toString())
         } catch (e: Exception) {
-            val file = java.io.File("/Users/bhargavtamarapalli/.gemini/antigravity-ide/brain/0405ccdd-c3b9-4efd-bba1-821470563c76/scratch/semantics_tree.txt")
+            val file = java.io.File("/Users/bhargavtamarapalli/.gemini/antigravity/brain/8d14cdc5-b5bf-4076-ae32-0b43c6d2e6f6/scratch/semantics_tree.txt")
+            if (file.parentFile != null) {
+                file.parentFile.mkdirs()
+            }
             file.writeText("Error: ${e.message}\n")
         }
     }
@@ -219,7 +210,7 @@ class FinanceAppNavigationTest {
     fun testNavigation_whenAdminLoggedIn_showsAdminAndCloudBackup() {
         // Register & Log in as admin
         authViewModel.signUp("admin@example.com", "Password123", "Admin User")
-        testDispatcher.scheduler.advanceUntilIdle()
+        ShadowLooper.idleMainLooper()
         db.invalidationTracker.refreshVersionsSync()
         ShadowLooper.idleMainLooper()
 
@@ -230,26 +221,25 @@ class FinanceAppNavigationTest {
         }
         bypassSplash()
 
-        // 1. Navigate to Settings
-        composeTestRule.onNodeWithContentDescription("Menu").performClick()
-        composeTestRule.waitForIdle()
-        ShadowLooper.idleMainLooper()
-        
-        // Click Settings drawer item
+        // 1. Navigate to Settings using bottom bar
         composeTestRule.onNodeWithContentDescription("Settings").performClick()
         composeTestRule.waitForIdle()
         ShadowLooper.idleMainLooper()
 
         // 2. Verify Admin has access to both Cloud Backup and Admin Console
-        composeTestRule.onNodeWithText("Backup to Cloud (Firebase)").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Backup to Cloud").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Administrative Access").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Admin Console").performScrollTo().assertIsDisplayed()
 
-        // 3. Click Admin Console and verify navigation
+        // 3. Click Admin Console and verify navigation to AdminConsoleScreen succeeded.
         composeTestRule.onNodeWithText("Admin Console").performScrollTo().performClick()
         composeTestRule.waitForIdle()
         ShadowLooper.idleMainLooper()
+        composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithText("System Diagnostics & Privacy Guard").assertIsDisplayed()
+        printSemanticsTreeText()
+
+        // Verify we are on Admin Console screen by checking its unique section title
+        composeTestRule.onNodeWithText("System Diagnostics & Privacy Guard").performScrollTo().assertIsDisplayed()
     }
 }

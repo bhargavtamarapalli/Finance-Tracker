@@ -73,7 +73,9 @@ class FinanceViewModelExtendedTest {
         // Stub getContext to return a dummy context with ConnectivityManager mock to avoid ClassCastException in default constructor
         val dummyContext = mockk<android.content.Context>(relaxed = true)
         val dummyCm = mockk<android.net.ConnectivityManager>(relaxed = true)
+        val dummyNm = mockk<android.app.NotificationManager>(relaxed = true)
         every { dummyContext.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) } returns dummyCm
+        every { dummyContext.getSystemService(android.content.Context.NOTIFICATION_SERVICE) } returns dummyNm
         every { mockRepository.getContext() } returns dummyContext
 
         every { mockRepository.getSettingsPreferences() } returns mockSharedPrefs

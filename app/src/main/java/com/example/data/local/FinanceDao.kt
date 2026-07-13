@@ -61,4 +61,10 @@ interface FinanceDao {
 
     @Delete
     suspend fun deleteTransactions(transactions: List<TransactionEntity>)
+
+    @Query("DELETE FROM categories")
+    suspend fun deleteAllCategories()
+
+    @Query("DELETE FROM transactions")
+    suspend fun deleteAllTransactions()
 }
