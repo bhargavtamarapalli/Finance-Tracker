@@ -21,6 +21,7 @@ class AuthViewModel(
     private val repository: AuthRepository,
     val notificationManager: com.example.data.repository.NotificationManager = com.example.data.repository.NoOpNotificationManager
 ) : ViewModel() {
+    val authRepository: AuthRepository get() = repository
     
     val currentUserSession: StateFlow<UserSession?> = repository.currentUserSession
     

@@ -418,7 +418,7 @@ NavigationBar(
                     startDestination = "dashboard",
                     modifier = Modifier.padding(
                         top = innerPadding.calculateTopPadding(),
-                        bottom = 0.dp
+                        bottom = innerPadding.calculateBottomPadding()
                     )
                 ) {
                     composable("dashboard") { 

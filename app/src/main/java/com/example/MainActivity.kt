@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import com.example.data.local.AppDatabase
 import com.example.data.local.JsonDataManager
 import com.example.data.repository.FinanceRepository
@@ -28,6 +29,9 @@ import com.example.ui.viewmodel.AuthViewModel
 import com.example.ui.viewmodel.AuthViewModelFactory
 
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,22 +40,33 @@ class MainActivity : FragmentActivity() {
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
         enableEdgeToEdge()
 
-        val database = AppDatabase.getDatabase(this)
-        val jsonDataManager = JsonDataManager(this)
-        val repository = FinanceRepository(database.financeDao(), jsonDataManager)
-        val viewModelFactory = FinanceViewModelFactory(repository)
-        val viewModel = ViewModelProvider(this, viewModelFactory)[FinanceViewModel::class.java]
+        var database: AppDatabase? = null
+        var jsonDataManager: JsonDataManager? = null
+        var repository: FinanceRepository? = null
+        var viewModel: FinanceViewModel? = null
+        var authRepository: AuthRepository? = null
+        var authViewModel: AuthViewModel? = null
 
-        val authRepository = AuthRepository(this, database)
-        val authViewModelFactory = AuthViewModelFactory(authRepository)
-        val authViewModel = ViewModelProvider(this, authViewModelFactory)[AuthViewModel::class.java]
+        lifecycleScope.launch {
+            database = withContext(Dispatchers.IO) {
+                AppDatabase.getDatabase(this@MainActivity)
+            }
+            jsonDataManager = JsonDataManager(this@MainActivity)
+            repository = FinanceRepository(database!!.financeDao(), jsonDataManager!!)
+            val viewModelFactory = FinanceViewModelFactory(repository!!)
+            viewModel = ViewModelProvider(this@MainActivity, viewModelFactory)[FinanceViewModel::class.java]
+
+            authRepository = AuthRepository(this@MainActivity, database)
+            val authViewModelFactory = AuthViewModelFactory(authRepository!!)
+            authViewModel = ViewModelProvider(this@MainActivity, authViewModelFactory)[AuthViewModel::class.java]
+        }
 
         splashScreen.setKeepOnScreenCondition {
-            viewModel.isLoading.value
+            viewModel?.isLoading?.value != false
         }
 
         setContent {
-            val appTheme by viewModel.appTheme.collectAsState()
+            val appTheme by viewModel?.appTheme?.collectAsState() ?: rememberSaveable { mutableStateOf(AppTheme.SYSTEM) }
             val isDark = when (appTheme) {
                 AppTheme.LIGHT -> false
                 AppTheme.DARK -> true
@@ -67,7 +82,7 @@ class MainActivity : FragmentActivity() {
                             onAnimationComplete = { showSplash = false }
                         )
                     } else {
-                        FinanceApp(viewModel = viewModel, authViewModel = authViewModel)
+                        FinanceApp(viewModel = viewModel!!, authViewModel = authViewModel!!)
                     }
                 }
             }

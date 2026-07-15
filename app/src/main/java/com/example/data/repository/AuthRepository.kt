@@ -160,8 +160,10 @@ class AuthRepository(
     }
 
     private suspend fun clearLocalData() {
-        database?.clearAllTables()
-        JsonDataManager(context).clearLocalFiles()
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            database?.clearAllTables()
+            JsonDataManager(context).clearLocalFiles()
+        }
     }
 
     suspend fun signUpWithEmail(email: String, password: String, name: String): UserSession {

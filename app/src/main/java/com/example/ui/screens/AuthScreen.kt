@@ -538,8 +538,9 @@ fun AuthScreen(
                         try {
                             val credentialManager = androidx.credentials.CredentialManager.create(context)
                             
+                            val serverClientId = context.getString(R.string.default_web_client_id)
                             val googleIdOption = com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption.Builder(
-                                serverClientId = "1083618534945-1q1kh1b3fh14hhfnsmmfnb796pjebrq2.apps.googleusercontent.com"
+                                serverClientId = serverClientId
                             ).build()
                             
                             val getCredRequest = androidx.credentials.GetCredentialRequest.Builder()

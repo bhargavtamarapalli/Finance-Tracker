@@ -49,6 +49,7 @@ class FinanceViewModel(
     val notificationManager: com.example.data.repository.NotificationManager = com.example.data.repository.NoOpNotificationManager,
     injectedPrefs: SharedPreferences? = null
 ) : ViewModel() {
+    val financeRepository: FinanceRepository get() = repository
     private val prefs: SharedPreferences = injectedPrefs ?: repository.getSettingsPreferences()
 
     private val _appTheme = MutableStateFlow(getSavedTheme())
