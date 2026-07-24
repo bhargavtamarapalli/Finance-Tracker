@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Obsidian Analytics | User Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "primary-container": "#b76dff",
+                    "inverse-on-surface": "#303032",
+                    "on-error": "#690005",
+                    "surface": "#131315",
+                    "secondary-fixed": "#6ffbbe",
+                    "error-container": "#93000a",
+                    "outline": "#988d9f",
+                    "on-tertiary-fixed-variant": "#881d24",
+                    "surface-dim": "#131315",
+                    "on-primary-fixed": "#2c0051",
+                    "surface-variant": "#353437",
+                    "primary": "#ddb7ff",
+                    "on-error-container": "#ffdad6",
+                    "outline-variant": "#4d4354",
+                    "surface-bright": "#39393b",
+                    "on-primary-fixed-variant": "#6900b3",
+                    "tertiary": "#ffb3b0",
+                    "surface-container-high": "#2a2a2c",
+                    "secondary-fixed-dim": "#4edea3",
+                    "on-surface": "#e5e1e4",
+                    "on-primary-container": "#400071",
+                    "on-secondary-fixed-variant": "#005236",
+                    "primary-fixed": "#f0dbff",
+                    "inverse-primary": "#842bd2",
+                    "on-tertiary": "#670211",
+                    "surface-tint": "#ddb7ff",
+                    "secondary-container": "#00a572",
+                    "on-secondary-fixed": "#002113",
+                    "tertiary-fixed": "#ffdad8",
+                    "primary-fixed-dim": "#ddb7ff",
+                    "on-secondary-container": "#00311f",
+                    "background": "#131315",
+                    "on-primary": "#490080",
+                    "error": "#ffb4ab",
+                    "surface-container-highest": "#353437",
+                    "on-secondary": "#003824",
+                    "tertiary-fixed-dim": "#ffb3b0",
+                    "on-surface-variant": "#cfc2d6",
+                    "inverse-surface": "#e5e1e4",
+                    "tertiary-container": "#ea6767",
+                    "on-tertiary-container": "#5b000d",
+                    "surface-container": "#201f21",
+                    "secondary": "#4edea3",
+                    "on-background": "#e5e1e4",
+                    "surface-container-lowest": "#0e0e10",
+                    "surface-container-low": "#1b1b1d",
+                    "on-tertiary-fixed": "#410006"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-lg": "1.5rem",
+                    "container-padding": "1.25rem",
+                    "stack-sm": "0.5rem",
+                    "gutter": "1rem",
+                    "stack-md": "1rem"
+            },
+            "fontFamily": {
+                    "body-md": ["Manrope"],
+                    "label-sm": ["JetBrains Mono"],
+                    "headline-lg": ["Manrope"],
+                    "headline-md": ["Manrope"],
+                    "headline-lg-mobile": ["Manrope"],
+                    "body-lg": ["Manrope"]
+            },
+            "fontSize": {
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["26px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #131315;
+            color: #e5e1e4;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .glass-card {
+            background: linear-gradient(135deg, rgba(26, 26, 30, 0.9) 0%, rgba(18, 18, 20, 0.9) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(12px);
+        }
+        .neon-glow-primary {
+            box-shadow: 0 0 15px rgba(221, 183, 255, 0.3);
+        }
+        .neon-glow-secondary {
+            box-shadow: 0 0 15px rgba(111, 251, 190, 0.3);
+        }
+        .fab-gradient {
+            background: linear-gradient(135deg, #ddb7ff 0%, #4edea3 100%);
+            box-shadow: 0 8px 24px rgba(221, 183, 255, 0.4);
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .expanded-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out, opacity 0.2s ease-out;
+            opacity: 0;
+        }
+        .card-active .expanded-content {
+            max-height: 200px;
+            opacity: 1;
+            margin-top: 1rem;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .fill-icon {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-md text-body-md selection:bg-primary/30">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface h-16 flex items-center justify-between px-gutter">
+<div class="flex items-center gap-3">
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-variant active:scale-95 transition-all">
+<span class="material-symbols-outlined text-on-surface">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface">Analytics</h1>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-variant active:scale-95 transition-all">
+<span class="material-symbols-outlined text-on-surface">more_vert</span>
+</button>
+</header>
+<main class="pt-20 pb-32 px-container-padding space-y-6">
+<!-- Search Bar -->
+<div class="relative group">
+<div class="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-on-surface-variant group-focus-within:text-primary transition-colors">search</span>
+</div>
+<input class="w-full h-12 bg-surface-container border-none rounded-xl pl-12 pr-4 text-body-md text-on-surface placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Search users by name or email..." type="text"/>
+</div>
+<!-- Summary Stats Horizontal Scroll -->
+<section class="flex gap-4 overflow-x-auto scrollbar-hide -mx-container-padding px-container-padding pb-2">
+<div class="flex-none w-40 glass-card p-4 rounded-xl space-y-2">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Total Users</span>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-md text-headline-md text-primary">12,842</span>
+<span class="text-[10px] text-secondary">+4%</span>
+</div>
+</div>
+<div class="flex-none w-40 glass-card p-4 rounded-xl space-y-2">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Business</span>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-md text-headline-md text-secondary">3,105</span>
+<span class="text-[10px] text-primary">24%</span>
+</div>
+</div>
+<div class="flex-none w-40 glass-card p-4 rounded-xl space-y-2 border-primary/20">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Active Now</span>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-md text-headline-md text-on-surface">892</span>
+<div class="w-2 h-2 rounded-full bg-secondary neon-glow-secondary animate-pulse"></div>
+</div>
+</div>
+</section>
+<!-- User List -->
+<section class="space-y-4">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-md text-body-lg font-semibold text-on-surface">Recent Users</h2>
+<button class="text-primary font-label-sm text-label-sm">VIEW ALL</button>
+</div>
+<!-- User Cards -->
+<div class="space-y-3">
+<!-- Card 1: Business User -->
+<div class="user-card glass-card rounded-xl p-4 transition-all duration-300 active:scale-[0.98]" onclick="toggleCard(this)">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full overflow-hidden border border-secondary/30">
+<img class="w-full h-full object-cover" data-alt="A professional high-contrast portrait of a corporate executive in a dark tailored suit, captured with dramatic side lighting against a deep charcoal background. The aesthetic is clean, premium, and sophisticated, matching a dark mode high-end financial application. Subtle matte textures and soft focus are used for the background to emphasize the person's professional demeanor." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCbptauBuAJ1vizHWHfzQDD6V6g5MjGwTkO9czI8lXHv-2z6u9RBTer8rZLNYtj0SDio3gW2TrPLN-XX9iLAg_n7ygX7VpnH2r_tg4BO-MAG2DoRCSEJX4g3mEIr2P2VKERW18KqWSpN6ii72WSXjFVbB02LOud2CLpSXqiRLCyn30e7vm-FUi-rYbRY6JipnsE3N68zfCZ57ScKEZKpKzrtrVQo_kcUGlL_stbW6lXpsqxEGTgc8HS7g"/>
+</div>
+<div>
+<h3 class="font-body-lg text-on-surface font-semibold">Julianna Vane</h3>
+<div class="flex items-center gap-2 mt-0.5">
+<span class="bg-secondary/10 text-secondary font-label-sm text-[10px] px-2 py-0.5 rounded-full border border-secondary/20">BUSINESS</span>
+<span class="text-on-surface-variant text-[10px] uppercase font-label-sm">• Active</span>
+</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant transition-transform expand-icon">expand_more</span>
+</div>
+<div class="expanded-content">
+<div class="grid grid-cols-3 gap-2 border-t border-white/5 pt-4">
+<button class="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-surface-variant transition-colors group">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">block</span>
+<span class="text-[10px] font-label-sm text-on-surface-variant">Suspend</span>
+</button>
+<button class="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-surface-variant transition-colors group">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">lock_reset</span>
+<span class="text-[10px] font-label-sm text-on-surface-variant">Reset</span>
+</button>
+<button class="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-surface-variant transition-colors group">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">account_circle</span>
+<span class="text-[10px] font-label-sm text-on-surface-variant">Profile</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 2: Basic User -->
+<div class="user-card glass-card rounded-xl p-4 transition-all duration-300 active:scale-[0.98]" onclick="toggleCard(this)">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full overflow-hidden border border-white/10">
+<img class="w-full h-full object-cover" data-alt="A modern portrait of a creative professional wearing a minimal black turtleneck, set against a dark matte studio backdrop with soft blue ambient glow. The photography style is minimalist and high-end, featuring subtle glass reflections and a refined color palette of deep blacks and soft grey tones, perfectly integrated into a luxury tech UI environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDlOajHa0tSku4jZZHtrrUt9liSx4Zd3zWCsvYLnxCWMw-4DNkjWjY7bNwEnUrB4b-Uw16pCJEvZE_qMRHLjSw7Xg1wWUi5GIMpQ1xjHKJ0MLttmRja94hTg6cJzLCtw0URdtRADDNossxwXRen0zaOX3fc6p0cQpIZschHd-Uv2ZAwQUMErPrvLFbKpeOzUqboqv6oCRGxGcDV_4Q5YhdH5IvL4Pm7lG5pWDOafw2OrxpJs7vorrDDPw"/>
+</div>
+<div>
+<h3 class="font-body-lg text-on-surface font-semibold">Marcus Sterling</h3>
+<div class="flex items-center gap-2 mt-0.5">
+<span class="bg-surface-variant text-on-surface-variant font-label-sm text-[10px] px-2 py-0.5 rounded-full border border-white/5">BASIC</span>
+<span class="text-on-surface-variant text-[10px] uppercase font-label-sm">• Active</span>
+</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant transition-transform expand-icon">expand_more</span>
+</div>
+<div class="expanded-content">
+<div class="grid grid-cols-3 gap-2 border-t border-white/5 pt-4">
+<button class="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-surface-variant transition-colors group">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">block</span>
+<span class="text-[10px] font-label-sm text-on-surface-variant">Suspend</span>
+</button>
+<button class="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-surface-variant transition-colors group">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">lock_reset</span>
+<span class="text-[10px] font-label-sm text-on-surface-variant">Reset</span>
+</button>
+<button class="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-surface-variant transition-colors group">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">account_circle</span>
+<span class="text-[10px] font-label-sm text-on-surface-variant">Profile</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 3: Suspended -->
+<div class="user-card glass-card rounded-xl p-4 transition-all duration-300 active:scale-[0.98] border-error/20" onclick="toggleCard(this)">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full overflow-hidden border border-error/30 grayscale">
+<img class="w-full h-full object-cover" data-alt="Close-up artistic portrait of a tech entrepreneur with short hair, lit by dramatic cyan and violet neon lights from the side. The lighting creates a futuristic cyberpunk aesthetic against a completely black background. The image has a grainy matte finish that fits a dark, high-performance analytics platform interface, suggesting precision and technical depth." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDssN4T9Yw6OwkPZqZj8HAsw6GVUN7W9DTzzjAtRUB3EA73Zx7PVYzt-F_Xh7cYIEDmQSznNL6lG-fauUNo-NvnZYNFR0GH7HWAMub0ofTPkFRLsI6xszeKSo9QkVFPX44OgNUQ5r7zG2ZtkjbmW0EeoTYvl74B6yNBrCXZbN5NCNrb7ZxGPeanC-WTmILDfQovmLPVZlG1CN-oGJsrxg-CI_QSeXjU9no9RaHjNr5ecGCbH-jUGFSIWQ"/>
+</div>
+<div>
+<h3 class="font-body-lg text-on-surface font-semibold">Elena Thorne</h3>
+<div class="flex items-center gap-2 mt-0.5">
+<span class="bg-secondary/10 text-secondary font-label-sm text-[10px] px-2 py-0.5 rounded-full border border-secondary/20">BUSINESS</span>
+<span class="text-error text-[10px] uppercase font-label-sm font-bold">• Suspended</span>
+</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant transition-transform expand-icon">expand_more</span>
+</div>
+<div class="expanded-content">
+<div class="grid grid-cols-3 gap-2 border-t border-white/5 pt-4">
+<button class="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-surface-variant transition-colors group">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-secondary transition-colors">check_circle</span>
+<span class="text-[10px] font-label-sm text-on-surface-variant">Reactivate</span>
+</button>
+<button class="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-surface-variant transition-colors group">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">lock_reset</span>
+<span class="text-[10px] font-label-sm text-on-surface-variant">Reset</span>
+</button>
+<button class="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-surface-variant transition-colors group">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">account_circle</span>
+<span class="text-[10px] font-label-sm text-on-surface-variant">Profile</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 4: Business User -->
+<div class="user-card glass-card rounded-xl p-4 transition-all duration-300 active:scale-[0.98]" onclick="toggleCard(this)">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full overflow-hidden border border-secondary/30">
+<img class="w-full h-full object-cover" data-alt="A portrait of a male professional with glasses, shot in a dark, moody environment with soft edge lighting. The style is cinematic and high-end, emphasizing detail and texture in the skin and clothing. The color palette is dominated by deep charcoal and obsidian blacks, with subtle cool-toned highlights that complement a premium digital analytics platform's branding." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCKmvCNsnJyw7MqKPsBkg5I6gBT1u3JJk3XA1_vHL9QlJmdR9kjq3RdVWEwjkvSn8wLOFsTXaPDhxF732Wtr3YYudz2gT8DwUnvyJJKUjHUBL6oYRA3fdvZZV4M-8ddyWjs2Fk7tOZVmfqmP60hHC_dvWX7-1ibwpltfEulw0x5yYsrIor6hYPycKfRS_rRTZJxNm46bNpnsMzQKMlFezbVo0wXRq9PQM4AnPkO1gCgbmdnSASRc2z0Qg"/>
+</div>
+<div>
+<h3 class="font-body-lg text-on-surface font-semibold">David Chen</h3>
+<div class="flex items-center gap-2 mt-0.5">
+<span class="bg-secondary/10 text-secondary font-label-sm text-[10px] px-2 py-0.5 rounded-full border border-secondary/20">BUSINESS</span>
+<span class="text-on-surface-variant text-[10px] uppercase font-label-sm">• Active</span>
+</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant transition-transform expand-icon">expand_more</span>
+</div>
+<div class="expanded-content">
+<div class="grid grid-cols-3 gap-2 border-t border-white/5 pt-4">
+<button class="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-surface-variant transition-colors group">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">block</span>
+<span class="text-[10px] font-label-sm text-on-surface-variant">Suspend</span>
+</button>
+<button class="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-surface-variant transition-colors group">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">lock_reset</span>
+<span class="text-[10px] font-label-sm text-on-surface-variant">Reset</span>
+</button>
+<button class="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-surface-variant transition-colors group">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">account_circle</span>
+<span class="text-[10px] font-label-sm text-on-surface-variant">Profile</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Floating Action Button -->
+<button class="fixed bottom-24 right-6 w-16 h-16 rounded-full fab-gradient flex items-center justify-center text-on-primary-container z-[60] active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-[32px] fill-icon">add</span>
+</button>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-4 py-3 pb-safe bg-surface/85 backdrop-blur-xl border-t border-white/10 shadow-lg md:hidden rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant opacity-60 hover:opacity-100" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-sm text-label-sm mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant opacity-60 hover:opacity-100" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="font-label-sm text-label-sm mt-1">History</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed transition-colors duration-300 scale-110" href="#">
+<span class="material-symbols-outlined fill-icon">bar_chart</span>
+<span class="font-label-sm text-label-sm mt-1">Analytics</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant opacity-60 hover:opacity-100" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-sm text-label-sm mt-1">Settings</span>
+</a>
+</nav>
+<script>
+        function toggleCard(element) {
+            // Close all other cards
+            const allCards = document.querySelectorAll('.user-card');
+            allCards.forEach(card => {
+                if (card !== element) {
+                    card.classList.remove('card-active');
+                    const icon = card.querySelector('.expand-icon');
+                    if (icon) icon.style.transform = 'rotate(0deg)';
+                }
+            });
+
+            // Toggle current card
+            element.classList.toggle('card-active');
+            const icon = element.querySelector('.expand-icon');
+            if (element.classList.contains('card-active')) {
+                icon.style.transform = 'rotate(180deg)';
+            } else {
+                icon.style.transform = 'rotate(0deg)';
+            }
+        }
+    </script>
+</body></html>

@@ -1350,3 +1350,211 @@ fun EmptyStatePlaceholder(
     }
 }
 
+/**
+ * Metric display card for Admin Dashboard showing a key platform count or value.
+ */
+@Composable
+fun AdminStatCard(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        ),
+        shape = AppShapes.roundedCardMedium
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(AppDimens.paddingLarge),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+/**
+ * Visual pill representing status of an account (Active or Suspended).
+ */
+@Composable
+fun AdminStatusBadge(
+    status: com.example.admin.data.model.AdminUserStatus,
+    modifier: Modifier = Modifier
+) {
+    val isActive = status == com.example.admin.data.model.AdminUserStatus.ACTIVE
+    val bgColor = if (isActive) MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
+    val contentColor = if (isActive) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error
+    val borderStroke = BorderStroke(1.dp, contentColor.copy(alpha = 0.2f))
+
+    Surface(
+        color = bgColor,
+        contentColor = contentColor,
+        border = borderStroke,
+        shape = RoundedCornerShape(50),
+        modifier = modifier
+    ) {
+        Text(
+            text = status.name,
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+        )
+    }
+}
+
+/**
+ * Visual pill representing the access tier subscription plan of a user.
+ */
+@Composable
+fun AdminPlanBadge(
+    plan: com.example.admin.data.model.AdminUserPlan,
+    modifier: Modifier = Modifier
+) {
+    val isBusiness = plan == com.example.admin.data.model.AdminUserPlan.BUSINESS
+    val bgColor = if (isBusiness) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent
+    val contentColor = if (isBusiness) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+    val borderStroke = BorderStroke(1.dp, if (isBusiness) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.outlineVariant)
+
+    Surface(
+        color = bgColor,
+        contentColor = contentColor,
+        border = borderStroke,
+        shape = RoundedCornerShape(50),
+        modifier = modifier
+    ) {
+        Text(
+            text = plan.name,
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+        )
+    }
+}
+
+/**
+ * Header representing a logical section within administrative consoles.
+ */
+@Composable
+fun AdminSectionHeader(
+    title: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(20.dp)
+        )
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
+}
+
+/**
+ * Modal dialog for dangerous actions. Includes password or name confirmation guards.
+ */
+@Composable
+fun DangerConfirmDialog(
+    title: String,
+    subtitle: String,
+    guardText: String? = null,
+    confirmLabel: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    var confirmInput by remember { mutableStateOf("") }
+    val isConfirmEnabled = guardText == null || confirmInput == guardText
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+                Text(text = title, fontWeight = FontWeight.Bold)
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(text = subtitle, style = MaterialTheme.typography.bodyMedium)
+                if (guardText != null) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = "To confirm, type \"$guardText\" below:",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        OutlinedTextField(
+                            value = confirmInput,
+                            onValueChange = { confirmInput = it },
+                            placeholder = { Text("Type exactly...") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth().testTag("danger_confirm_input"),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.error,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                            )
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                enabled = isConfirmEnabled,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError
+                ),
+                modifier = Modifier.testTag("danger_confirm_button")
+            ) {
+                Text(text = confirmLabel)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = "Cancel")
+            }
+        }
+    )
+}
+

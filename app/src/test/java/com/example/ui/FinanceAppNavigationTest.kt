@@ -240,6 +240,6 @@ class FinanceAppNavigationTest {
         printSemanticsTreeText()
 
         // Verify we are on Admin Console screen by checking its unique section title
-        composeTestRule.onNodeWithText("System Diagnostics & Privacy Guard").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Platform Aggregate Metrics").assertIsDisplayed()
     }
 }

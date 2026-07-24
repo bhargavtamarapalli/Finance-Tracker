@@ -1,5 +1,7 @@
 package com.example.ui
 
+import com.example.admin.ui.screens.AdminConsoleScreen
+
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -469,9 +471,24 @@ NavigationBar(
                         ) 
                     }
                     composable("admin_console") {
+                        val context = LocalContext.current
+                        val moshi = remember {
+                            com.squareup.moshi.Moshi.Builder()
+                                .add(com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory())
+                                .build()
+                        }
+                        val adminViewModel: com.example.admin.ui.viewmodel.AdminViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                            factory = com.example.admin.ui.viewmodel.AdminViewModelFactory(
+                                financeRepository = viewModel.financeRepository,
+                                actionsRepository = com.example.admin.data.repository.AdminActionsRepositoryFactory.create(context, moshi),
+                                authRepository = authViewModel.authRepository
+                            )
+                        )
+
                         if (userSession?.role == "ADMIN") {
                             AdminConsoleScreen(
                                 viewModel = viewModel,
+                                adminViewModel = adminViewModel,
                                 onBackClick = { navController.popBackStack() }
                             )
                         } else {

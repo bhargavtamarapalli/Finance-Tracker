@@ -36,6 +36,10 @@ Click on any file below to access detailed specifications:
 *   **Overview:** Documentation of the testing suite ensuring robust builds.
 *   **Key Concepts:** JVM-based Robolectric unit and UI testing, Roborazzi screenshot verification, test coverage areas, and regression prevention rules.
 
+### 7. [Web Admin Panel Specification](context/ADMIN_PANEL_SPEC.md)
+*   **Overview:** Roadmap, MVP requirements, and database collections for the administrator portal.
+*   **Key Concepts:** Administrator role enforcement, user analytics tables, live app-wide broadcast compose forms, and system lockdown configuration options.
+
 ---
 
 ## 🎯 How to Use This Documentation

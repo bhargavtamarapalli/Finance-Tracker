@@ -22,8 +22,6 @@ data class UserSession(
     val isGuest: Boolean = false,
     val role: String = if (isGuest) {
         "GUEST"
-    } else if (com.example.BuildConfig.DEBUG && email.startsWith("admin", ignoreCase = true)) {
-        "ADMIN"
     } else {
         "USER"
     }
@@ -354,6 +352,9 @@ class AuthRepository(
      * the signature (signature verification is performed server-side by Firebase Auth).
      * Used only in offline/demo fallback mode.
      *
+     * SECURITY WARNING: This function does not verify JWT signatures and should only be used
+     * in demo/fallback mode. In production, always use Firebase Auth with proper signature verification.
+     *
      * @param idToken A compact JWT string from Google Credential Manager.
      * @return A [Pair] of (email, displayName) extracted from the token payload,
      *         or safe defaults if decoding fails.
@@ -362,6 +363,13 @@ class AuthRepository(
         return try {
             val parts = idToken.split(".")
             if (parts.size < 2) return Pair("user@gmail.com", "Google User")
+            
+            // Basic JWT structure validation
+            if (parts.size != 3) {
+                Log.w("AuthRepository", "Invalid JWT structure - expected 3 parts")
+                return Pair("user@gmail.com", "Google User")
+            }
+            
             val paddedPayload = parts[1].let {
                 val mod = it.length % 4
                 if (mod == 0) it else it + "=".repeat(4 - mod)
@@ -370,9 +378,23 @@ class AuthRepository(
                 android.util.Base64.decode(paddedPayload, android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP),
                 Charsets.UTF_8
             )
-            val email = Regex("\"email\":\"([^\"]+)\"").find(decoded)?.groupValues?.get(1) ?: "user@gmail.com"
+            
+            // Extract email with validation
+            val email = Regex("\"email\":\"([^\"]+)\"").find(decoded)?.groupValues?.get(1)
+            if (email == null || !email.contains("@")) {
+                Log.w("AuthRepository", "Invalid or missing email in token payload")
+                return Pair("user@gmail.com", "Google User")
+            }
+            
+            // Basic email format validation
+            if (!email.matches(Regex("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"))) {
+                Log.w("AuthRepository", "Invalid email format in token payload")
+                return Pair("user@gmail.com", "Google User")
+            }
+            
             val name = Regex("\"name\":\"([^\"]+)\"").find(decoded)?.groupValues?.get(1)
                 ?: email.substringBefore("@")
+            
             Pair(email, name)
         } catch (e: Exception) {
             Log.e("AuthRepository", "Failed to decode Google id_token claims", e)

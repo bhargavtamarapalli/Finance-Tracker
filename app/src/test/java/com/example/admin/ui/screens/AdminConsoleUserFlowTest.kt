@@ -1,4 +1,4 @@
-package com.example.ui
+package com.example.admin.ui.screens
 
 import android.content.Context
 import androidx.compose.ui.test.*
@@ -105,7 +105,12 @@ class AdminConsoleUserFlowTest {
         ShadowLooper.idleMainLooper()
 
         // 4. Verify we are on Admin Console screen
-        composeTestRule.onNodeWithText("System Diagnostics & Privacy Guard").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Platform Aggregate Metrics").assertIsDisplayed()
+
+        // Switch to Broadcasts Tab
+        composeTestRule.onNodeWithTag("tab_broadcasts").performClick()
+        composeTestRule.waitForIdle()
+        ShadowLooper.idleMainLooper()
 
         // 5. Input Title & Content, then Publish
         composeTestRule.onNodeWithTag("announcement_title_input").performScrollTo().performTextInput("Midnight Maintenance")

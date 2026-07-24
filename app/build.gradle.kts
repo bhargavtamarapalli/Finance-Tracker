@@ -19,6 +19,9 @@ android {
     targetSdk = 36
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+    buildConfigField("String", "ADMIN_API_BASE_URL", "\"${project.findProperty("ADMIN_API_BASE_URL") ?: "http://10.0.2.2:3002/"}\"")
+    buildConfigField("String", "AUTH_API_BASE_URL", "\"${project.findProperty("AUTH_API_BASE_URL") ?: "http://10.0.2.2:3001/"}\"")
   }
 
   signingConfigs {
@@ -107,6 +110,7 @@ dependencies {
   implementation(libs.androidx.room.runtime)
   implementation(libs.converter.moshi)
   implementation(libs.firebase.auth)
+  implementation(libs.firebase.firestore)
   implementation(libs.androidx.credentials)
   implementation(libs.androidx.credentials.play.services.auth)
   implementation(libs.google.id)
@@ -114,6 +118,10 @@ dependencies {
   implementation(libs.kotlinx.coroutines.core)
   implementation(libs.moshi.kotlin)
   implementation(libs.okhttp)
+  implementation(libs.retrofit)
+  implementation(libs.logging.interceptor)
+  implementation("net.zetetic:android-database-sqlcipher:4.5.4")
+  implementation("androidx.sqlite:sqlite-ktx:2.4.0")
 
   // Unit test dependencies (Robolectric runs these on JVM)
   testImplementation(libs.androidx.compose.ui.test.junit4)

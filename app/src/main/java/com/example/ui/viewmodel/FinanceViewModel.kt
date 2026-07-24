@@ -26,11 +26,36 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Calendar
 import java.util.UUID
-import java.text.SimpleDateFormat
+import java.time.format.DateTimeFormatter
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.Locale
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+
+/**
+ * Simple rate limiter to prevent abuse of sensitive operations
+ */
+class RateLimiter(private val maxRequests: Int, private val timeWindowMs: Long) {
+    private val requests = mutableListOf<Long>()
+    
+    fun tryRequest(): Boolean {
+        val now = System.currentTimeMillis()
+        requests.removeIf { now - it > timeWindowMs }
+        
+        if (requests.size >= maxRequests) {
+            return false
+        }
+        
+        requests.add(now)
+        return true
+    }
+    
+    fun reset() {
+        requests.clear()
+    }
+}
 
 enum class AppTheme {
     LIGHT, DARK, SYSTEM
@@ -51,6 +76,70 @@ class FinanceViewModel(
 ) : ViewModel() {
     val financeRepository: FinanceRepository get() = repository
     private val prefs: SharedPreferences = injectedPrefs ?: repository.getSettingsPreferences()
+    
+    // Rate limiters for sensitive operations
+    private val transactionRateLimiter = RateLimiter(maxRequests = 10, timeWindowMs = 60000) // 10 requests per minute
+    private val categoryRateLimiter = RateLimiter(maxRequests = 5, timeWindowMs = 60000) // 5 requests per minute
+    private val backupRateLimiter = RateLimiter(maxRequests = 2, timeWindowMs = 300000) // 2 requests per 5 minutes
+
+    // Helper functions to reduce redundant Calendar operations
+    private fun getStartOfDay(timeInMillis: Long): Long {
+        val cal = Calendar.getInstance().apply { this.timeInMillis = timeInMillis }
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        return cal.timeInMillis
+    }
+
+    private fun getEndOfDay(timeInMillis: Long): Long {
+        val cal = Calendar.getInstance().apply { this.timeInMillis = timeInMillis }
+        cal.set(Calendar.HOUR_OF_DAY, 23)
+        cal.set(Calendar.MINUTE, 59)
+        cal.set(Calendar.SECOND, 59)
+        cal.set(Calendar.MILLISECOND, 999)
+        return cal.timeInMillis
+    }
+
+    private fun getStartOfWeek(timeInMillis: Long): Pair<Long, Long> {
+        val startCal = Calendar.getInstance().apply {
+            this.timeInMillis = timeInMillis
+            set(Calendar.DAY_OF_WEEK, firstDayOfWeek)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val endCal = Calendar.getInstance().apply {
+            this.timeInMillis = startCal.timeInMillis
+            add(Calendar.DATE, 6)
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
+        }
+        return startCal.timeInMillis to endCal.timeInMillis
+    }
+
+    private fun getStartOfMonth(timeInMillis: Long): Long {
+        val cal = Calendar.getInstance().apply { this.timeInMillis = timeInMillis }
+        cal.set(Calendar.DAY_OF_MONTH, 1)
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        return cal.timeInMillis
+    }
+
+    private fun getEndOfMonth(timeInMillis: Long): Long {
+        val cal = Calendar.getInstance().apply { this.timeInMillis = timeInMillis }
+        cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH))
+        cal.set(Calendar.HOUR_OF_DAY, 23)
+        cal.set(Calendar.MINUTE, 59)
+        cal.set(Calendar.SECOND, 59)
+        cal.set(Calendar.MILLISECOND, 999)
+        return cal.timeInMillis
+    }
 
     private val _appTheme = MutableStateFlow(getSavedTheme())
     val appTheme: StateFlow<AppTheme> = _appTheme.asStateFlow()
@@ -286,73 +375,45 @@ class FinanceViewModel(
 
         when (period) {
             TimePeriod.DAY -> {
-                startCal.set(Calendar.HOUR_OF_DAY, 0)
-                startCal.set(Calendar.MINUTE, 0)
-                startCal.set(Calendar.SECOND, 0)
-                startCal.set(Calendar.MILLISECOND, 0)
-
-                endCal.set(Calendar.HOUR_OF_DAY, 23)
-                endCal.set(Calendar.MINUTE, 59)
-                endCal.set(Calendar.SECOND, 59)
-                endCal.set(Calendar.MILLISECOND, 999)
+                return@combine getStartOfDay(activeTime) to getEndOfDay(activeTime)
             }
             TimePeriod.WEEK -> {
-                // Set to start of week
-                startCal.set(Calendar.DAY_OF_WEEK, startCal.firstDayOfWeek)
-                startCal.set(Calendar.HOUR_OF_DAY, 0)
-                startCal.set(Calendar.MINUTE, 0)
-                startCal.set(Calendar.SECOND, 0)
-                startCal.set(Calendar.MILLISECOND, 0)
-
-                endCal.timeInMillis = startCal.timeInMillis
-                endCal.add(Calendar.DATE, 6)
-                endCal.set(Calendar.HOUR_OF_DAY, 23)
-                endCal.set(Calendar.MINUTE, 59)
-                endCal.set(Calendar.SECOND, 59)
-                endCal.set(Calendar.MILLISECOND, 999)
+                return@combine getStartOfWeek(activeTime)
             }
             TimePeriod.MONTH -> {
-                startCal.set(Calendar.DAY_OF_MONTH, 1)
-                startCal.set(Calendar.HOUR_OF_DAY, 0)
-                startCal.set(Calendar.MINUTE, 0)
-                startCal.set(Calendar.SECOND, 0)
-                startCal.set(Calendar.MILLISECOND, 0)
-
-                endCal.timeInMillis = startCal.timeInMillis
-                endCal.set(Calendar.DAY_OF_MONTH, endCal.getActualMaximum(Calendar.DAY_OF_MONTH))
-                endCal.set(Calendar.HOUR_OF_DAY, 23)
-                endCal.set(Calendar.MINUTE, 59)
-                endCal.set(Calendar.SECOND, 59)
-                endCal.set(Calendar.MILLISECOND, 999)
+                return@combine getStartOfMonth(activeTime) to getEndOfMonth(activeTime)
             }
             TimePeriod.YEAR -> {
+                val startCal = Calendar.getInstance().apply { timeInMillis = activeTime }
                 startCal.set(Calendar.DAY_OF_YEAR, 1)
                 startCal.set(Calendar.HOUR_OF_DAY, 0)
                 startCal.set(Calendar.MINUTE, 0)
                 startCal.set(Calendar.SECOND, 0)
                 startCal.set(Calendar.MILLISECOND, 0)
 
-                endCal.timeInMillis = startCal.timeInMillis
+                val endCal = Calendar.getInstance().apply { timeInMillis = activeTime }
                 endCal.set(Calendar.MONTH, Calendar.DECEMBER)
                 endCal.set(Calendar.DAY_OF_MONTH, 31)
                 endCal.set(Calendar.HOUR_OF_DAY, 23)
                 endCal.set(Calendar.MINUTE, 59)
                 endCal.set(Calendar.SECOND, 59)
                 endCal.set(Calendar.MILLISECOND, 999)
+                
+                return@combine startCal.timeInMillis to endCal.timeInMillis
             }
         }
-        startCal.timeInMillis to endCal.timeInMillis
+        0L to 0L // Should never reach here
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L to 0L)
 
     val periodLabel = kotlinx.coroutines.flow.combine(
         _selectedTimePeriod,
         _activeDate
     ) { period, activeTime ->
-        val cal = Calendar.getInstance().apply { timeInMillis = activeTime }
+        val localDate = LocalDate.ofInstant(java.time.Instant.ofEpochMilli(activeTime), ZoneId.systemDefault())
         when (period) {
             TimePeriod.DAY -> {
-                val sdf = SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault())
-                sdf.format(cal.time)
+                val formatter = DateTimeFormatter.ofPattern("MMMM dd, yyyy", Locale.getDefault())
+                formatter.format(localDate)
             }
             TimePeriod.WEEK -> {
                 val startCal = Calendar.getInstance().apply {
@@ -360,20 +421,22 @@ class FinanceViewModel(
                     set(Calendar.DAY_OF_WEEK, firstDayOfWeek)
                 }
                 val endCal = Calendar.getInstance().apply {
-                    timeInMillis = startCal.timeInMillis
+                    this.timeInMillis = startCal.timeInMillis
                     add(Calendar.DATE, 6)
                 }
-                val sdf = SimpleDateFormat("MMM dd", Locale.getDefault())
-                val yearSdf = SimpleDateFormat("yyyy", Locale.getDefault())
-                "${sdf.format(startCal.time)} - ${sdf.format(endCal.time)}, ${yearSdf.format(endCal.time)}"
+                val startDate = LocalDate.ofInstant(java.time.Instant.ofEpochMilli(startCal.timeInMillis), ZoneId.systemDefault())
+                val endDate = LocalDate.ofInstant(java.time.Instant.ofEpochMilli(endCal.timeInMillis), ZoneId.systemDefault())
+                val formatter = DateTimeFormatter.ofPattern("MMM dd", Locale.getDefault())
+                val yearFormatter = DateTimeFormatter.ofPattern("yyyy", Locale.getDefault())
+                "${formatter.format(startDate)} - ${formatter.format(endDate)}, ${yearFormatter.format(endDate)}"
             }
             TimePeriod.MONTH -> {
-                val sdf = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
-                sdf.format(cal.time)
+                val formatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())
+                formatter.format(localDate)
             }
             TimePeriod.YEAR -> {
-                val sdf = SimpleDateFormat("yyyy", Locale.getDefault())
-                sdf.format(cal.time)
+                val formatter = DateTimeFormatter.ofPattern("yyyy", Locale.getDefault())
+                formatter.format(localDate)
             }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
@@ -560,6 +623,10 @@ class FinanceViewModel(
     }
 
     fun updateTransaction(transaction: TransactionEntity) {
+        if (!transactionRateLimiter.tryRequest()) {
+            notificationManager.postInApp("Too many transaction updates. Please wait a moment.")
+            return
+        }
         viewModelScope.launch {
             repository.updateTransaction(transaction)
             notificationManager.postInApp("Transaction updated.")
@@ -570,6 +637,10 @@ class FinanceViewModel(
     }
     
     fun deleteTransaction(transaction: TransactionEntity) {
+        if (!transactionRateLimiter.tryRequest()) {
+            notificationManager.postInApp("Too many transaction deletions. Please wait a moment.")
+            return
+        }
         viewModelScope.launch {
             repository.deleteTransaction(transaction)
             notificationManager.postInApp("Transaction deleted.")
@@ -579,6 +650,10 @@ class FinanceViewModel(
     }
 
     fun addCategory(name: String, type: TransactionType, iconName: String) {
+        if (!categoryRateLimiter.tryRequest()) {
+            notificationManager.postInApp("Too many category additions. Please wait a moment.")
+            return
+        }
         viewModelScope.launch {
             val all = allCategories.value
             val duplicate = all.any { it.name.equals(name, ignoreCase = true) && it.type == type }
@@ -596,6 +671,10 @@ class FinanceViewModel(
     }
 
     fun updateCategory(category: Category) {
+        if (!categoryRateLimiter.tryRequest()) {
+            notificationManager.postInApp("Too many category updates. Please wait a moment.")
+            return
+        }
         viewModelScope.launch {
             repository.updateCategory(category)
             notificationManager.postInApp("Category renamed to '${category.name}'.")
@@ -638,10 +717,16 @@ class FinanceViewModel(
     }
 
     suspend fun backupLocally(): Result<Unit> {
+        if (!backupRateLimiter.tryRequest()) {
+            return Result.failure(Exception("Too many backup operations. Please wait 5 minutes before trying again."))
+        }
         return repository.backupLocally()
     }
 
     suspend fun restoreLocally(): Result<Unit> {
+        if (!backupRateLimiter.tryRequest()) {
+            return Result.failure(Exception("Too many restore operations. Please wait 5 minutes before trying again."))
+        }
         return repository.restoreLocally()
     }
 

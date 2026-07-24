@@ -67,4 +67,10 @@ interface FinanceDao {
 
     @Query("DELETE FROM transactions")
     suspend fun deleteAllTransactions()
+
+    @Query("SELECT COUNT(*) FROM transactions")
+    suspend fun getTotalTransactionCount(): Long
+
+    @Query("SELECT COUNT(*) FROM categories")
+    suspend fun getTotalCategoryCount(): Int
 }

@@ -7,6 +7,7 @@ import com.example.data.model.TransactionEntity
 import com.example.data.model.TransactionType
 import com.example.data.model.TransactionWithCategory
 import com.example.data.model.BackupPayload
+import com.example.admin.data.model.AdminSystemStats
 import kotlinx.coroutines.flow.Flow
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -59,12 +60,14 @@ class FinanceRepository(
     }
 
     suspend fun insertTransaction(transaction: TransactionEntity) {
+        validateTransaction(transaction)
         dao.insertTransaction(transaction)
         val allTx = dao.getAllTransactionsOnce()
         jsonDataManager.saveTransactions(allTx)
     }
 
     suspend fun updateTransaction(transaction: TransactionEntity) {
+        validateTransaction(transaction)
         dao.updateTransaction(transaction)
         val allTx = dao.getAllTransactionsOnce()
         jsonDataManager.saveTransactions(allTx)
@@ -74,6 +77,27 @@ class FinanceRepository(
         dao.deleteTransaction(transaction)
         val allTx = dao.getAllTransactionsOnce()
         jsonDataManager.saveTransactions(allTx)
+    }
+
+    private fun validateTransaction(transaction: TransactionEntity) {
+        if (transaction.amount <= 0) {
+            throw IllegalArgumentException("Transaction amount must be greater than zero")
+        }
+        if (transaction.amount > 10_000_000_000.0) {
+            throw IllegalArgumentException("Transaction amount exceeds maximum allowed value")
+        }
+        if (transaction.categoryId <= 0) {
+            throw IllegalArgumentException("Invalid category ID")
+        }
+        if (transaction.date <= 0) {
+            throw IllegalArgumentException("Invalid transaction date")
+        }
+        if (transaction.source.isBlank()) {
+            throw IllegalArgumentException("Transaction source cannot be blank")
+        }
+        if (transaction.source.length > 100) {
+            throw IllegalArgumentException("Transaction source exceeds maximum length")
+        }
     }
 
     suspend fun getAllCategoriesOnce(): List<Category> {
@@ -123,7 +147,11 @@ class FinanceRepository(
             val transactions = dao.getAllTransactionsOnce()
             val payload = BackupPayload(categories, transactions)
             val json = backupAdapter.toJson(payload)
-            localBackupFile.writeText(json)
+            
+            // Encrypt the backup data
+            val encryptedData = encryptData(json, jsonDataManager.context)
+            localBackupFile.writeBytes(encryptedData)
+            
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -135,7 +163,8 @@ class FinanceRepository(
             if (!localBackupFile.exists()) {
                 return@withContext Result.failure(Exception("No local backup file found. Please create a backup first."))
             }
-            val json = localBackupFile.readText()
+            val encryptedData = localBackupFile.readBytes()
+            val json = decryptData(encryptedData, jsonDataManager.context)
             val payload = backupAdapter.fromJson(json)
                 ?: return@withContext Result.failure(Exception("Failed to parse local backup file."))
             
@@ -148,6 +177,79 @@ class FinanceRepository(
             jsonDataManager.saveTransactions(dao.getAllTransactionsOnce())
             
             Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    private fun encryptData(data: String, context: android.content.Context): ByteArray {
+        val key = getOrCreateEncryptionKey(context)
+        val cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, key)
+        val iv = cipher.iv
+        val encrypted = cipher.doFinal(data.toByteArray(Charsets.UTF_8))
+        return iv + encrypted
+    }
+
+    private fun decryptData(encryptedData: ByteArray, context: android.content.Context): String {
+        val key = getOrCreateEncryptionKey(context)
+        val cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding")
+        val ivSize = 12 // GCM standard IV size
+        val iv = encryptedData.copyOfRange(0, ivSize)
+        val encrypted = encryptedData.copyOfRange(ivSize, encryptedData.size)
+        
+        val spec = javax.crypto.spec.GCMParameterSpec(128, iv)
+        cipher.init(javax.crypto.Cipher.DECRYPT_MODE, key, spec)
+        val decrypted = cipher.doFinal(encrypted)
+        return String(decrypted, Charsets.UTF_8)
+    }
+
+    private fun getOrCreateEncryptionKey(context: android.content.Context): javax.crypto.SecretKey {
+        val prefs = context.getSharedPreferences("backup_encryption", android.content.Context.MODE_PRIVATE)
+        val keyString = prefs.getString("encryption_key", null)
+        
+        if (keyString != null) {
+            val keyBytes = android.util.Base64.decode(keyString, android.util.Base64.DEFAULT)
+            return javax.crypto.spec.SecretKeySpec(keyBytes, "AES")
+        }
+        
+        // Generate new key
+        val keyGenerator = javax.crypto.KeyGenerator.getInstance("AES")
+        keyGenerator.init(256)
+        val key = keyGenerator.generateKey()
+        val keyStringEncoded = android.util.Base64.encodeToString(key.encoded, android.util.Base64.DEFAULT)
+        prefs.edit().putString("encryption_key", keyStringEncoded).apply()
+        return key
+    }
+
+    /**
+     * Aggregates platform-wide metrics. Runs on Dispatchers.IO.
+     * Note: User statistics require backend integration. Currently returns local data only.
+     */
+    suspend fun getSystemStats(announcementsCount: Int): AdminSystemStats = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        val totalTransactions = dao.getTotalTransactionCount()
+        val totalCategories = dao.getTotalCategoryCount()
+        AdminSystemStats(
+            totalUsers = 0, // Requires backend integration
+            activeUsers = 0, // Requires backend integration
+            suspendedUsers = 0, // Requires backend integration
+            totalTransactions = totalTransactions,
+            totalCategories = totalCategories,
+            announcementsCount = announcementsCount,
+            snapshotAt = System.currentTimeMillis()
+        )
+    }
+
+    /**
+     * Exports current metrics to a local file. Runs on Dispatchers.IO.
+     */
+    suspend fun exportSystemReport(stats: AdminSystemStats): Result<File> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        try {
+            val reportFile = File(jsonDataManager.context.filesDir, "admin_report_${System.currentTimeMillis()}.json")
+            val adapter = moshi.adapter(AdminSystemStats::class.java)
+            val json = adapter.toJson(stats)
+            reportFile.writeText(json)
+            Result.success(reportFile)
         } catch (e: Exception) {
             Result.failure(e)
         }

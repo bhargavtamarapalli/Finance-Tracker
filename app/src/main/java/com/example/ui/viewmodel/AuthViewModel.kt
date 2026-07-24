@@ -30,7 +30,7 @@ class AuthViewModel(
 
     private fun isValidEmail(email: String): Boolean {
         val trimmed = email.trim()
-        return trimmed.isNotBlank() && "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,6}$".toRegex().matches(trimmed)
+        return trimmed.isNotBlank() && "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$".toRegex().matches(trimmed)
     }
 
     fun setError(message: String) {
@@ -70,8 +70,9 @@ class AuthViewModel(
             _authState.value = AuthState.Error("Invalid email format")
             return
         }
-        if (password.length < 6) {
-            _authState.value = AuthState.Error("Password must be at least 6 characters")
+        val passwordError = validatePassword(password)
+        if (passwordError != null) {
+            _authState.value = AuthState.Error(passwordError)
             return
         }
         viewModelScope.launch {
@@ -84,6 +85,25 @@ class AuthViewModel(
                 _authState.value = AuthState.Error(mapAuthError(e))
             }
         }
+    }
+
+    private fun validatePassword(password: String): String? {
+        if (password.length < 8) {
+            return "Password must be at least 8 characters"
+        }
+        if (!password.any { it.isUpperCase() }) {
+            return "Password must contain at least one uppercase letter"
+        }
+        if (!password.any { it.isLowerCase() }) {
+            return "Password must contain at least one lowercase letter"
+        }
+        if (!password.any { it.isDigit() }) {
+            return "Password must contain at least one number"
+        }
+        if (!password.any { !it.isLetterOrDigit() }) {
+            return "Password must contain at least one special character"
+        }
+        return null
     }
 
     fun sendPasswordReset(email: String, onSuccess: () -> Unit) {

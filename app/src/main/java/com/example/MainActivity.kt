@@ -37,7 +37,12 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
-        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+        
+        // Only enable FLAG_SECURE in release builds for security
+        if (!com.example.BuildConfig.DEBUG) {
+            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+        }
+        
         enableEdgeToEdge()
 
         var database: AppDatabase? = null
@@ -62,7 +67,7 @@ class MainActivity : FragmentActivity() {
         }
 
         splashScreen.setKeepOnScreenCondition {
-            viewModel?.isLoading?.value != false
+            viewModel?.isLoading?.value != false || viewModel == null || authViewModel == null
         }
 
         setContent {
@@ -77,12 +82,16 @@ class MainActivity : FragmentActivity() {
 
             FinanceTrackerTheme(darkTheme = isDark) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    if (showSplash) {
+                    if (showSplash || viewModel == null || authViewModel == null) {
                         com.example.ui.screens.CustomSplashScreen(
-                            onAnimationComplete = { showSplash = false }
+                            onAnimationComplete = { 
+                                if (viewModel != null && authViewModel != null) {
+                                    showSplash = false
+                                }
+                            }
                         )
                     } else {
-                        FinanceApp(viewModel = viewModel!!, authViewModel = authViewModel!!)
+                        FinanceApp(viewModel = viewModel, authViewModel = authViewModel)
                     }
                 }
             }

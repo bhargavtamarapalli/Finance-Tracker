@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "1083618534945-i8bgt4q2go8nvo12bk9mjt3v613lh2go.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.Finance.Tracker",
+            "certificate_hash": "b55ea25e5b788a141ffdc9634489e328db39e976"
+          }
+        },
+        {
           "client_id": "1083618534945-1q1kh1b3fh14hhfnsmmfnb796pjebrq2.apps.googleusercontent.com",
           "client_type": 3
         }

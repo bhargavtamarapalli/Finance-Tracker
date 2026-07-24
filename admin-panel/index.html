@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Obsidian Analytics | Web & Mobile Admin Panel</title>
+    
+    <!-- Tailwind CSS with Forms and Container Queries Plugins -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    
+    <!-- Manrope & JetBrains Mono Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
+    
+    <!-- Material Symbols Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    
+    <!-- Custom styling from Stitch mockups -->
+    <link rel="stylesheet" href="custom.css"/>
+    
+    <script>
+        // Custom Tailwind theme colors to match Obsidian specifications
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        surface: '#131315',
+                        'surface-dim': '#131315',
+                        'surface-bright': '#39393b',
+                        'surface-container-lowest': '#0e0e10',
+                        'surface-container-low': '#1b1b1d',
+                        'surface-container': '#201f21',
+                        'surface-container-high': '#2a2a2c',
+                        primary: '#b76dff',
+                        'primary-container': 'rgba(183, 109, 255, 0.1)',
+                        secondary: '#4edea3',
+                        'secondary-container': 'rgba(78, 222, 163, 0.1)',
+                        tertiary: '#ea6767',
+                        'on-surface': '#e5e1e4',
+                        'on-surface-variant': '#a5a1a4'
+                    },
+                    fontFamily: {
+                        sans: ['Manrope', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        /* Premium Mobile Simulator styling */
+        .phone-container {
+            width: 390px;
+            height: 844px;
+        }
+
+        /* Physical Side Buttons */
+        .phone-button {
+            position: absolute;
+            background: linear-gradient(to bottom, #2d2c30 0%, #151516 100%);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            border-radius: 4px;
+            z-index: 10;
+        }
+        .silent-switch {
+            left: -4px;
+            top: 110px;
+            width: 4px;
+            height: 32px;
+            border-radius: 4px 0 0 4px;
+        }
+        .volume-up {
+            left: -4px;
+            top: 170px;
+            width: 4px;
+            height: 56px;
+            border-radius: 4px 0 0 4px;
+        }
+        .volume-down {
+            left: -4px;
+            top: 242px;
+            width: 4px;
+            height: 56px;
+            border-radius: 4px 0 0 4px;
+        }
+        .power-button {
+            right: -4px;
+            top: 190px;
+            width: 4px;
+            height: 84px;
+            border-radius: 0 4px 4px 0;
+        }
+
+        /* Phone Frame */
+        .phone-frame {
+            width: 100%;
+            height: 100%;
+            border-radius: 48px;
+            border: 12px solid #1a1a1c;
+            outline: 2px solid #2f2e33;
+            box-shadow: 
+                0 25px 60px -15px rgba(0, 0, 0, 0.8),
+                inset 0 0 0 2px rgba(255, 255, 255, 0.05),
+                inset 0 0 0 4px rgba(0, 0, 0, 0.9);
+            background-color: #0b0b0c;
+            position: relative;
+            overflow: hidden;
+            transform: translate3d(0, 0, 0); /* Containing block for position: fixed elements */
+        }
+
+        /* Dynamic Island */
+        .phone-dynamic-island {
+            position: absolute;
+            top: 11px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 110px;
+            height: 28px;
+            background-color: #000000;
+            border-radius: 9999px;
+            z-index: 120;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 14px;
+        }
+        .phone-camera-lens {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #050510 0%, #151025 70%, #000 100%);
+            box-shadow: inset 0 0 2px rgba(255, 255, 255, 0.2);
+            opacity: 0.7;
+        }
+
+        /* Status Bar */
+        .phone-status-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 44px;
+            z-index: 110;
+            pointer-events: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 28px 0 28px;
+            color: #e5e1e4;
+            font-size: 11.5px;
+            font-weight: 600;
+            letter-spacing: -0.2px;
+            font-family: 'Manrope', sans-serif;
+        }
+        .status-bar-icons {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .status-icon {
+            font-size: 14px !important;
+            font-variation-settings: 'FILL' 1, 'wght' 500;
+        }
+
+        /* Home Indicator */
+        .phone-home-indicator {
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 134px;
+            height: 5px;
+            background-color: rgba(255, 255, 255, 0.45);
+            border-radius: 9999px;
+            z-index: 110;
+            pointer-events: none;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .phone-content {
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            position: relative;
+            border-radius: 36px;
+            background-color: #131315;
+        }
+
+        /* Hide Scrollbar for unified phone UI look */
+        .phone-content::-webkit-scrollbar {
+            display: none;
+        }
+        .phone-content {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        /* Unified Mobile Header override */
+        #phone-screen-container header {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            height: 108px !important; /* 44px status-bar + 64px header height */
+            padding-top: 44px !important;
+            padding-left: 20px !important;
+            padding-right: 20px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            background: rgba(19, 19, 21, 0.82) !important;
+            backdrop-filter: blur(20px) !important;
+            -webkit-backdrop-filter: blur(20px) !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+            z-index: 50 !important;
+        }
+
+        /* Unified Mobile Navigation Bar override */
+        #phone-screen-container nav {
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            height: 84px !important; /* 60px buttons + 24px safe bottom */
+            padding-bottom: 24px !important;
+            display: flex !important;
+            justify-content: space-around !important;
+            align-items: center !important;
+            background: rgba(19, 19, 21, 0.82) !important;
+            backdrop-filter: blur(20px) !important;
+            -webkit-backdrop-filter: blur(20px) !important;
+            border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+            z-index: 50 !important;
+            border-radius: 20px 20px 0 0 !important;
+        }
+
+        /* Main Content container margins alignment */
+        #phone-screen-container main {
+            padding-top: 124px !important; /* 108px header + 16px extra spacer */
+            padding-bottom: 104px !important; /* 84px nav + 20px extra spacer */
+            padding-left: 16px !important;
+            padding-right: 16px !important;
+        }
+
+        /* Floating action buttons adjustments (scale & lower elevation) */
+        #phone-screen-container .neon-fab,
+        #phone-screen-container .fab-gradient {
+            bottom: 100px !important; /* Position it above the modified navigation bar */
+            right: 16px !important;
+            z-index: 60 !important;
+        }
+
+        /* Premium Card Styles (Global) */
+        .matte-card {
+            background: linear-gradient(135deg, rgba(28, 28, 33, 0.95) 0%, rgba(20, 20, 24, 0.98) 100%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.06) !important;
+            border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
+            border-radius: 18px !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        .matte-card:hover {
+            border-color: rgba(183, 109, 255, 0.2) !important;
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), 0 0 15px rgba(183, 109, 255, 0.08) !important;
+        }
+
+        .glass-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%) !important;
+            backdrop-filter: blur(20px) !important;
+            -webkit-backdrop-filter: blur(20px) !important;
+            border: 1px solid rgba(255, 255, 255, 0.06) !important;
+            border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
+            border-radius: 18px !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        .glass-card:hover {
+            border-color: rgba(78, 222, 163, 0.2) !important;
+            box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45), 0 0 15px rgba(78, 222, 163, 0.08) !important;
+        }
+
+        .glass-list-item {
+            background: rgba(255, 255, 255, 0.02) !important;
+            backdrop-filter: blur(12px) !important;
+            -webkit-backdrop-filter: blur(12px) !important;
+            border: 1px solid rgba(255, 255, 255, 0.04) !important;
+            border-radius: 16px !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+            transition: all 0.25s ease !important;
+        }
+        .glass-list-item:hover {
+            background: rgba(255, 255, 255, 0.04) !important;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+            transform: translateY(-1px);
+        }
+
+        /* Micro-interactions: Active scale down */
+        #phone-screen-container .user-card, 
+        #phone-screen-container .glass-list-item {
+            cursor: pointer;
+        }
+        #phone-screen-container .user-card:active,
+        #phone-screen-container .glass-list-item:active {
+            transform: scale(0.97) !important;
+            transition: transform 0.08s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+        }
+
+        /* Screen transition animations */
+        .screen-fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Interactive active navigation indicator styling */
+        .sidebar-link-active {
+            background-color: rgba(183, 109, 255, 0.1);
+            color: #b76dff;
+            border-right: 2px solid #b76dff;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface flex h-screen overflow-hidden">
+
+    <!-- Global Notification Portal -->
+    <div id="toast-container" class="fixed top-6 right-6 z-50 flex flex-col gap-3"></div>
+
+    <!-- Web Desktop Side Navigation -->
+    <aside id="desktop-sidebar" class="flex flex-col w-72 bg-surface-container-lowest border-r border-white/5 h-screen sticky top-0 z-40 transition-all duration-300">
+        <div class="p-8 flex items-center justify-between">
+            <h1 class="font-headline-md text-headline-md font-bold text-on-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">insights</span>
+                Obsidian Analytics
+            </h1>
+        </div>
+        
+        <!-- Sidebar Navigation Menu -->
+        <nav class="flex-1 px-4 space-y-2">
+            <button onclick="switchTab('dashboard')" id="nav-dashboard" class="w-full flex items-center gap-4 px-4 py-3 text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-all duration-200 rounded-xl group text-left">
+                <span class="material-symbols-outlined group-hover:text-primary">dashboard</span>
+                <span class="font-body-md">Overview</span>
+            </button>
+            <button onclick="switchTab('users')" id="nav-users" class="w-full flex items-center gap-4 px-4 py-3 text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-all duration-200 rounded-xl group text-left">
+                <span class="material-symbols-outlined group-hover:text-primary">group</span>
+                <span class="font-body-md">User Management</span>
+            </button>
+            <button onclick="switchTab('analytics')" id="nav-analytics" class="w-full flex items-center gap-4 px-4 py-3 text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-all duration-200 rounded-xl group text-left">
+                <span class="material-symbols-outlined group-hover:text-primary">monitor_heart</span>
+                <span class="font-body-md">System Oversight</span>
+            </button>
+            <button onclick="switchTab('settings')" id="nav-settings" class="w-full flex items-center gap-4 px-4 py-3 text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-all duration-200 rounded-xl group text-left">
+                <span class="material-symbols-outlined group-hover:text-primary">settings</span>
+                <span class="font-body-md">Settings</span>
+            </button>
+        </nav>
+        
+        <!-- Sidebar Admin Profile — click to open profile dropdown -->
+        <div class="p-6">
+            <button
+                class="glass-card p-4 rounded-2xl border border-white/5 w-full hover:border-white/10 hover:bg-white/5 transition-all group"
+                onclick="toggleAdminProfileMenu(event)"
+                id="sidebar-profile-btn"
+                aria-label="Open admin profile menu"
+            >
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-surface-variant overflow-hidden border-2 border-primary/20 group-hover:border-primary/40 transition-all">
+                        <img class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCatFiVYgDGaQm2OMroUOw8x2XhDDhSxbClqSDtr1U1RhXr2E07Tz-H_Gz2V0HQUIklbbLVMM0Gr1CKnG2uwTTVa8su1r8LKlBPIAh2ct8SwZJ_pvaBvVG5X_ljDG99oJ49O70C4yk19Lwj8gaRIK7v87L1lvMj4P1vrqJmQkbwu12iYLNEBHtIGffdeQ2xq4HBWuAgiPkQ-vWnJTYrR6RSuXYj6UcsC5jCJ0IAcWtLm7rHV-o5YNJzOw"/>
+                    </div>
+                    <div class="flex-1 overflow-hidden text-left">
+                        <p class="text-on-surface font-semibold truncate text-sm">Alex Chen</p>
+                        <p class="text-on-surface-variant text-xs truncate">Super Admin</p>
+                    </div>
+                    <span class="material-symbols-outlined text-on-surface-variant text-lg group-hover:text-primary transition-colors">expand_circle_down</span>
+                </div>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Workspace Area -->
+    <main class="flex-1 flex flex-col min-w-0 relative">
+        
+        <!-- Persistent Top Header -->
+        <header class="flex items-center justify-between px-8 w-full h-20 bg-background/50 border-b border-white/5 sticky top-0 z-30 backdrop-blur-md">
+            <div class="flex items-center gap-4">
+                <!-- Mobile mode burger menu toggle -->
+                <button id="mobile-sidebar-toggle" class="md:hidden text-on-surface hover:text-primary transition-colors">
+                    <span class="material-symbols-outlined text-[28px]">menu</span>
+                </button>
+                <div class="flex items-center gap-2 px-3 py-1.5 bg-secondary-container/10 border border-secondary/20 rounded-full">
+                    <span class="w-2 h-2 rounded-full bg-secondary pulse-indicator"></span>
+                    <span id="system-status-pill" class="text-secondary font-label-sm uppercase tracking-widest text-[10px] font-bold">System Online</span>
+                </div>
+            </div>
+            
+                <div class="flex items-center gap-3 relative">
+
+                    <!-- UI Mode Switcher (Web / Mobile Mode selector) -->
+                    <div class="flex bg-surface-container-lowest p-1.5 rounded-2xl border border-white/5 shadow-inner mr-2">
+                        <button onclick="setViewMode('web')" id="btn-view-web" class="flex items-center gap-2 px-4 py-2 rounded-xl text-label-sm font-semibold transition-all duration-200 bg-primary text-on-primary shadow-lg shadow-primary/10">
+                            <span class="material-symbols-outlined text-[18px]">desktop_windows</span>
+                            <span>Web UI</span>
+                        </button>
+                        <button onclick="setViewMode('mobile')" id="btn-view-mobile" class="flex items-center gap-2 px-4 py-2 rounded-xl text-label-sm font-semibold transition-all duration-200 text-on-surface-variant hover:text-on-surface">
+                            <span class="material-symbols-outlined text-[18px]">phone_android</span>
+                            <span>Mobile UI</span>
+                        </button>
+                    </div>
+
+                    <!-- Notifications Bell -->
+                    <button
+                        onclick="toggleNotificationsPanel()"
+                        class="relative p-2 rounded-xl hover:bg-white/5 text-on-surface-variant hover:text-on-surface transition-colors"
+                        aria-label="Notifications"
+                        id="bell-btn"
+                    >
+                        <span class="material-symbols-outlined text-[22px]" style="font-variation-settings:'FILL' 1">notifications</span>
+                        <span id="bell-badge" class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary border-2 border-surface"></span>
+                    </button>
+
+                    <!-- Admin Avatar → Profile Dropdown -->
+                    <button
+                        onclick="toggleAdminProfileMenu(event)"
+                        class="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/10 group"
+                        aria-label="Admin profile menu"
+                        id="header-profile-btn"
+                    >
+                        <div class="w-8 h-8 rounded-full overflow-hidden border-2 border-primary/20 group-hover:border-primary/40 transition-all">
+                            <img class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCatFiVYgDGaQm2OMroUOw8x2XhDDhSxbClqSDtr1U1RhXr2E07Tz-H_Gz2V0HQUIklbbLVMM0Gr1CKnG2uwTTVa8su1r8LKlBPIAh2ct8SwZJ_pvaBvVG5X_ljDG99oJ49O70C4yk19Lwj8gaRIK7v87L1lvMj4P1vrqJmQkbwu12iYLNEBHtIGffdeQ2xq4HBWuAgiPkQ-vWnJTYrR6RSuXYj6UcsC5jCJ0IAcWtLm7rHV-o5YNJzOw"/>
+                        </div>
+                        <div class="text-left hidden sm:block">
+                            <p class="text-on-surface text-xs font-semibold leading-none mb-0.5">Alex Chen</p>
+                            <p class="text-on-surface-variant text-[10px] leading-none">Super Admin</p>
+                        </div>
+                        <span class="material-symbols-outlined text-on-surface-variant text-lg">expand_more</span>
+                    </button>
+
+                </div>
+            </div>
+        </header>
+
+
+        <!-- Main Screen Canvas Wrapper -->
+        <div id="content-canvas" class="flex-1 overflow-y-auto p-8 relative">
+            
+            <!-- Web View Canvas -->
+            <div id="web-viewport" class="w-full space-y-8 screen-fade-in">
+                <!-- Dynamic content from templates will render here -->
+            </div>
+
+            <!-- Mobile Simulator View Canvas (Centered mobile frame) -->
+            <div id="mobile-viewport" class="hidden flex justify-center py-8 w-full screen-fade-in">
+                <div class="phone-container relative">
+                    <!-- Physical Phone Buttons for Realism -->
+                    <div class="phone-button silent-switch"></div>
+                    <div class="phone-button volume-up"></div>
+                    <div class="phone-button volume-down"></div>
+                    <div class="phone-button power-button"></div>
+                    
+                    <div class="phone-frame">
+                        <!-- Dynamic Island (Sleek Modern Notch) -->
+                        <div class="phone-dynamic-island">
+                            <div class="phone-camera-lens"></div>
+                        </div>
+                        
+                        <!-- Status Bar -->
+                        <div class="phone-status-bar">
+                            <div class="status-bar-time">9:41</div>
+                            <div class="status-bar-icons">
+                                <span class="material-symbols-outlined status-icon">signal_cellular_4_bar</span>
+                                <span class="material-symbols-outlined status-icon">wifi</span>
+                                <span class="material-symbols-outlined status-icon">battery_5_bar</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Home Indicator Bar -->
+                        <div class="phone-home-indicator"></div>
+                        
+                        <div class="phone-content custom-scrollbar" id="phone-screen-container">
+                            <!-- Dynamic mobile content will render here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Overlay navigation drawer for small screens -->
+    <div id="mobile-nav-drawer" class="fixed inset-0 bg-black/60 z-50 hidden transition-opacity duration-300 opacity-0">
+        <div class="w-72 bg-surface-container-lowest h-full p-6 flex flex-col justify-between transform -translate-x-full transition-transform duration-300">
+            <div>
+                <div class="flex justify-between items-center mb-8">
+                    <h1 class="font-headline-md text-headline-md font-bold text-on-surface flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">insights</span>
+                        Obsidian Analytics
+                    </h1>
+                    <button id="close-drawer-btn" class="text-on-surface hover:text-primary">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <nav class="space-y-2">
+                    <button onclick="switchTab('dashboard'); closeDrawer();" class="w-full flex items-center gap-4 px-4 py-3 text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-all duration-200 rounded-xl group text-left">
+                        <span class="material-symbols-outlined">dashboard</span>
+                        <span>Overview</span>
+                    </button>
+                    <button onclick="switchTab('users'); closeDrawer();" class="w-full flex items-center gap-4 px-4 py-3 text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-all duration-200 rounded-xl group text-left">
+                        <span class="material-symbols-outlined">group</span>
+                        <span>User Management</span>
+                    </button>
+                    <button onclick="switchTab('analytics'); closeDrawer();" class="w-full flex items-center gap-4 px-4 py-3 text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-all duration-200 rounded-xl group text-left">
+                        <span class="material-symbols-outlined">monitor_heart</span>
+                        <span>System Oversight</span>
+                    </button>
+                    <button onclick="switchTab('settings'); closeDrawer();" class="w-full flex items-center gap-4 px-4 py-3 text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-all duration-200 rounded-xl group text-left">
+                        <span class="material-symbols-outlined">settings</span>
+                        <span>Settings</span>
+                    </button>
+                </nav>
+            </div>
+            
+            <div class="glass-card p-4 rounded-2xl border border-white/5 flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-surface-variant overflow-hidden">
+                    <img class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCatFiVYgDGaQm2OMroUOw8x2XhDDhSxbClqSDtr1U1RhXr2E07Tz-H_Gz2V0HQUIklbbLVMM0Gr1CKnG2uwTTVa8su1r8LKlBPIAh2ct8SwZJ_pvaBvVG5X_ljDG99oJ49O70C4yk19Lwj8gaRIK7v87L1lvMj4P1vrqJmQkbwu12iYLNEBHtIGffdeQ2xq4HBWuAgiPkQ-vWnJTYrR6RSuXYj6UcsC5jCJ0IAcWtLm7rHV-o5YNJzOw"/>
+                </div>
+                <div class="flex-1 overflow-hidden">
+                    <p class="text-on-surface font-body-md font-semibold truncate text-xs">Alex Chen</p>
+                    <p class="text-on-surface-variant text-[10px] truncate">Super Admin</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals & Dialog overlays -->
+    <div id="modal-container" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center hidden">
+        <!-- Dynamic modal layout will render here -->
+    </div>
+
+    <!-- Slide-out Side Sheets -->
+    <div id="sheet-container" class="fixed inset-0 bg-black/60 z-50 flex justify-end hidden">
+        <!-- Dynamic slide sheet content will render here -->
+    </div>
+
+    <!-- Notifications overlay panel (populated by app.js) -->
+    <div id="notifications-panel" class="hidden absolute top-16 right-4 w-80 z-50 screen-fade-in">
+        <!-- Dynamic notification content renders here -->
+    </div>
+
+    <!-- Foundation: Constants → Data → Components (load order matters) -->
+    <script src="constants.js"></script>
+    <script src="mockData.js"></script>
+    <script src="components.js"></script>
+    <!-- Screen templates and application controller -->
+    <script src="templates.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>System Oversight Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-low": "#1b1b1d",
+                    "surface-bright": "#39393b",
+                    "secondary-container": "#00a572",
+                    "secondary": "#4edea3",
+                    "on-primary-container": "#400071",
+                    "inverse-primary": "#842bd2",
+                    "surface-container": "#201f21",
+                    "outline-variant": "#4d4354",
+                    "error-container": "#93000a",
+                    "outline": "#988d9f",
+                    "on-primary": "#490080",
+                    "secondary-fixed-dim": "#4edea3",
+                    "on-secondary-container": "#00311f",
+                    "on-surface": "#e5e1e4",
+                    "inverse-surface": "#e5e1e4",
+                    "primary-fixed-dim": "#ddb7ff",
+                    "surface-container-lowest": "#0e0e10",
+                    "tertiary-container": "#ea6767",
+                    "on-secondary-fixed": "#002113",
+                    "on-primary-fixed": "#2c0051",
+                    "on-surface-variant": "#cfc2d6",
+                    "on-background": "#e5e1e4",
+                    "on-tertiary": "#670211",
+                    "surface-container-highest": "#353437",
+                    "on-error": "#690005",
+                    "tertiary": "#ffb3b0",
+                    "on-tertiary-fixed": "#410006",
+                    "on-secondary-fixed-variant": "#005236",
+                    "on-primary-fixed-variant": "#6900b3",
+                    "tertiary-fixed-dim": "#ffb3b0",
+                    "on-tertiary-fixed-variant": "#881d24",
+                    "surface-tint": "#ddb7ff",
+                    "primary-fixed": "#f0dbff",
+                    "error": "#ffb4ab",
+                    "inverse-on-surface": "#303032",
+                    "surface-container-high": "#2a2a2c",
+                    "primary-container": "#b76dff",
+                    "surface": "#131315",
+                    "tertiary-fixed": "#ffdad8",
+                    "surface-variant": "#353437",
+                    "primary": "#ddb7ff",
+                    "on-secondary": "#003824",
+                    "on-error-container": "#ffdad6",
+                    "surface-dim": "#131315",
+                    "on-tertiary-container": "#5b000d",
+                    "secondary-fixed": "#6ffbbe",
+                    "background": "#131315"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "1rem",
+                    "container-padding": "1.25rem",
+                    "stack-sm": "0.5rem",
+                    "stack-md": "1rem",
+                    "stack-lg": "1.5rem"
+            },
+            "fontFamily": {
+                    "headline-lg": ["Manrope"],
+                    "body-md": ["Manrope"],
+                    "label-sm": ["JetBrains Mono"],
+                    "body-lg": ["Manrope"],
+                    "headline-md": ["Manrope"],
+                    "headline-lg-mobile": ["Manrope"]
+            },
+            "fontSize": {
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["26px", {"lineHeight": "32px", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #121214;
+            color: #e5e1e4;
+            -webkit-font-smoothing: antialiased;
+        }
+        .glass-card {
+            background: linear-gradient(135deg, rgba(26, 26, 30, 0.9) 0%, rgba(18, 18, 20, 0.9) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(12px);
+        }
+        .neon-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 8px #4edea3; }
+            50% { opacity: .7; transform: scale(1.1); box-shadow: 0 0 16px #4edea3; }
+        }
+        .sparkline-gradient {
+            fill: url(#spark-gradient);
+        }
+        .glow-primary {
+            box-shadow: 0 0 15px rgba(221, 183, 255, 0.3);
+        }
+        .glow-error {
+            box-shadow: 0 0 15px rgba(234, 103, 103, 0.4);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface/85 dark:bg-surface/85 backdrop-blur-xl border-b border-white/10 flex justify-between items-center px-gutter h-16">
+<div class="flex items-center gap-3">
+<button class="material-symbols-outlined text-primary active:scale-95 transition-transform" data-icon="menu">menu</button>
+<h1 class="font-headline-md text-headline-md text-primary tracking-tight">System Health</h1>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2 px-3 py-1 bg-secondary-container/10 rounded-full">
+<span class="w-2 h-2 rounded-full bg-secondary neon-pulse"></span>
+<span class="font-label-sm text-label-sm text-secondary uppercase tracking-widest">Online</span>
+</div>
+<button class="material-symbols-outlined text-primary active:scale-95 transition-transform" data-icon="notifications_active">notifications_active</button>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 pt-20 pb-24 px-container-padding space-y-stack-lg">
+<!-- Hero Metric Section: Network Map Visual -->
+<section class="relative h-48 rounded-xl overflow-hidden glass-card">
+
+<div class="absolute inset-0 p-stack-md flex flex-col justify-end bg-gradient-to-t from-surface to-transparent">
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Global Infrastructure</p>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-primary">Node Mesh v4.2</h2>
+</div>
+</section>
+<!-- High-density metrics -->
+<section class="grid grid-cols-2 gap-4">
+<!-- Uptime -->
+<div class="glass-card p-4 rounded-xl flex flex-col gap-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[20px]" data-icon="timer">timer</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Uptime</span>
+</div>
+<div class="mt-1">
+<span class="font-headline-md text-headline-md text-on-surface">99.98</span>
+<span class="font-label-sm text-label-sm text-secondary">%</span>
+</div>
+<div class="h-1 bg-surface-container-highest rounded-full overflow-hidden mt-1">
+<div class="h-full bg-secondary w-[99.9%]"></div>
+</div>
+</div>
+<!-- CPU Load -->
+<div class="glass-card p-4 rounded-xl flex flex-col gap-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]" data-icon="memory">memory</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">CPU Load</span>
+</div>
+<div class="mt-1">
+<span class="font-headline-md text-headline-md text-on-surface">34.2</span>
+<span class="font-label-sm text-label-sm text-primary">%</span>
+</div>
+<div class="h-1 bg-surface-container-highest rounded-full overflow-hidden mt-1">
+<div class="h-full bg-primary w-[34%]"></div>
+</div>
+</div>
+<!-- Active Sessions -->
+<div class="glass-card p-4 rounded-xl flex flex-col gap-2 col-span-2">
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary text-[20px]" data-icon="group">group</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Active Sessions</span>
+</div>
+<span class="font-label-sm text-label-sm text-secondary">+12% vs last hr</span>
+</div>
+<div class="flex items-end justify-between gap-4">
+<div class="flex-1">
+<span class="font-headline-md text-headline-md text-on-surface">12,482</span>
+</div>
+<!-- Small interactive sparkline SVG -->
+<div class="w-24 h-10">
+<svg class="w-full h-full" viewbox="0 0 100 40">
+<defs>
+<lineargradient id="spark-gradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#4edea3" stop-opacity="0.3"></stop>
+<stop offset="100%" stop-color="#4edea3" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<path class="sparkline-gradient" d="M0,35 Q10,15 20,25 T40,10 T60,30 T80,5 T100,20 V40 H0 Z"></path>
+<path d="M0,35 Q10,15 20,25 T40,10 T60,30 T80,5 T100,20" fill="none" stroke="#4edea3" stroke-width="2"></path>
+<circle class="glow-primary" cx="100" cy="20" fill="#fff" r="2"></circle>
+</svg>
+</div>
+</div>
+</div>
+</section>
+<!-- Latency Trends -->
+<section class="space-y-3">
+<div class="flex justify-between items-end px-1">
+<h3 class="font-headline-md text-headline-md text-on-surface">Server Latency</h3>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Avg: 24ms</span>
+</div>
+<div class="glass-card p-stack-md rounded-xl h-40 flex items-center justify-center relative">
+<!-- Data Visual Representation -->
+<div class="flex items-end gap-1.5 h-full w-full">
+<div class="bg-primary/20 w-full rounded-t-sm transition-all hover:bg-primary/40 h-[60%]"></div>
+<div class="bg-primary/20 w-full rounded-t-sm transition-all hover:bg-primary/40 h-[45%]"></div>
+<div class="bg-primary/20 w-full rounded-t-sm transition-all hover:bg-primary/40 h-[70%]"></div>
+<div class="bg-primary/20 w-full rounded-t-sm transition-all hover:bg-primary/40 h-[85%]"></div>
+<div class="bg-primary/20 w-full rounded-t-sm transition-all hover:bg-primary/40 h-[55%]"></div>
+<div class="bg-primary/20 w-full rounded-t-sm transition-all hover:bg-primary/40 h-[40%]"></div>
+<div class="bg-primary/20 w-full rounded-t-sm transition-all hover:bg-primary/40 h-[90%]"></div>
+<div class="bg-primary/20 w-full rounded-t-sm transition-all hover:bg-primary/40 h-[65%]"></div>
+<div class="bg-primary/20 w-full rounded-t-sm transition-all hover:bg-primary/40 h-[50%]"></div>
+<div class="bg-primary/20 w-full rounded-t-sm transition-all hover:bg-primary/40 h-[75%]"></div>
+<div class="bg-primary/20 w-full rounded-t-sm transition-all hover:bg-primary/40 h-[80%]"></div>
+<div class="bg-primary/20 w-full rounded-t-sm transition-all hover:bg-primary/40 h-[95%]"></div>
+</div>
+</div>
+</section>
+<!-- Urgent Alerts -->
+<section class="space-y-3">
+<h3 class="font-headline-md text-headline-md text-on-surface">Recent Alerts</h3>
+<div class="space-y-3">
+<!-- Critical Alert -->
+<div class="glass-card p-4 rounded-xl border-l-4 border-l-tertiary-container flex gap-4">
+<div class="w-10 h-10 rounded-lg bg-tertiary-container/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-tertiary-container" data-icon="report">report</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-center mb-1">
+<span class="font-label-sm text-label-sm text-tertiary uppercase font-bold">Critical</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">2m ago</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface">US-East DB Read timeout spike detected. Automated failover initiated.</p>
+</div>
+</div>
+<!-- Info Alert -->
+<div class="glass-card p-4 rounded-xl border-l-4 border-l-primary-container flex gap-4">
+<div class="w-10 h-10 rounded-lg bg-primary-container/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary-container" data-icon="info">info</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-center mb-1">
+<span class="font-label-sm text-label-sm text-primary uppercase font-bold">Info</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">15m ago</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface">Scheduled backup of 'Production_Main' completed successfully.</p>
+</div>
+</div>
+<!-- Node Success Alert -->
+<div class="glass-card p-4 rounded-xl border-l-4 border-l-secondary-container flex gap-4">
+<div class="w-10 h-10 rounded-lg bg-secondary-container/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-secondary" data-icon="check_circle">check_circle</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-center mb-1">
+<span class="font-label-sm text-label-sm text-secondary uppercase font-bold">Success</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">42m ago</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface">Node 'Gamma-9' back online after kernel patch update.</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 bg-surface-container/85 dark:bg-surface-container/85 backdrop-blur-2xl border-t border-white/10 rounded-t-xl h-20 px-4 pb-safe flex justify-around items-center shadow-lg">
+<!-- Overview (Active) -->
+<button class="flex flex-col items-center justify-center text-secondary dark:text-secondary bg-secondary-container/20 rounded-xl px-3 py-1 active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-sm text-label-sm mt-0.5">Overview</span>
+</button>
+<!-- Alerts -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-secondary transition-colors active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined" data-icon="emergency_home">emergency_home</span>
+<span class="font-label-sm text-label-sm mt-0.5">Alerts</span>
+</button>
+<!-- Nodes -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-secondary transition-colors active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>
+<span class="font-label-sm text-label-sm mt-0.5">Nodes</span>
+</button>
+<!-- Settings -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-secondary transition-colors active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label-sm text-label-sm mt-0.5">Settings</span>
+</button>
+</nav>
+<script>
+        // Micro-interaction for pulsing health status
+        document.addEventListener('DOMContentLoaded', () => {
+            const activeNavItems = document.querySelectorAll('nav button');
+            activeNavItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    activeNavItems.forEach(i => {
+                        i.classList.remove('bg-secondary-container/20', 'text-secondary');
+                        i.classList.add('text-on-surface-variant');
+                    });
+                    item.classList.add('bg-secondary-container/20', 'text-secondary');
+                    item.classList.remove('text-on-surface-variant');
+                });
+            });
+
+            // Randomize bar heights slightly for organic live-feel
+            const bars = document.querySelectorAll('.flex-1 div[class*="bg-primary/20"]');
+            setInterval(() => {
+                bars.forEach(bar => {
+                    const randomHeight = Math.floor(Math.random() * 60) + 40;
+                    bar.style.height = randomHeight + '%';
+                });
+            }, 3000);
+        });
+    </script>
+</body></html>

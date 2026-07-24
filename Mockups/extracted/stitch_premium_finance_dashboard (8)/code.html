@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Global System Settings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-highest": "#353437",
+                    "on-surface": "#e5e1e4",
+                    "surface-variant": "#353437",
+                    "surface-tint": "#ddb7ff",
+                    "surface-container-low": "#1b1b1d",
+                    "primary-fixed": "#f0dbff",
+                    "background": "#131315",
+                    "outline": "#988d9f",
+                    "secondary-container": "#00a572",
+                    "primary-fixed-dim": "#ddb7ff",
+                    "on-primary-fixed": "#2c0051",
+                    "surface-bright": "#39393b",
+                    "secondary-fixed": "#6ffbbe",
+                    "on-surface-variant": "#cfc2d6",
+                    "on-primary-fixed-variant": "#6900b3",
+                    "tertiary-container": "#ea6767",
+                    "primary": "#ddb7ff",
+                    "error-container": "#93000a",
+                    "secondary": "#4edea3",
+                    "tertiary-fixed": "#ffdad8",
+                    "on-error-container": "#ffdad6",
+                    "on-secondary-container": "#00311f",
+                    "surface-container-high": "#2a2a2c",
+                    "outline-variant": "#4d4354",
+                    "on-tertiary": "#670211",
+                    "inverse-surface": "#e5e1e4",
+                    "on-secondary-fixed-variant": "#005236",
+                    "on-primary-container": "#400071",
+                    "surface-dim": "#131315",
+                    "surface-container": "#201f21",
+                    "primary-container": "#b76dff",
+                    "on-secondary-fixed": "#002113",
+                    "on-primary": "#490080",
+                    "on-secondary": "#003824",
+                    "surface": "#131315",
+                    "secondary-fixed-dim": "#4edea3",
+                    "inverse-on-surface": "#303032",
+                    "on-background": "#e5e1e4",
+                    "tertiary-fixed-dim": "#ffb3b0",
+                    "on-tertiary-fixed": "#410006",
+                    "on-error": "#690005",
+                    "error": "#ffb4ab",
+                    "tertiary": "#ffb3b0",
+                    "inverse-primary": "#842bd2",
+                    "on-tertiary-container": "#5b000d",
+                    "surface-container-lowest": "#0e0e10",
+                    "on-tertiary-fixed-variant": "#881d24"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "1rem",
+                    "container-padding": "1.25rem",
+                    "stack-sm": "0.5rem",
+                    "stack-md": "1rem",
+                    "stack-lg": "1.5rem"
+            },
+            "fontFamily": {
+                    "body-md": ["Manrope"],
+                    "body-lg": ["Manrope"],
+                    "headline-md": ["Manrope"],
+                    "label-sm": ["JetBrains Mono"],
+                    "headline-lg-mobile": ["Manrope"],
+                    "headline-lg": ["Manrope"]
+            },
+            "fontSize": {
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "headline-lg-mobile": ["26px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #131315;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .glass-card {
+            background: linear-gradient(135deg, rgba(26, 26, 30, 0.95) 0%, rgba(20, 20, 23, 0.98) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(12px);
+        }
+        .frosted-bg {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .neon-glow {
+            box-shadow: 0 0 15px rgba(221, 183, 255, 0.3);
+        }
+        .custom-toggle:checked + .toggle-dot {
+            transform: translateX(1.25rem);
+            background-color: #4edea3;
+        }
+        .custom-toggle:checked ~ .toggle-bg {
+            background-color: rgba(78, 222, 163, 0.2);
+            border-color: rgba(78, 222, 163, 0.4);
+        }
+        .gradient-button {
+            background: linear-gradient(90deg, #ddb7ff 0%, #4edea3 100%);
+            box-shadow: 0 4px 20px rgba(221, 183, 255, 0.4);
+        }
+        .input-glass {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .input-glass:focus {
+            border-color: #ddb7ff;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(221, 183, 255, 0.1);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="font-body-md text-on-surface antialiased overflow-x-hidden">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 bg-surface/85 backdrop-blur-xl border-b border-white/10 flex justify-between items-center px-gutter h-16">
+<button class="material-symbols-outlined text-primary active:scale-95 transition-transform p-2 hover:bg-white/5 rounded-full">menu</button>
+<h1 class="font-headline-md text-headline-md text-primary tracking-tight">System Settings</h1>
+<button class="material-symbols-outlined text-primary active:scale-95 transition-transform p-2 hover:bg-white/5 rounded-full">notifications_active</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-20 pb-40 px-container-padding flex flex-col gap-stack-lg min-h-screen">
+<!-- Section: General -->
+<section class="flex flex-col gap-stack-sm">
+<h2 class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest pl-2">General</h2>
+<div class="glass-card rounded-xl p-stack-md flex flex-col gap-stack-md">
+<!-- Maintenance Mode -->
+<div class="flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-body-lg text-body-lg text-on-surface">Maintenance Mode</span>
+<span class="text-[12px] text-on-surface-variant">Prevent public access during updates</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer custom-toggle" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container-highest border border-outline-variant rounded-full peer toggle-bg transition-colors"></div>
+<div class="absolute left-1 top-1 w-4 h-4 bg-outline rounded-full transition-transform toggle-dot"></div>
+</label>
+</div>
+<div class="h-px bg-white/5"></div>
+<!-- Default Profile Type -->
+<div class="flex flex-col gap-2">
+<label class="text-body-md text-on-surface-variant">Default Profile Type</label>
+<select class="input-glass rounded-lg px-3 py-2 text-on-surface appearance-none bg-no-repeat bg-right" style="background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23ddb7ff%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C/polyline%3E%3C/svg%3E'); background-position: right 0.75rem center; background-size: 1rem;">
+<option value="standard">Standard User</option>
+<option value="analyst">Analyst</option>
+<option value="operator">Operator</option>
+</select>
+</div>
+</div>
+</section>
+<!-- Section: Security -->
+<section class="flex flex-col gap-stack-sm">
+<h2 class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest pl-2">Security</h2>
+<div class="glass-card rounded-xl p-stack-md flex flex-col gap-stack-md">
+<!-- 2FA Toggle -->
+<div class="flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-body-lg text-body-lg text-on-surface">Enforce 2FA</span>
+<span class="text-[12px] text-on-surface-variant">Mandatory for all admin accounts</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer custom-toggle" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container-highest border border-outline-variant rounded-full peer toggle-bg transition-colors"></div>
+<div class="absolute left-1 top-1 w-4 h-4 bg-outline rounded-full transition-transform toggle-dot"></div>
+</label>
+</div>
+<div class="h-px bg-white/5"></div>
+<!-- Session Timeout -->
+<div class="flex flex-col gap-2">
+<label class="text-body-md text-on-surface-variant">Session Timeout (Minutes)</label>
+<input class="input-glass rounded-lg px-3 py-2 text-on-surface w-full" type="number" value="30"/>
+</div>
+</div>
+</section>
+<!-- Section: Notifications -->
+<section class="flex flex-col gap-stack-sm">
+<h2 class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest pl-2">Notifications</h2>
+<div class="glass-card rounded-xl p-stack-md flex flex-col gap-stack-md">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">mail</span>
+</div>
+<div class="flex flex-col flex-1">
+<span class="text-body-lg text-on-surface">Email Summaries</span>
+<span class="text-[12px] text-on-surface-variant">Daily system health reports</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</div>
+<div class="h-px bg-white/5"></div>
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary">sms</span>
+</div>
+<div class="flex flex-col flex-1">
+<span class="text-body-lg text-on-surface">SMS Alerts</span>
+<span class="text-[12px] text-on-surface-variant">Critical node failure priority</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</div>
+</div>
+</section>
+<!-- Section: Integrations -->
+<section class="flex flex-col gap-stack-sm">
+<h2 class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest pl-2">Integrations</h2>
+<div class="glass-card rounded-xl overflow-hidden">
+<div class="flex items-center justify-between p-stack-md hover:bg-white/5 transition-colors cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">hub</span>
+</div>
+<span class="text-body-md font-medium">Cloud API Gateway</span>
+</div>
+<span class="text-label-sm text-secondary bg-secondary/10 px-2 py-0.5 rounded">Active</span>
+</div>
+<div class="h-px bg-white/5"></div>
+<div class="flex items-center justify-between p-stack-md hover:bg-white/5 transition-colors cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">monitoring</span>
+</div>
+<span class="text-body-md font-medium">Analytics Engine</span>
+</div>
+<span class="text-label-sm text-on-surface-variant bg-white/5 px-2 py-0.5 rounded">Disabled</span>
+</div>
+</div>
+</section>
+<!-- Atmosphere Effect (Visual Flair) -->
+<div class="fixed bottom-0 left-0 w-full h-96 pointer-events-none z-0 opacity-20">
+
+</div>
+</main>
+<!-- Fixed Floating Save Button Area -->
+<div class="fixed bottom-24 right-container-padding z-50">
+<button class="gradient-button flex items-center gap-2 px-6 py-3.5 rounded-full text-on-primary-container font-bold active:scale-95 transition-all neon-glow">
+<span class="material-symbols-outlined">save</span>
+<span>Save Configuration</span>
+</button>
+</div>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 w-full z-50 rounded-t-xl bg-surface-container/85 backdrop-blur-2xl border-t border-white/10 shadow-lg h-20 px-4 pb-safe flex justify-around items-center">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-secondary transition-colors active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-sm text-label-sm">Overview</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-secondary transition-colors active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">emergency_home</span>
+<span class="font-label-sm text-label-sm">Alerts</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-secondary transition-colors active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">hub</span>
+<span class="font-label-sm text-label-sm">Nodes</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary bg-secondary-container/20 rounded-xl px-3 py-1 active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">settings</span>
+<span class="font-label-sm text-label-sm">Settings</span>
+</a>
+</nav>
+<script>
+        // Simple visual feedback for interaction
+        document.querySelectorAll('button, a, label').forEach(el => {
+            el.addEventListener('touchstart', function() {
+                this.classList.add('opacity-70');
+            });
+            el.addEventListener('touchend', function() {
+                this.classList.remove('opacity-70');
+            });
+        });
+
+        // Toggle state logic for the custom switches
+        document.querySelectorAll('.custom-toggle').forEach(toggle => {
+            toggle.addEventListener('change', function() {
+                const dot = this.nextElementSibling.nextElementSibling;
+                const bg = this.nextElementSibling;
+                
+                if(this.checked) {
+                    console.log('Setting Enabled');
+                } else {
+                    console.log('Setting Disabled');
+                }
+            });
+        });
+    </script>
+</body></html>

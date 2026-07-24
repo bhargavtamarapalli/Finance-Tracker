@@ -38,7 +38,7 @@ object EncryptedPrefsManager {
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to create EncryptedSharedPreferences for $name", e)
+            Log.e(TAG, "Failed to create EncryptedSharedPreferences for $name")
             throw SecureStorageUnavailableException(
                 "Secure storage is unavailable. Please restart the app or reset device credentials.",
                 e

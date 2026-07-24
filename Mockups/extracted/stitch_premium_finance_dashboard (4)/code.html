@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Revenue Analytics</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "inverse-on-surface": "#303032",
+                    "inverse-surface": "#e5e1e4",
+                    "on-primary-container": "#400071",
+                    "surface-container-high": "#2a2a2c",
+                    "surface-variant": "#353437",
+                    "on-tertiary-fixed": "#410006",
+                    "on-tertiary-fixed-variant": "#881d24",
+                    "on-secondary": "#003824",
+                    "error": "#ffb4ab",
+                    "on-secondary-container": "#00311f",
+                    "tertiary": "#ffb3b0",
+                    "surface-container-highest": "#353437",
+                    "surface-container": "#201f21",
+                    "background": "#131315",
+                    "tertiary-fixed-dim": "#ffb3b0",
+                    "primary": "#ddb7ff",
+                    "secondary-fixed": "#6ffbbe",
+                    "on-tertiary-container": "#5b000d",
+                    "outline": "#988d9f",
+                    "primary-container": "#b76dff",
+                    "secondary-fixed-dim": "#4edea3",
+                    "error-container": "#93000a",
+                    "surface-tint": "#ddb7ff",
+                    "on-error": "#690005",
+                    "on-secondary-fixed": "#002113",
+                    "surface-container-low": "#1b1b1d",
+                    "on-surface-variant": "#cfc2d6",
+                    "on-primary-fixed-variant": "#6900b3",
+                    "on-primary": "#490080",
+                    "on-error-container": "#ffdad6",
+                    "surface-bright": "#39393b",
+                    "tertiary-container": "#ea6767",
+                    "on-primary-fixed": "#2c0051",
+                    "outline-variant": "#4d4354",
+                    "on-tertiary": "#670211",
+                    "secondary": "#4edea3",
+                    "primary-fixed": "#f0dbff",
+                    "on-secondary-fixed-variant": "#005236",
+                    "on-surface": "#e5e1e4",
+                    "primary-fixed-dim": "#ddb7ff",
+                    "surface": "#131315",
+                    "tertiary-fixed": "#ffdad8",
+                    "inverse-primary": "#842bd2",
+                    "surface-dim": "#131315",
+                    "on-background": "#e5e1e4",
+                    "surface-container-lowest": "#0e0e10",
+                    "secondary-container": "#00a572"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-sm": "0.5rem",
+                    "stack-lg": "1.5rem",
+                    "stack-md": "1rem",
+                    "gutter": "1rem",
+                    "container-padding": "1.25rem"
+            },
+            "fontFamily": {
+                    "body-lg": ["Manrope"],
+                    "headline-md": ["Manrope"],
+                    "headline-lg": ["Manrope"],
+                    "body-md": ["Manrope"],
+                    "label-sm": ["JetBrains Mono"],
+                    "headline-lg-mobile": ["Manrope"]
+            },
+            "fontSize": {
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "headline-lg-mobile": ["26px", {"lineHeight": "32px", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+      body {
+        -webkit-tap-highlight-color: transparent;
+        scroll-behavior: smooth;
+        background-color: #131315;
+      }
+      .matte-card {
+        background: linear-gradient(135deg, #1A1A1E 0%, #16161A 100%);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(12px);
+      }
+      .glass-list-item {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      .glow-primary {
+        box-shadow: 0 0 15px rgba(221, 183, 255, 0.4);
+      }
+      .sparkline-gradient {
+        fill: url(#sparkline-fill);
+      }
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      .neon-fab {
+        background: linear-gradient(135deg, #b76dff 0%, #4edea3 100%);
+        box-shadow: 0 8px 32px rgba(183, 109, 255, 0.3);
+      }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body-lg">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 h-16 flex items-center justify-between px-gutter bg-surface dark:bg-surface">
+<div class="flex items-center gap-4">
+<button class="w-10 h-10 flex items-center justify-center rounded-full active:scale-95 transition-transform duration-200 hover:bg-surface-variant">
+<span class="material-symbols-outlined text-on-surface">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface">Analytics</h1>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</header>
+<main class="pt-20 pb-32 px-gutter space-y-6">
+<!-- Performance Overview Card -->
+<section>
+<div class="matte-card rounded-xl p-6 relative overflow-hidden">
+<div class="flex justify-between items-start mb-2">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">Total Revenue</span>
+<span class="text-secondary flex items-center font-label-sm">
+<span class="material-symbols-outlined text-[18px] mr-1">trending_up</span>
+                        +12.5%
+                    </span>
+</div>
+<div class="font-headline-lg-mobile text-headline-lg-mobile mb-4">$124,592.00</div>
+<!-- Sparkline Chart -->
+<div class="h-24 w-full mt-4">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 300 100">
+<defs>
+<lineargradient id="sparkline-fill" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#ddb7ff" stop-opacity="0.3"></stop>
+<stop offset="100%" stop-color="#ddb7ff" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<path class="sparkline-gradient" d="M0,80 Q40,60 70,75 T140,40 T210,60 T300,20 L300,100 L0,100 Z"></path>
+<path d="M0,80 Q40,60 70,75 T140,40 T210,60 T300,20" fill="none" stroke="#ddb7ff" stroke-linecap="round" stroke-width="3"></path>
+<circle class="glow-primary" cx="300" cy="20" fill="#ffffff" r="4"></circle>
+</svg>
+</div>
+<div class="flex justify-between mt-2">
+<span class="font-label-sm text-label-sm text-on-surface-variant opacity-50">7 days ago</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant opacity-50">Today</span>
+</div>
+</div>
+</section>
+<!-- Quick Stats Scroll -->
+<section>
+<h2 class="font-label-sm text-label-sm text-on-surface-variant uppercase mb-3 ml-1">Key Metrics</h2>
+<div class="flex gap-4 overflow-x-auto no-scrollbar pb-2">
+<!-- MRR -->
+<div class="matte-card min-w-[140px] flex-shrink-0 rounded-xl p-4">
+<span class="font-label-sm text-label-sm text-on-surface-variant block mb-1">MRR</span>
+<div class="text-xl font-bold">$12.4k</div>
+<div class="text-[10px] text-secondary mt-1">↑ 4.2%</div>
+</div>
+<!-- ARPU -->
+<div class="matte-card min-w-[140px] flex-shrink-0 rounded-xl p-4">
+<span class="font-label-sm text-label-sm text-on-surface-variant block mb-1">ARPU</span>
+<div class="text-xl font-bold">$42.00</div>
+<div class="text-[10px] text-primary mt-1">Steady</div>
+</div>
+<!-- Churn Rate -->
+<div class="matte-card min-w-[140px] flex-shrink-0 rounded-xl p-4">
+<span class="font-label-sm text-label-sm text-on-surface-variant block mb-1">Churn</span>
+<div class="text-xl font-bold">2.1%</div>
+<div class="text-[10px] text-error mt-1">↓ 0.4%</div>
+</div>
+<!-- LTV -->
+<div class="matte-card min-w-[140px] flex-shrink-0 rounded-xl p-4">
+<span class="font-label-sm text-label-sm text-on-surface-variant block mb-1">LTV</span>
+<div class="text-xl font-bold">$1.8k</div>
+<div class="text-[10px] text-secondary mt-1">↑ 11%</div>
+</div>
+</div>
+</section>
+<!-- Subscription Activity -->
+<section class="space-y-4">
+<div class="flex justify-between items-center px-1">
+<h2 class="font-label-sm text-label-sm text-on-surface-variant uppercase">Recent Upgrades</h2>
+<button class="text-primary font-label-sm text-label-sm">View All</button>
+</div>
+<div class="space-y-3">
+<!-- Activity Item 1 -->
+<div class="glass-list-item rounded-xl p-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full overflow-hidden border border-white/10">
+<img class="w-full h-full object-cover" data-alt="A professional studio portrait of a woman in her 30s with a clean background. The lighting is soft and cinematic, fitting a high-end fintech application dashboard. The color palette is muted with charcoal and soft neon accents, reflecting a premium matte aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAF4gbwO2eaBXWeWZ9fgE-WxweKygoblZm0iBhggfK4CkuyJMKUWIhVjoTsgIdN1YhSdozjah-Q0oNtLeFSqQr7WjEyRMq92_8usU01scw9jTaW5GHlKrFfzEqJUKSbUIxbLx4nuwD3JiTXctuGteuJWOSNimL3MIhAjchLWu2xPNFVuJ_cxp75NgNfZkYilXY3eYpShPaGbzsApuCniYFwrASpTjLX_bH3lZuAvMibGJ7Maf9yBeIIpg"/>
+</div>
+<div>
+<div class="font-semibold text-body-lg">Elena Vance</div>
+<div class="flex items-center gap-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant opacity-70">Basic</span>
+<span class="material-symbols-outlined text-[14px] text-secondary">arrow_forward</span>
+<span class="font-label-sm text-label-sm text-secondary font-bold">Business</span>
+</div>
+</div>
+</div>
+<div class="text-right">
+<div class="text-secondary font-bold font-label-sm">+$149.00</div>
+<div class="text-[10px] text-on-surface-variant opacity-50">2m ago</div>
+</div>
+</div>
+<!-- Activity Item 2 -->
+<div class="glass-list-item rounded-xl p-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full overflow-hidden border border-white/10">
+<img class="w-full h-full object-cover" data-alt="A professional studio headshot of a diverse man in a modern office setting. Sharp focus, minimal background distractions, high-quality lighting with subtle glows. The overall aesthetic is sophisticated, dark-themed, and fits within a high-value financial analytics software context." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA7YYK74BHVpsfAgyMXqiElOlWx0s7e1pC5XhQP698-nCmZKj0y40x6pNA8jV_5xXMIsvvSnhwcQkL0u6ndUNRJ7OP0vtRP3shomnNhmDvQDJWkya_ONgfraRyOsiR12NBeXYCMg5iFeQBavKUc4mkMLefmOW56WshW2MCVqL4BEBfBSrFl2E1ADvl522CmFFCkM8hpHLIShrox_p9v_TkfRKkunjy4gHEKSlYqZwS8Lo4K-jCZ_wSKdA"/>
+</div>
+<div>
+<div class="font-semibold text-body-lg">Julian Kovic</div>
+<div class="flex items-center gap-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant opacity-70">Starter</span>
+<span class="material-symbols-outlined text-[14px] text-secondary">arrow_forward</span>
+<span class="font-label-sm text-label-sm text-secondary font-bold">Pro</span>
+</div>
+</div>
+</div>
+<div class="text-right">
+<div class="text-secondary font-bold font-label-sm">+$89.00</div>
+<div class="text-[10px] text-on-surface-variant opacity-50">15m ago</div>
+</div>
+</div>
+<!-- Activity Item 3 -->
+<div class="glass-list-item rounded-xl p-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full overflow-hidden border border-white/10">
+<img class="w-full h-full object-cover" data-alt="A clean, high-resolution portrait of a smiling executive woman in a tech environment. Cinematic soft lighting from the side creating depth. Premium dark-mode UI context with high-contrast sharp details and deep charcoal backgrounds." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAwTsHCnk9sJXtgj7gimRfw02q_HFMER6MXVSs-Cw1uSQnRIYXWRUH--3GOppLWwTT1iBJyVI-3xBotITZlk1v9NIkTXZBTINKfGRQ3mqOauSCLtaWfH2lvEgJxrN_UVEjtK71FmXSvwcN0paqe4MXSpu-xpf2A9yS350GQaA_kIvT4GU4t3w-Qpi_EaFiNRbK_oWVPvfMBhL1mhRGE-s51manPo4QlVbIAB4u6crmkEDOEy-NMZKpLvg"/>
+</div>
+<div>
+<div class="font-semibold text-body-lg">Sarah Chen</div>
+<div class="flex items-center gap-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant opacity-70">Business</span>
+<span class="material-symbols-outlined text-[14px] text-secondary">arrow_forward</span>
+<span class="font-label-sm text-label-sm text-secondary font-bold">Enterprise</span>
+</div>
+</div>
+</div>
+<div class="text-right">
+<div class="text-secondary font-bold font-label-sm">+$450.00</div>
+<div class="text-[10px] text-on-surface-variant opacity-50">1h ago</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Floating Action Button -->
+<button class="fixed right-6 bottom-24 w-14 h-14 neon-fab rounded-full flex items-center justify-center text-on-primary-fixed z-50 active:scale-90 transition-transform duration-200">
+<span class="material-symbols-outlined text-[32px] font-bold">add</span>
+</button>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-4 py-3 pb-safe bg-surface/85 dark:bg-surface/85 backdrop-blur-xl border-t border-white/10 shadow-lg rounded-t-xl h-[72px]">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant opacity-60 hover:opacity-100" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant opacity-60 hover:opacity-100" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="font-label-sm text-label-sm">History</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed transition-colors duration-300 scale-110" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">bar_chart</span>
+<span class="font-label-sm text-label-sm">Analytics</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant opacity-60 hover:opacity-100" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-sm text-label-sm">Settings</span>
+</a>
+</nav>
+<script>
+        // Micro-interaction for fab
+        const fab = document.querySelector('.neon-fab');
+        fab.addEventListener('click', () => {
+            fab.classList.add('scale-125');
+            setTimeout(() => {
+                fab.classList.remove('scale-125');
+            }, 150);
+        });
+
+        // Simple scroll reveal for list items
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('opacity-100', 'translate-y-0');
+                    entry.target.classList.remove('opacity-0', 'translate-y-4');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.glass-list-item').forEach(item => {
+            item.classList.add('transition-all', 'duration-500', 'opacity-0', 'translate-y-4');
+            observer.observe(item);
+        });
+    </script>
+</body></html>
